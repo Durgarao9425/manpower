@@ -1,33 +1,89 @@
-import { Route, Routes as RouterRoutes, Navigate } from "react-router-dom";
-import TransportManagementLogin from "../Components/Pages/Dashboard/Login/login";
-import TransportDashboard from "../Components/Pages/Dashboard/dashboard";
-import Layout from "../Components/Pages/Dashboard/layout";
-import Logout from "../Components/Pages/Dashboard/Login/logout";
+import React from "react";
+import {
+  Route,
+  Routes as RouterRoutes,
+  Navigate,
+  Outlet,
+  useNavigate,
+} from "react-router-dom";
+import { useEffect } from "react";
+
+// Page Components
 import LoginPage from "../Components/Pages/Dashboard/Login/login";
+import Logout from "../Components/Pages/Dashboard/Login/logout";
+import Layout from "../Components/Pages/Dashboard/layout";
+import TransportDashboard from "../Components/Pages/Dashboard/dashboard";
 import RiderListingPage from "../Components/Pages/RidersPage/riderList";
 import CompanyListPage from "../Components/Pages/Company/caompanyPage";
+import ThemeSettings from "../Components/Pages/SettingPage/SettingPage";
+import RiderDashboardApp from "../Components/Pages/RiderDashboard/RiderDashboard";
+import StoreManagement from "../Components/Pages/StorePage/storePage";
+import RiderAttendanceApp from "../Components/Pages/RiderAttendace/RiderAttendance";
+import UserListing from "../Components/Pages/UserPage/userList";
+import DataImportSystem from "../Components/Pages/DataImport/DataImport";
 
-const NotFound = () => {
-  return <div>Not Found</div>;
+// ProtectedRoute Component
+interface ProtectedRouteProps {
+  allowedRoles: string[];
+}
+
+const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
+  const navigate = useNavigate();
+  const userRole = localStorage.getItem("userRole");
+  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    } else if (!allowedRoles.includes(userRole || "")) {
+      navigate("/unauthorized"); // Optional: create Unauthorized page
+    }
+  }, [isAuthenticated, userRole, allowedRoles, navigate]);
+
+  if (!isAuthenticated || !allowedRoles.includes(userRole || "")) {
+    return null; // or a loading spinner
+  }
+
+  return <Outlet />;
 };
 
-const Routes = () => {
+// NotFound Page
+const NotFound = () => {
+  return <div style={{ padding: "2rem", textAlign: "center" }}>404 - Not Found</div>;
+};
+
+// App Routes
+const AppRoutes = () => {
   return (
     <RouterRoutes>
+      {/* Public Routes */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-
       <Route path="/login" element={<LoginPage />} />
       <Route path="/logout" element={<Logout />} />
 
-      <Route element={<Layout />}>
-        <Route path="/dashboard" element={<TransportDashboard />} />
-        <Route path="/riders" element={<RiderListingPage />} />
-        <Route path="/companies" element={<CompanyListPage />} />
+      {/* Admin Protected Routes */}
+      <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<TransportDashboard />} />
+          <Route path="/riders" element={<RiderListingPage />} />
+          <Route path="/companies" element={<CompanyListPage />} />
+          <Route path="/settings" element={<ThemeSettings />} />
+          <Route path="/stores" element={<StoreManagement />} />
+          <Route path="/rider-attendace" element={<RiderAttendanceApp />} />
+          <Route path="/user-page" element={<UserListing />} />
+          <Route path="/data-import" element={<DataImportSystem />} />
+        </Route>
       </Route>
 
+      {/* Rider Protected Routes */}
+      <Route element={<ProtectedRoute allowedRoles={["rider"]} />}>
+        <Route path="/rider-dashboard" element={<RiderDashboardApp />} />
+      </Route>
+
+      {/* 404 Fallback */}
       <Route path="*" element={<NotFound />} />
     </RouterRoutes>
   );
 };
 
-export default Routes;
+export default AppRoutes;

@@ -78,13 +78,15 @@ export default function LoginPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleInputChange = (e) => {
-    const { name, value, checked } = e.target;
+    const { name, value, checked, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'rememberMe' ? checked : value
+      [name]: type === 'checkbox' ? checked : value
     }));
     
     // Clear errors when user starts typing
@@ -94,6 +96,8 @@ export default function LoginPage() {
         [name]: ''
       }));
     }
+    // Clear any previous login errors
+    if (loginError) setLoginError('');
   };
 
   const validateForm = () => {
@@ -113,26 +117,44 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const navigate = useNavigate()
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/dashboard')
+    setLoginError('');
     
-    if (validateForm()) {
-      // Simulate login process
-      console.log('Login attempted with:', formData);
-      setLoginSuccess(true);
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Reset form after successful login simulation
-      setTimeout(() => {
-        setLoginSuccess(false);
-        setFormData({
-          username: '',
-          password: '',
-          rememberMe: false
-        });
-      }, 2000);
+      // Check credentials
+      if (formData.username === 'admin' && formData.password === 'admin123') {
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', 'admin');
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberedUser', formData.username);
+        } else {
+          localStorage.removeItem('rememberedUser');
+        }
+        navigate('/dashboard');
+      } else if (formData.username === 'rider' && formData.password === 'rider123') {
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', 'rider');
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberedUser', formData.username);
+        } else {
+          localStorage.removeItem('rememberedUser');
+        }
+        navigate('/rider-dashboard');
+      } else {
+        setLoginError('Invalid username or password');
+      }
+    } catch (error) {
+      setLoginError('An error occurred during login. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -150,10 +172,9 @@ export default function LoginPage() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: { xs: 2, sm: 3 },
-          minWidth:'100vw'
+          minWidth: '100vw'
         }}
       >
-        {/* Back to Home Button */}
         <IconButton
           sx={{
             position: 'absolute',
@@ -166,6 +187,7 @@ export default function LoginPage() {
               backgroundColor: 'rgba(255, 255, 255, 0.2)',
             },
           }}
+          onClick={() => navigate('/')}
         >
           <ArrowBack />
         </IconButton>
@@ -184,7 +206,6 @@ export default function LoginPage() {
               },
             }}
           >
-            {/* Logo Section */}
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <Avatar
                 sx={{
@@ -222,14 +243,12 @@ export default function LoginPage() {
               </Typography>
             </Box>
 
-            {/* Success Alert */}
-            {loginSuccess && (
-              <Alert severity="success" sx={{ mb: 3 }}>
-                Login successful! Redirecting to dashboard...
+            {loginError && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {loginError}
               </Alert>
             )}
 
-            {/* Login Form */}
             <Box component="form" onSubmit={handleSubmit}>
               <TextField
                 fullWidth
@@ -292,6 +311,7 @@ export default function LoginPage() {
                 variant="contained"
                 size="large"
                 startIcon={<LoginIcon />}
+                disabled={isSubmitting}
                 sx={{
                   mb: 3,
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -300,7 +320,7 @@ export default function LoginPage() {
                   },
                 }}
               >
-                Sign In
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
               </Button>
 
               <Grid container spacing={2}>
@@ -310,6 +330,7 @@ export default function LoginPage() {
                     variant="text"
                     color="primary"
                     sx={{ fontSize: '0.9rem' }}
+                    onClick={() => {/* Handle forgot password */}}
                   >
                     Forgot Password?
                   </Button>
@@ -320,6 +341,7 @@ export default function LoginPage() {
                     variant="text"
                     color="primary"
                     sx={{ fontSize: '0.9rem' }}
+                    onClick={() => {/* Handle create account */}}
                   >
                     Create Account
                   </Button>
@@ -327,7 +349,6 @@ export default function LoginPage() {
               </Grid>
             </Box>
 
-            {/* Footer */}
             <Box sx={{ textAlign: 'center', mt: 4 }}>
               <Typography variant="body2" sx={{ color: '#888' }}>
                 © 2024 ManPower Project Delivery

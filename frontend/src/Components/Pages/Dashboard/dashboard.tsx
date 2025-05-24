@@ -648,49 +648,7 @@ const FoodDeliveryDashboard = () => {
   );
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh' }}>
-      {/* Header */}
-      {/* <AppBar 
-        position="static" 
-        elevation={0}
-        sx={{ 
-          bgcolor: '#fff',
-          borderBottom: '1px solid rgba(0,0,0,0.08)',
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between', py: { xs: 0.5, sm: 1 } }}>
-          <Box display="flex" alignItems="center">
-            <IconButton sx={{ mr: 1, color: '#2196F3' }}>
-              <Menu />
-            </IconButton>
-            <Restaurant sx={{ color: '#FF5722', mr: 1, fontSize: { xs: 24, sm: 28 } }} />
-            <Typography 
-              variant={isMobile ? "body1" : "h6"} 
-              fontWeight="700" 
-              sx={{ color: '#2196F3' }}
-            >
-              FoodieExpress
-            </Typography>
-          </Box>
-          
-          <Box display="flex" alignItems="center" gap={1}>
-            <Hidden smDown>
-              <IconButton sx={{ color: '#666' }}>
-                <Search />
-              </IconButton>
-            </Hidden>
-            <IconButton sx={{ color: '#666' }}>
-              <Badge badgeContent={12} color="error">
-                <Notifications sx={{ fontSize: { xs: 20, sm: 24 } }} />
-              </Badge>
-            </IconButton>
-            <Avatar sx={{ bgcolor: '#2196F3', width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 } }}>
-              A
-            </Avatar>
-          </Box>
-        </Toolbar>
-      </AppBar> */}
-
+    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh',minWidth:'78vw'}}>
       <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
         {/* Welcome Section */}
         <Box mb={{ xs: 3, sm: 4 }}>

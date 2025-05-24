@@ -590,7 +590,7 @@
 
 // export default ManPowerSideNav;
 
-// export default ManPowerSideNav;
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -616,69 +616,75 @@ import {
   CssBaseline,
   BottomNavigation,
   BottomNavigationAction,
-  Chip,
-  styled
+  Chip
 } from "@mui/material";
 import {
   Menu as MenuIcon,
+  ChevronLeft as ChevronLeftIcon,
   Dashboard as DashboardIcon,
+  DirectionsCar as VehicleIcon,
+  LocalShipping as TruckIcon,
+  People as PeopleIcon,
+  Person as PersonIcon,
+  Route as RouteIcon,
+  Payments as PaymentsIcon,
+  BusinessCenter as PartiesIcon,
+  LocalGasStation as FuelIcon,
+  Receipt as ReceiptIcon,
+  Inventory as InventoryIcon,
+  Settings as SettingsIcon,
+  Notifications as NotificationsIcon,
+  AccountCircle as AccountIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  GridView as GridViewIcon,
+  ReceiptLong as ExpensesIcon,
+  AutoGraph as ReportsIcon,
+  CreditCard as FASTagIcon,
+  Logout as LogoutIcon,
+  Search as SearchIcon,
+  Help as HelpIcon,
+  BusinessCenter,
+  Receipt
+} from "@mui/icons-material";
+import {
   TwoWheeler as ScooterIcon,
   People as RidersIcon,
   Business as CompaniesIcon,
   Store as StoresIcon,
   Schedule as AttendanceIcon,
   LocalShipping as OrdersIcon,
-  Payments as PaymentsIcon,
   AttachMoney as EarningsIcon,
   CreditScore as AdvanceIcon,
   AccountBalance as SettlementIcon,
   Receipt as InvoiceIcon,
-  Settings as SettingsIcon,
-  Notifications as NotificationsIcon,
-  Person as PersonIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  Logout as LogoutIcon,
-  Search as SearchIcon,
-  Help as HelpIcon
 } from "@mui/icons-material";
-
-// Custom styled components
-const StyledBadge = styled(Badge)(({ theme }) => ({
-  '& .MuiBadge-badge': {
-    right: -3,
-    top: 13,
-    border: `2px solid ${theme.palette.background.paper}`,
-    padding: '0 4px',
-  },
-}));
 
 // Theme colors
 const themeColors = {
-  primary: "#3f51b5",
-  secondary: "#2d3748",
-  background: "#f8fafc",
-  cardBg: "#ffffff",
-  textPrimary: "#1a202c",
-  textSecondary: "#4a5568",
-  borderColor: "#e2e8f0",
-  success: "#38a169",
-  warning: "#dd6b20",
-  error: "#e53e3e",
-  highlight: "#ebf4ff"
+  primary: "#0C7242",
+  secondary: "#1E293B",
+  background: "#F1F5F9",
+  cardBg: "#FFFFFF",
+  textPrimary: "#1E293B",
+  textSecondary: "#64748B",
+  borderColor: "#E2E8F0",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  highlight: "#ECF9F1"
 };
 
-// Width of the drawer
-const drawerWidth = 280;
-const collapsedWidth = 80;
+// Width of the drawer when expanded
+const drawerWidth = 260;
 
-// Navigation items
-const navItems = [
+// Navigation items with nested options
+const navigationItems = [
   { id: "dashboard", text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
   { id: "riders", text: "Riders", icon: <RidersIcon />, path: "/riders", badge: 3 },
   { id: "companies", text: "Companies", icon: <CompaniesIcon />, path: "/companies" },
   { id: "stores", text: "Stores", icon: <StoresIcon />, path: "/stores" },
-  { id: "attendance", text: "Rider Attendance", icon: <AttendanceIcon />, path: "/attendance" },
+  { id: "attendance", text: "Rider Attendance", icon: <AttendanceIcon />, path: "/rider-attendace" },
   { id: "orders", text: "Orders", icon: <OrdersIcon />, path: "/orders", badge: 5 },
   { id: "payments", text: "Payments", icon: <PaymentsIcon />, path: "/payments" },
   { id: "earnings", text: "Earnings", icon: <EarningsIcon />, path: "/earnings" },
@@ -689,172 +695,356 @@ const navItems = [
 ];
 
 // Mobile bottom navigation items
-const mobileNavItems = [
+const bottomNavItems = [
   { label: "Dashboard", icon: <DashboardIcon />, path: "/" },
   { label: "Riders", icon: <RidersIcon />, path: "/riders" },
   { label: "Orders", icon: <OrdersIcon />, path: "/orders" },
   { label: "Payments", icon: <PaymentsIcon />, path: "/payments" },
 ];
 
+// SideNav component props interface
 interface SideNavProps {
   children: React.ReactNode;
+  pendingAlerts?: number;
 }
 
-const SideNav: React.FC<SideNavProps> = ({ children }) => {
+/**
+ * Modern Transport Management SideNav component
+ */
+const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  
+
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [mobileNavValue, setMobileNavValue] = useState(0);
 
- useEffect(() => {
-  const currentPath = location.pathname;
-  const index = mobileNavItems.findIndex(
-    item => currentPath === item.path || 
-           (item.path !== "/" && currentPath.startsWith(item.path))
-  );
-  setMobileNavValue(index >= 0 ? index : 0);
-}, [location.pathname]);
+  // Set initial expanded state based on active path
+  useEffect(() => {
+    const currentPath = location.pathname;
 
-  const toggleDrawer = () => setDrawerOpen(!drawerOpen);
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    if (isMobile) setDrawerOpen(false);
+    // Find which section should be expanded based on current path
+    let expandedSections = {};
+    navigationItems.forEach(item => {
+      if (item.children) {
+        const isChildActive = item.children.some(child =>
+          currentPath === child.path || (child.path !== "/" && currentPath.startsWith(child.path))
+        );
+        if (isChildActive) {
+          expandedSections[item.id] = true;
+        }
+      }
+    });
+
+    setExpandedItems(expandedSections);
+
+    // Set mobile navigation value
+    const bottomNavIndex = bottomNavItems.findIndex(
+      item => currentPath === item.path ||
+        (item.path !== "/" && currentPath.startsWith(item.path))
+    );
+    setMobileNavValue(bottomNavIndex >= 0 ? bottomNavIndex : 0);
+  }, [location.pathname]);
+
+  // Toggle drawer
+  const handleDrawerToggle = () => {
+    setDrawerOpen(!drawerOpen);
   };
 
-  const isActive = (path: string) => 
-    location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
+  // Toggle expand/collapse of menu sections
+  const handleToggleExpand = (itemId: string) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+  };
+
+  // Navigate to a route
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+  };
+
+  // Check if a route is active
+  const isActive = (path: string) => {
+    return location.pathname === path ||
+      (path !== "/" && location.pathname.startsWith(path));
+  };
 
   // Drawer content
   const drawerContent = (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      height: '100%',
-      bgcolor: themeColors.cardBg
-    }}>
-      {/* Brand header */}
-      <Box sx={{
-        p: 2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: drawerOpen ? 'space-between' : 'center',
-        height: 64,
-        borderBottom: `1px solid ${themeColors.borderColor}`
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{ 
-            bgcolor: themeColors.primary,
-            width: 36,
-            height: 36
-          }}>
-            <ScooterIcon />
-          </Avatar>
-          {drawerOpen && (
-            <Typography variant="h6" sx={{ 
-              fontWeight: 700,
-              color: themeColors.primary,
-              whiteSpace: 'nowrap'
-            }}>
-              Man Power
-            </Typography>
-          )}
-        </Box>
+    <Box
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflowX: "hidden",
+        bgcolor: themeColors.cardBg,
+      }}
+    >
+      {/* Brand Header */}
+      <Box
+        sx={{
+          p: 2,
+          height: 64,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: drawerOpen ? "space-between" : "center",
+        }}
+      >
+     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ 
+                bgcolor: themeColors.primary,
+                width: 36,
+                height: 36
+              }}>
+                <ScooterIcon />
+              </Avatar>
+              {drawerOpen && (
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 700,
+                  color: themeColors.primary,
+                  whiteSpace: 'nowrap'
+                }}>
+                  Man Power
+                </Typography>
+              )}
+            </Box>
+
         {!isMobile && (
-          <IconButton onClick={toggleDrawer} size="small">
-            {/* {drawerOpen ? <ChevronLeftIcon /> : <ChevronLeftIcon sx={{ transform: 'rotate(180deg)' }} />} */}
+          <IconButton onClick={handleDrawerToggle} edge="end" size="small">
+            <ChevronLeftIcon />
           </IconButton>
         )}
       </Box>
 
-      {/* Navigation items */}
-      <List sx={{ 
-        flexGrow: 1,
-        overflowY: 'auto',
-        p: 1,
-        '& .MuiListItemButton-root': {
-          borderRadius: 2,
-          mb: 0.5
-        }
-      }}>
-        {navItems.map((item) => {
-          const active = isActive(item.path);
-          return (
-            <ListItem key={item.id} disablePadding sx={{ display: 'block' }}>
-              <ListItemButton
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  bgcolor: active ? themeColors.highlight : 'transparent',
-                  '&:hover': {
-                    bgcolor: active ? themeColors.highlight : 'rgba(63, 81, 181, 0.08)'
-                  }
-                }}
-              >
-                <ListItemIcon sx={{
-                  minWidth: 0,
-                  mr: drawerOpen ? 2 : 'auto',
-                  color: active ? themeColors.primary : themeColors.textSecondary
-                }}>
-                  {item.badge ? (
-                    <StyledBadge badgeContent={item.badge} color="error">
+      <Divider sx={{ borderColor: themeColors.borderColor }} />
+
+      {/* Navigation Menu */}
+      <List
+        sx={{
+          pt: 1,
+          px: 1,
+          flexGrow: 1,
+          overflowY: "auto",
+        }}
+      >
+        {navigationItems.map((item) => (
+          <React.Fragment key={item.id}>
+            {item.children ? (
+              // Menu item with children
+              <>
+                <ListItem disablePadding sx={{ display: "block", mb: 0.5 }}>
+                  <ListItemButton
+                    onClick={() => handleToggleExpand(item.id)}
+                    sx={{
+                      minHeight: 48,
+                      px: 2.5,
+                      py: 1,
+                      borderRadius: 2,
+                      "&:hover": {
+                        bgcolor: `${themeColors.highlight}`,
+                      },
+                    }}
+                  >
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 0,
+                        mr: drawerOpen ? 2 : "auto",
+                        justifyContent: "center",
+                        color: themeColors.primary,
+                      }}
+                    >
                       {item.icon}
-                    </StyledBadge>
-                  ) : item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    fontWeight: active ? 600 : 400,
-                    color: active ? themeColors.primary : themeColors.textPrimary,
-                    fontSize: '0.9rem'
+                    </ListItemIcon>
+                    {drawerOpen && (
+                      <>
+                        <ListItemText
+                          primary={item.text}
+                          primaryTypographyProps={{
+                            fontWeight: 500,
+                            color: themeColors.textPrimary,
+                          }}
+                        />
+                        {expandedItems[item.id] ? (
+                          <ExpandLessIcon fontSize="small" color="inherit" />
+                        ) : (
+                          <ExpandMoreIcon fontSize="small" color="inherit" />
+                        )}
+                      </>
+                    )}
+                  </ListItemButton>
+                </ListItem>
+
+                {/* Submenu Items */}
+                <Collapse
+                  in={drawerOpen && expandedItems[item.id]}
+                  timeout="auto"
+                  unmountOnExit
+                >
+                  <List component="div" disablePadding>
+                    {item.children.map((child) => {
+                      const isItemActive = isActive(child.path);
+
+                      return (
+                        <ListItem key={child.id} disablePadding sx={{ display: "block", mb: 0.5 }}>
+                          <ListItemButton
+                            onClick={() => handleNavigation(child.path)}
+                            sx={{
+                              minHeight: 40,
+                              ml: 2,
+                              px: 2.5,
+                              py: 0.75,
+                              borderRadius: 2,
+                              bgcolor: isItemActive ? themeColors.highlight : "transparent",
+                              "&:hover": {
+                                bgcolor: isItemActive ? themeColors.highlight : "rgba(12, 114, 66, 0.08)",
+                              },
+                            }}
+                          >
+                            <ListItemIcon
+                              sx={{
+                                minWidth: 0,
+                                mr: 2,
+                                justifyContent: "center",
+                                color: isItemActive ? themeColors.primary : themeColors.textSecondary,
+                              }}
+                            >
+                              {child.icon}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={child.text}
+                              primaryTypographyProps={{
+                                fontWeight: isItemActive ? 600 : 400,
+                                color: isItemActive ? themeColors.primary : themeColors.textSecondary,
+                                fontSize: "0.9rem",
+                              }}
+                            />
+                            {child.badge > 0 && (
+                              <Badge
+                                badgeContent={child.badge}
+                                color="error"
+                                sx={{ ml: 1 }}
+                              />
+                            )}
+                            {child.isNew && (
+                              <Chip
+                                label="NEW"
+                                size="small"
+                                color="success"
+                                sx={{
+                                  height: 20,
+                                  fontSize: '0.7rem',
+                                  ml: 1
+                                }}
+                              />
+                            )}
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </>
+            ) : (
+              // Regular menu item
+              <ListItem disablePadding sx={{ display: "block", mb: 0.5 }}>
+                <ListItemButton
+                  onClick={() => handleNavigation(item.path)}
+                  sx={{
+                    minHeight: 48,
+                    px: 2.5,
+                    py: 1,
+                    borderRadius: 2,
+                    bgcolor: isActive(item.path) ? themeColors.highlight : "transparent",
+                    "&:hover": {
+                      bgcolor: isActive(item.path) ? themeColors.highlight : "rgba(12, 114, 66, 0.08)",
+                    },
                   }}
-                  sx={{ opacity: drawerOpen ? 1 : 0 }}
-                />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: drawerOpen ? 2 : "auto",
+                      justifyContent: "center",
+                      color: isActive(item.path) ? themeColors.primary : themeColors.textSecondary,
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    sx={{
+                      opacity: drawerOpen ? 1 : 0,
+                      display: drawerOpen ? "block" : "none",
+                    }}
+                    primaryTypographyProps={{
+                      fontWeight: isActive(item.path) ? 600 : 500,
+                      color: isActive(item.path) ? themeColors.primary : themeColors.textPrimary,
+                    }}
+                  />
+                  {item.badge > 0 && drawerOpen && (
+                    <Badge
+                      badgeContent={item.badge}
+                      color="error"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
+                </ListItemButton>
+              </ListItem>
+            )}
+          </React.Fragment>
+        ))}
       </List>
 
-      {/* User section */}
-      <Box sx={{ 
-        p: 2,
-        borderTop: `1px solid ${themeColors.borderColor}`
-      }}>
+      {/* Bottom Section with User & Logout */}
+      <Box sx={{ mt: "auto", p: 2 }}>
+        <Divider sx={{ borderColor: themeColors.borderColor, mb: 2 }} />
+
         {drawerOpen ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ 
-              width: 40, 
-              height: 40,
-              bgcolor: themeColors.secondary
-            }}>
-              <PersonIcon />
-            </Avatar>
-            <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                Admin User
-              </Typography>
-              <Typography variant="caption" sx={{ color: themeColors.textSecondary }}>
-                admin@manpower.com
-              </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: themeColors.secondary }}>
+                <PersonIcon fontSize="small" />
+              </Avatar>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: themeColors.textPrimary }}>
+                  Admin User
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  admin@transportbook.com
+                </Typography>
+              </Box>
             </Box>
-            <IconButton size="small" onClick={() => navigate('/logout')}>
+            <IconButton
+              size="small"
+              sx={{ color: themeColors.textSecondary }}
+              onClick={() => navigate('/logout')}
+            >
               <LogoutIcon fontSize="small" />
             </IconButton>
           </Box>
         ) : (
           <Tooltip title="Profile" placement="right">
             <IconButton
-              sx={{ display: 'flex', mx: 'auto' }}
+              sx={{
+                display: 'flex',
+                mx: 'auto',
+                color: themeColors.textPrimary
+              }}
               onClick={() => navigate('/profile')}
             >
-              <Avatar sx={{ 
-                width: 36, 
-                height: 36,
-                bgcolor: themeColors.secondary
-              }}>
+              <Avatar
+                sx={{
+                  width: 40,
+                  height: 40,
+                  bgcolor: themeColors.secondary
+                }}
+              >
                 <PersonIcon />
               </Avatar>
             </IconButton>
@@ -865,53 +1055,57 @@ const SideNav: React.FC<SideNavProps> = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <CssBaseline />
 
-      {/* AppBar */}
+      {/* Top AppBar */}
       <AppBar
         position="fixed"
+        elevation={0}
         sx={{
-          width: { md: `calc(100% - ${drawerOpen ? drawerWidth : collapsedWidth}px)` },
-          ml: { md: `${drawerOpen ? drawerWidth : collapsedWidth}px` },
+          width: { md: drawerOpen ? `calc(100% - ${drawerWidth}px)` : `calc(100% - 80px)` },
+          ml: { md: drawerOpen ? `${drawerWidth}px` : '80px' },
           bgcolor: themeColors.cardBg,
-          color: themeColors.textPrimary,
-          boxShadow: 'none',
           borderBottom: `1px solid ${themeColors.borderColor}`,
-          transition: theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
+          transition: "all 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {/* Mobile menu button */}
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={toggleDrawer}
-              sx={{ mr: 2, display: { md: 'none' } }}
-            >
-              <MenuIcon />
-            </IconButton>
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          {/* Mobile Menu Toggle */}
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="open drawer"
+            onClick={handleDrawerToggle}
+            sx={{
+              mr: 2,
+              display: { md: "none" },
+              color: themeColors.textPrimary,
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
 
-            {/* Search bar - desktop */}
-            <Box sx={{ 
+          <Box
+            sx={{
+              flexGrow: 1,
               display: { xs: 'none', md: 'flex' },
-              alignItems: 'center',
-              bgcolor: themeColors.background,
-              borderRadius: 2,
-              px: 2,
-              py: 0.5,
-              width: 400,
-              maxWidth: '100%'
-            }}>
-              <SearchIcon sx={{ 
-                color: themeColors.textSecondary,
-                mr: 1,
-                fontSize: 20
-              }} />
+              justifyContent: 'start'
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                bgcolor: themeColors.background,
+                borderRadius: 2,
+                px: 2,
+                py: 0.5,
+                width: '100%',
+                maxWidth: 400,
+              }}
+            >
+              <SearchIcon sx={{ color: themeColors.textSecondary, mr: 1 }} />
               <input
                 placeholder="Search..."
                 style={{
@@ -926,29 +1120,35 @@ const SideNav: React.FC<SideNavProps> = ({ children }) => {
             </Box>
           </Box>
 
-          {/* Right side icons */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* Right side actions */}
+          <Box sx={{ display: "flex", alignItems: "center" }}>
             <Tooltip title="Help">
-              <IconButton>
-                <HelpIcon sx={{ color: themeColors.textSecondary }} />
+              <IconButton sx={{ color: themeColors.textSecondary }}>
+                <HelpIcon />
               </IconButton>
             </Tooltip>
-            
+
             <Tooltip title="Notifications">
-              <IconButton>
-                <Badge badgeContent={4} color="error">
-                  <NotificationsIcon sx={{ color: themeColors.textSecondary }} />
+              <IconButton sx={{ color: themeColors.textSecondary }}>
+                <Badge badgeContent={pendingAlerts} color="error">
+                  <NotificationsIcon />
                 </Badge>
               </IconButton>
             </Tooltip>
-            
-            <Tooltip title="Profile">
-              <IconButton onClick={() => navigate('/profile')}>
-                <Avatar sx={{ 
-                  width: 36, 
-                  height: 36,
-                  bgcolor: themeColors.primary
-                }}>
+
+            <Tooltip title="Account">
+              <IconButton
+                edge="end"
+                sx={{ ml: 1, color: themeColors.textPrimary }}
+                onClick={() => navigate('/profile')}
+              >
+                <Avatar
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    bgcolor: themeColors.primary
+                  }}
+                >
                   <PersonIcon fontSize="small" />
                 </Avatar>
               </IconButton>
@@ -957,29 +1157,26 @@ const SideNav: React.FC<SideNavProps> = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar Drawer */}
+      {/* Side Drawer - Permanent on desktop, temporary on mobile */}
       <Box
         component="nav"
         sx={{
-          width: { md: drawerOpen ? drawerWidth : collapsedWidth },
-          flexShrink: { md: 0 },
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
+          width: { md: drawerOpen ? drawerWidth : 80 },
+          flexShrink: 0,
+          transition: "width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
         }}
       >
         {isMobile ? (
           <Drawer
             variant="temporary"
             open={drawerOpen}
-            onClose={toggleDrawer}
+            onClose={handleDrawerToggle}
             ModalProps={{ keepMounted: true }}
             sx={{
-              display: { xs: 'block', md: 'none' },
-              '& .MuiDrawer-paper': {
+              display: { xs: "block", md: "none" },
+              "& .MuiDrawer-paper": {
                 width: drawerWidth,
-                boxSizing: 'border-box',
+                boxSizing: "border-box",
                 borderRight: `1px solid ${themeColors.borderColor}`,
               },
             }}
@@ -989,80 +1186,75 @@ const SideNav: React.FC<SideNavProps> = ({ children }) => {
         ) : (
           <Drawer
             variant="permanent"
-            open={drawerOpen}
             sx={{
-              '& .MuiDrawer-paper': {
-                width: drawerOpen ? drawerWidth : collapsedWidth,
-                boxSizing: 'border-box',
+              width: drawerOpen ? drawerWidth : 80,
+              flexShrink: 0,
+              "& .MuiDrawer-paper": {
+                width: drawerOpen ? drawerWidth : 80,
+                boxSizing: "border-box",
                 borderRight: `1px solid ${themeColors.borderColor}`,
-                transition: theme.transitions.create('width', {
-                  easing: theme.transitions.easing.sharp,
-                  duration: theme.transitions.duration.leavingScreen,
-                }),
+                overflowX: "hidden",
+                transition: "width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
               },
             }}
+            open={drawerOpen}
           >
             {drawerContent}
           </Drawer>
         )}
       </Box>
 
-      {/* Main content */}
+      {/* Main Content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          width: { md: `calc(100% - ${drawerOpen ? drawerWidth : collapsedWidth}px)` },
+          width: { md: `calc(100% - ${drawerOpen ? drawerWidth : 80}px)` },
           p: { xs: 2, sm: 3 },
-          mt: 8,
-          mb: { xs: 7, md: 0 },
+          mt: { xs: 7, sm: 8 },
+          mb: { xs: 7, md: 2 },
           bgcolor: themeColors.background,
-          minHeight: '100vh',
-          transition: theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
+          minHeight: "100vh",
+          transition: "all 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
         }}
       >
         {children}
       </Box>
 
-      {/* Mobile bottom navigation */}
+      {/* Bottom Navigation for Mobile */}
       {isMobile && (
         <Paper
           elevation={3}
           sx={{
-            position: 'fixed',
+            position: "fixed",
             bottom: 0,
             left: 0,
             right: 0,
-            zIndex: theme.zIndex.appBar,
-            borderTop: `1px solid ${themeColors.borderColor}`
+            zIndex: 1300,
           }}
         >
           <BottomNavigation
-            showLabels
             value={mobileNavValue}
             onChange={(event, newValue) => {
               setMobileNavValue(newValue);
-              navigate(mobileNavItems[newValue].path);
+              navigate(bottomNavItems[newValue].path);
             }}
             sx={{
               bgcolor: themeColors.cardBg,
-              height: 56
+              borderTop: `1px solid ${themeColors.borderColor}`,
+              height: 60,
             }}
           >
-            {mobileNavItems.map((item, index) => (
+            {bottomNavItems.map((item, index) => (
               <BottomNavigationAction
                 key={item.label}
                 label={item.label}
                 icon={item.icon}
                 sx={{
                   color: mobileNavValue === index ? themeColors.primary : themeColors.textSecondary,
-                  '& .MuiBottomNavigationAction-label': {
-                    fontSize: '0.75rem',
-                    mt: 0.5
-                  }
+                  "&.Mui-selected": {
+                    color: themeColors.primary,
+                  },
                 }}
               />
             ))}
@@ -1074,3 +1266,4 @@ const SideNav: React.FC<SideNavProps> = ({ children }) => {
 };
 
 export default SideNav;
+
