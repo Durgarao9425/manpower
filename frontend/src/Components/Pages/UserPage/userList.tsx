@@ -28,15 +28,31 @@ import ReusableCard from './userCard';
 import UserForm from './userform';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
+import type { SelectChangeEvent } from '@mui/material/Select';
 
-
+// User type for TypeScript
+interface User {
+    id: number;
+    company_id: number | null;
+    username: string;
+    password?: string;
+    email: string;
+    user_type: 'admin' | 'company' | 'rider' | 'store_manager';
+    full_name: string;
+    phone?: string;
+    address?: string;
+    profile_image?: string;
+    created_at?: string;
+    updated_at?: string;
+    status: 'active' | 'inactive' | 'suspended';
+}
 
 const UserListing = () => {
-    const [users, setUsers] = useState([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState('list');
+    const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
     const [openForm, setOpenForm] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [page, setPage] = useState(1);
     const [rowsPerPage] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,26 +63,37 @@ const UserListing = () => {
     });
 
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-    const [userToDelete, setUserToDelete] = useState(null);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
 
-    const handleDeleteClick = (user) => {
+    const handleDeleteClick = (user: User) => {
         setUserToDelete(user);
         setDeleteConfirmOpen(true);
     };
 
-    const handleEdit = (user) => {
-  console.log('Edit user:', user);
-};
+    const handleEdit = (user: User) => {
+        console.log('Edit user:', user);
+    };
 
-const handleDelete = (user) => {
-  console.log('Delete user:', user);
-};
-    const handleDeleteConfirm = () => {
+    const handleDelete = (user: User) => {
+        console.log('Delete user:', user);
+    };
+    const handleDeleteConfirm = async () => {
         if (userToDelete) {
-            setUsers(users.filter(user => user.id !== userToDelete.id));
-            setSnackbarMessage(`${userToDelete.name} deleted successfully`);
+            try {
+                const response = await fetch(`http://localhost:4003/api/users/${userToDelete.id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    setUsers(users.filter(user => user.id !== userToDelete.id));
+                    setSnackbarMessage(`${userToDelete.full_name} deleted successfully`);
+                } else {
+                    setSnackbarMessage('Failed to delete user');
+                }
+            } catch (error) {
+                setSnackbarMessage('Error deleting user');
+            }
             setSnackbarOpen(true);
         }
         setDeleteConfirmOpen(false);
@@ -86,36 +113,19 @@ const handleDelete = (user) => {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const mockUsers = [
-                    // Sample user data matching your schema
-                    {
-                        id: 1, company_id: 1, username: 'admin1', email: 'admin@example.com',
-                        user_type: 'admin', full_name: 'Admin User', status: 'active'
-                    },
-                    {
-                        id: 2, company_id: 1, username: 'manager1', email: 'manager@example.com',
-                        user_type: 'store_manager', full_name: 'Store Manager', status: 'active'
-                    },
-                    {
-                        id: 3, company_id: 2, username: 'rider1', email: 'rider@example.com',
-                        user_type: 'rider', full_name: 'Delivery Rider', status: 'active'
-                    },
-                    // Add more mock users as needed
-                ];
-                setUsers(mockUsers);
+                const response = await fetch('http://localhost:4003/api/users');
+                const data = await response.json();
+                setUsers(data);
                 setLoading(false);
             } catch (error) {
                 console.error('Error fetching users:', error);
                 setLoading(false);
             }
         };
-
         fetchUsers();
     }, []);
 
-    const handleViewModeChange = (event, newViewMode) => {
+    const handleViewModeChange = (_event: React.MouseEvent<HTMLElement>, newViewMode: 'list' | 'card') => {
         if (newViewMode !== null) {
             setViewMode(newViewMode);
         }
@@ -126,7 +136,7 @@ const handleDelete = (user) => {
         setOpenForm(true);
     };
 
-    const handleEditUser = (user) => {
+    const handleEditUser = (user: User) => {
         setCurrentUser(user);
         setOpenForm(true);
     };
@@ -135,25 +145,66 @@ const handleDelete = (user) => {
         setOpenForm(false);
     };
 
-    const handleSaveUser = (userData) => {
-        // Handle save logic (create/update)
-        console.log('Saving user:', userData);
+    const handleSaveUser = async (userData: User) => {
+        if (userData.id) {
+            // Edit mode: update user
+            try {
+                const response = await fetch(`http://localhost:4003/api/users/${userData.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                if (response.ok) {
+                    setUsers(prev => prev.map(u => u.id === userData.id ? { ...u, ...userData } : u));
+                    setSnackbarMessage('User updated successfully');
+                    setSnackbarOpen(true);
+                } else {
+                    setSnackbarMessage('Failed to update user');
+                    setSnackbarOpen(true);
+                }
+            } catch (error) {
+                setSnackbarMessage('Error updating user');
+                setSnackbarOpen(true);
+            }
+        } else {
+            // Create mode: add new user
+            try {
+                const response = await fetch('http://localhost:4003/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                if (response.ok) {
+                    // Refresh user list after save
+                    const newUser = await response.json();
+                    setUsers(prev => [...prev, newUser]);
+                    setSnackbarMessage('User created successfully');
+                    setSnackbarOpen(true);
+                } else {
+                    setSnackbarMessage('Failed to create user');
+                    setSnackbarOpen(true);
+                }
+            } catch (error) {
+                setSnackbarMessage('Error creating user');
+                setSnackbarOpen(true);
+            }
+        }
         setOpenForm(false);
-        // Refresh user list after save
     };
 
-    const handleSearchChange = (e) => {
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
         setPage(1); // Reset to first page when searching
     };
 
-    const handleFilterChange = (e) => {
+    // Fix: handleFilterChange for MUI Select
+    const handleFilterChange = (e: SelectChangeEvent<string>) => {
         const { name, value } = e.target;
         setFilters(prev => ({
             ...prev,
-            [name]: value
+            [name!]: value
         }));
-        setPage(1); // Reset to first page when filtering
+        setPage(1);
     };
 
     const filteredUsers = users.filter(user => {
@@ -286,7 +337,7 @@ const handleDelete = (user) => {
                     <>
                         {viewMode === 'list' ? (
                             <ReusableTable
-                                data={paginatedUsers}
+                                data={paginatedUsers as any[]}
                                 onEdit={handleEditUser}
                                 onDelete={handleDeleteClick}
                                 columns={[
@@ -347,7 +398,7 @@ const handleDelete = (user) => {
                                 >
                                     <Typography variant="body1">
                                         Are you sure you want to delete{' '}
-                                        <b>{'Durgarao' || '-'}</b>?
+                                        <b>{userToDelete?.full_name || '-'}</b>?
                                     </Typography>
                                 </Box>
                             </DialogContent>
@@ -391,7 +442,7 @@ const handleDelete = (user) => {
                             <Pagination
                                 count={count}
                                 page={page}
-                                onChange={(event, value) => setPage(value)}
+                                onChange={(_event, value) => setPage(value)}
                                 color="primary"
                             />
                         </Box>

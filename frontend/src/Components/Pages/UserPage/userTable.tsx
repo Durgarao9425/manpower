@@ -14,7 +14,15 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-const ReusableTable = ({ data, columns, onEdit, onDelete }) => {
+// Add type for props
+interface UserTableProps {
+  data: any[];
+  columns: { field: string; headerName: string; width?: number; minWidth?: number }[];
+  onEdit: (row: any) => void;
+  onDelete: (row: any) => void;
+}
+
+const ReusableTable: React.FC<UserTableProps> = ({ data, columns, onEdit, onDelete }) => {
   if (!data || data.length === 0) {
     return (
       <Typography variant="body1" sx={{ p: 2 }}>
