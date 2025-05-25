@@ -15,7 +15,7 @@ import Layout from "../Components/Pages/Dashboard/layout";
 import TransportDashboard from "../Components/Pages/Dashboard/dashboard";
 import RiderListingPage from "../Components/Pages/RidersPage/riderList";
 import CompanyListPage from "../Components/Pages/Company/caompanyPage";
-import ThemeSettings from "../Components/Pages/SettingPage/SettingPage";
+import ThemeSettings from "../Components/Pages/SettingPage/ThemSettingPage";
 import RiderDashboardApp from "../Components/Pages/RiderDashboard/RiderDashboard";
 import StoreManagement from "../Components/Pages/StorePage/storePage";
 import RiderAttendanceApp from "../Components/Pages/RiderAttendace/RiderAttendance";
@@ -28,6 +28,7 @@ import RiderManagement from "../Components/Pages/RidersPage/riderList";
 import RiderProfileForm from "../Components/Pages/RidersPage/Riderform";
 import RiderForm from "../Components/Pages/RidersPage/Riderform";
 import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
+import CompanySettings from "../Components/Pages/SettingPage/Settings";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -74,7 +75,7 @@ const AppRoutes = () => {
           <Route path="/dashboard" element={<TransportDashboard />} />
           <Route path="/riders" element={<RiderListingPage />} />
           <Route path="/companies" element={<CompanyPage />} />
-          <Route path="/settings" element={<ThemeSettings />} />
+          <Route path="/them-settings" element={<ThemeSettings />} />
           <Route path="/stores" element={<StoreManagement />} />
           <Route path="/rider-attendace" element={<RiderAttendanceApp />} />
           <Route path="/user-page" element={<UserListing />} />
@@ -82,6 +83,7 @@ const AppRoutes = () => {
           <Route path="/role-permissions" element={<RoleManagementPage />} />
           <Route path="/orders" element={<OrderManagementSystem />} />
           <Route path="/rider-form" element={<RiderRegistrationForm />} />
+          <Route path="/settings" element={<CompanySettings />} />
         </Route>
       </Route>
 
