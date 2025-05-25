@@ -1,403 +1,578 @@
-import React, { useState } from 'react';
-import { 
-  Add as PlusIcon,
-  Search as SearchIcon,
-  FilterList as FilterIcon,
-  MoreVert as MoreVerticalIcon,
-  Phone as PhoneIcon,
-  Email as MailIcon,
-  LocationOn as MapPinIcon,
-  Star as StarIcon,
-  LocalShipping as TruckIcon
-} from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
+  Typography,
   Button,
   Card,
   CardContent,
-  Chip,
-  Container,
   Grid,
-  IconButton,
-  InputAdornment,
-  Paper,
+  TextField,
   Select,
   MenuItem,
+  FormControl,
+  InputLabel,
+  IconButton,
+  Chip,
+  Avatar,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
-  Typography,
-  Avatar
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Pagination
 } from '@mui/material';
+  // Pagination state
 
-const RiderListingPage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+import type { SelectChangeEvent } from '@mui/material';
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Assignment as AssignmentIcon,
+  Person as PersonIcon,
+  CheckCircle as CheckCircleIcon,
+  Star as StarIcon,
+  DirectionsBike as BikeIcon,
+  FilterList as FilterIcon
+} from '@mui/icons-material';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
-  // Dummy data for riders
-  const riders = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@email.com",
-      phone: "+1 234 567 8901",
-      status: "active",
-      rating: 4.8,
-      totalDeliveries: 156,
-      location: "New York, NY",
-      joinDate: "2024-01-15",
-      vehicleType: "Motorcycle",
-      lastActive: "2 hours ago"
-    },
-    {
-      id: 2,
-      name: "Sarah Wilson",
-      email: "sarah.wilson@email.com",
-      phone: "+1 234 567 8902",
-      status: "active",
-      rating: 4.9,
-      totalDeliveries: 243,
-      location: "Los Angeles, CA",
-      joinDate: "2023-11-20",
-      vehicleType: "Car",
-      lastActive: "5 minutes ago"
-    },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      email: "mike.johnson@email.com",
-      phone: "+1 234 567 8903",
-      status: "inactive",
-      rating: 4.6,
-      totalDeliveries: 89,
-      location: "Chicago, IL",
-      joinDate: "2024-02-10",
-      vehicleType: "Bicycle",
-      lastActive: "2 days ago"
-    },
-    {
-      id: 4,
-      name: "Emily Chen",
-      email: "emily.chen@email.com",
-      phone: "+1 234 567 8904",
-      status: "active",
-      rating: 4.7,
-      totalDeliveries: 201,
-      location: "San Francisco, CA",
-      joinDate: "2023-12-05",
-      vehicleType: "Motorcycle",
-      lastActive: "1 hour ago"
-    },
-    {
-      id: 5,
-      name: "David Brown",
-      email: "david.brown@email.com",
-      phone: "+1 234 567 8905",
-      status: "pending",
-      rating: 0,
-      totalDeliveries: 0,
-      location: "Miami, FL",
-      joinDate: "2024-05-20",
-      vehicleType: "Car",
-      lastActive: "Never"
-    }
-  ];
+interface Rider {
+  id: number;
+  rider_id: string;
+  user_id: string;
+  rider_code: string;
+  id_proof: string;
+  emergency_contact: string;
+  date_of_birth: string;
+  blood_group: string;
+  joining_date: string;
+  bank_name: string;
+  account_number: string;
+  ifsc_code: string;
+  account_holder_name: string;
+  upi_id: string;
+  id_card_path: string;
+  performance_tier: string;
+  last_certificate_date: string;
+  created_by: number;
+  id_card_number: string;
+  id_card_issue_date: string;
+  id_card_expiry_date: string;
+  documents: any[];
+  status: string;
+  vehicle_type: string;
+  vehicle_number: string;
+}
 
-  const filteredRiders = riders.filter(rider => {
-    const matchesSearch = rider.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         rider.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         rider.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || rider.status === statusFilter;
-    return matchesSearch && matchesStatus;
+interface Company {
+  id: number;
+  name: string;
+}
+
+interface Stats {
+  totalRiders: number;
+  activeRiders: number;
+  topPerformers: number;
+  totalDeliveries: number;
+}
+
+const RiderListingPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [riders, setRiders] = useState<Rider[]>([]);
+  const [filteredRiders, setFilteredRiders] = useState<Rider[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalRiders: 0,
+    activeRiders: 0,
+    topPerformers: 0,
+    totalDeliveries: 0
   });
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [performanceFilter, setPerformanceFilter] = useState('');
+  const [vehicleFilter, setVehicleFilter] = useState('');
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [selectedStore, setSelectedStore] = useState('');
+  const [stores, setStores] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 5;
+  useEffect(() => {
+    fetchRiders();
+    fetchCompanies();
+    fetchStores();
+  }, []);
 
-  const getStatusChip = (status) => {
-    const statusStyles = {
-      active: { bgcolor: 'success.light', color: 'success.dark' },
-      inactive: { bgcolor: 'grey.100', color: 'grey.800' },
-      pending: { bgcolor: 'warning.light', color: 'warning.dark' }
-    };
-    
-    return (
-      <Chip
-        label={status.charAt(0).toUpperCase() + status.slice(1)}
-        sx={statusStyles[status]}
-        size="small"
-      />
-    );
+  useEffect(() => {
+    filterRiders();
+    setPage(1); // Reset to first page on filter/search change
+  }, [riders, searchTerm, statusFilter, performanceFilter, vehicleFilter]);
+
+  const fetchRiders = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:4003/api/riders');
+      setRiders(response.data);
+      calculateStats(response.data);
+    } catch (error) {
+      console.error('Error fetching riders:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const totalActiveRiders = riders.filter(r => r.status === 'active').length;
-  const totalRiders = riders.length;
-  const avgRating = (riders.filter(r => r.rating > 0).reduce((sum, r) => sum + r.rating, 0) / 
-                    riders.filter(r => r.rating > 0).length);
+  const fetchCompanies = async () => {
+    try {
+      const response = await axios.get('http://localhost:4003/api/companies');
+      setCompanies(response.data);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  };
+
+  console.log(stores,"stores---------------------")
+
+  const fetchStores = async () => {
+    try {
+      const response = await axios.get('http://localhost:4003/api/stores');
+      setStores(response.data);
+    } catch (error) {
+      console.error('Error fetching stores:', error);
+    }
+  };
+
+  const calculateStats = (ridersData: Rider[]) => {
+    const totalRiders = ridersData.length;
+    const activeRiders = ridersData.filter(rider => rider.status === 'Active').length;
+    const topPerformers = ridersData.filter(rider => rider.performance_tier === 'high').length;
+    const totalDeliveries = 2485; // This should come from API
+
+    setStats({
+      totalRiders,
+      activeRiders,
+      topPerformers,
+      totalDeliveries
+    });
+  };
+
+  const filterRiders = () => {
+    let filtered = riders.filter(rider => {
+      const matchesSearch = rider.rider_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           rider.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           rider.emergency_contact?.includes(searchTerm);
+      const matchesStatus = !statusFilter || rider.status === statusFilter;
+      const matchesPerformance = !performanceFilter || rider.performance_tier === performanceFilter;
+      const matchesVehicle = !vehicleFilter || rider.vehicle_type === vehicleFilter;
+      return matchesSearch && matchesStatus && matchesPerformance && matchesVehicle;
+    });
+    setFilteredRiders(filtered);
+  };
+
+  // Pagination logic
+  const paginatedRiders = filteredRiders.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  console.log(paginatedRiders,"paginatedRiders")
+
+  const handleEdit = (rider: Rider) => {
+    navigate(`/riders/edit/${rider.id}`);
+  };
+
+  const handleDelete = async (riderId: number) => {
+    if (window.confirm('Are you sure you want to delete this rider?')) {
+      try {
+        await axios.delete(`http://localhost:4003/api/riders/${riderId}`);
+        fetchRiders();
+      } catch (error) {
+        console.error('Error deleting rider:', error);
+      }
+    }
+  };
+
+  const handleAssign = (rider: Rider) => {
+    setSelectedRider(rider);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!selectedRider || !selectedCompany || !selectedStore) return;
+
+    try {
+      await axios.post('http://localhost:4003/api/rider-assignments', {
+        rider_id: selectedRider.id,
+        company_id: selectedCompany,
+        store_id: selectedStore
+      });
+      
+      setAssignDialogOpen(false);
+      setSelectedCompany('');
+      setSelectedStore('');
+      setSelectedRider(null);
+      // Show success message
+    } catch (error) {
+      console.error('Error assigning rider:', error);
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('');
+    setPerformanceFilter('');
+    setVehicleFilter('');
+  };
+
+  const getPerformanceColor = (tier: string) => {
+    switch (tier) {
+      case 'high':
+        return 'success';
+      case 'medium':
+        return 'warning';
+      case 'low':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    return status === 'Active' ? 'success' : 'error';
+  };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50', p: 3 }}>
-      <Container maxWidth="xl">
-        {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="h4" component="h1" fontWeight="bold" color="text.primary">
-                Riders Management
-              </Typography>
-              <Typography variant="body1" color="text.secondary" mt={1}>
-                Manage and monitor all delivery riders
-              </Typography>
-            </Box>
-            <Button 
-              variant="contained" 
-              color="primary"
-              startIcon={<PlusIcon />}
-              sx={{ px: 3, py: 1.5, fontWeight: 'medium' }}
-            >
-              Add Rider
-            </Button>
-          </Box>
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4" component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+            Rider Management
+          </Typography>
+          <Typography variant="subtitle1" color="textSecondary">
+            Manage delivery riders, their profiles, documents, and assignments
+          </Typography>
         </Box>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/riders/create')}
+          sx={{ px: 3, py: 1.5 }}
+        >
+          ADD NEW RIDER
+        </Button>
+      </Box>
 
-        {/* Stats Cards */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ bgcolor: 'primary.light', color: 'primary.main', mr: 2 }}>
-                    <TruckIcon />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Total Riders</Typography>
-                    <Typography variant="h5" fontWeight="bold">{totalRiders}</Typography>
-                  </Box>
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                    {stats.totalRiders}
+                  </Typography>
+                  <Typography variant="body1">Total Riders</Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ bgcolor: 'success.light', color: 'success.main', mr: 2 }}>
-                    <Box sx={{ 
-                      width: 12, 
-                      height: 12, 
-                      bgcolor: 'success.main',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <Box sx={{ 
-                        width: 4, 
-                        height: 4, 
-                        bgcolor: 'common.white',
-                        borderRadius: '50%'
-                      }} />
-                    </Box>
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Active Riders</Typography>
-                    <Typography variant="h5" fontWeight="bold">{totalActiveRiders}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.main', mr: 2 }}>
-                    <StarIcon />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Average Rating</Typography>
-                    <Typography variant="h5" fontWeight="bold">{avgRating.toFixed(1)}</Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main', mr: 2 }}>
-                    <MapPinIcon />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">Total Deliveries</Typography>
-                    <Typography variant="h5" fontWeight="bold">
-                      {riders.reduce((sum, r) => sum + (r.totalDeliveries || 0), 0)}
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+                <PersonIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
         </Grid>
 
-        {/* Filters and Search */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: { xs: 'column', sm: 'row' }, 
-              gap: 2 
-            }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                    {stats.activeRiders}
+                  </Typography>
+                  <Typography variant="body1">Active Riders</Typography>
+                </Box>
+                <CheckCircleIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                    {stats.topPerformers}
+                  </Typography>
+                  <Typography variant="body1">Top Performers</Typography>
+                </Box>
+                <StarIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', color: 'white' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                    {stats.totalDeliveries}
+                  </Typography>
+                  <Typography variant="body1">Total Deliveries</Typography>
+                </Box>
+                <BikeIcon sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Filters */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
-                placeholder="Search riders by name, email, or location..."
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
+                placeholder="Search riders..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ flex: 1 }}
+                InputProps={{
+                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                }}
               />
-              <Box sx={{ display: 'flex', gap: 2 }}>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
                 <Select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  sx={{ minWidth: 120 }}
+                  onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
+                  label="Status"
                 >
-                  <MenuItem value="all">All Status</MenuItem>
-                  <MenuItem value="active">Active</MenuItem>
-                  <MenuItem value="inactive">Inactive</MenuItem>
-                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="Active">Active</MenuItem>
+                  <MenuItem value="Inactive">Inactive</MenuItem>
                 </Select>
-                <Button 
-                  variant="outlined" 
-                  startIcon={<FilterIcon />}
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Performance</InputLabel>
+                <Select
+                  value={performanceFilter}
+                  onChange={(e: SelectChangeEvent) => setPerformanceFilter(e.target.value)}
+                  label="Performance"
                 >
-                  More Filters
-                </Button>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="high">High</MenuItem>
+                  <MenuItem value="medium">Medium</MenuItem>
+                  <MenuItem value="low">Low</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Vehicle</InputLabel>
+                <Select
+                  value={vehicleFilter}
+                  onChange={(e: SelectChangeEvent) => setVehicleFilter(e.target.value)}
+                  label="Vehicle"
+                >
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="2_wheeler">2 Wheeler</MenuItem>
+                  <MenuItem value="4_wheeler">4 Wheeler</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Button
+                variant="outlined"
+                startIcon={<FilterIcon />}
+                onClick={clearFilters}
+                sx={{ mr: 1 }}
+              >
+                CLEAR FILTERS
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
-        {/* Riders Table */}
-        <Card>
-          <CardContent sx={{ borderBottom: '1px solid', borderColor: 'divider', py: 2 }}>
-            <Typography variant="h6" component="h2" fontWeight="medium">
-              Riders List ({filteredRiders.length})
-            </Typography>
-          </CardContent>
-          
-          <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
-            <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
-                <TableRow>
-                  <TableCell>Rider</TableCell>
-                  <TableCell>Contact</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Rating</TableCell>
-                  <TableCell>Deliveries</TableCell>
-                  <TableCell>Vehicle</TableCell>
-                  <TableCell>Last Active</TableCell>
-                  <TableCell align="center">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredRiders.map((rider) => (
-                  <TableRow 
-                    key={rider.id} 
-                    hover 
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell>
+      {/* Riders Table */}
+      <Card>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Rider</TableCell>
+                <TableCell>Contact</TableCell>
+                <TableCell>Vehicle</TableCell>
+                <TableCell>Performance</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Stats</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedRiders.map((rider) => (
+                <TableRow key={rider.id}>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
+                        {rider.account_holder_name?.charAt(0) || rider.rider_code.charAt(0)}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                          {rider.account_holder_name || 'N/A'}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {rider.rider_code} • {rider.rider_id}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box>
+                      <Typography variant="body2">📞 {rider.emergency_contact}</Typography>
+                      <Typography variant="body2">✉️ {rider.upi_id}</Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <BikeIcon sx={{ mr: 1 }} />
+                      <Box>
+                        <Typography variant="body2">{rider.vehicle_type}</Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {rider.vehicle_number}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Chip
+                        label={rider.performance_tier}
+                        color={getPerformanceColor(rider.performance_tier) as any}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      />
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar 
-                          sx={{ 
-                            bgcolor: 'primary.main',
-                            color: 'common.white',
-                            mr: 2
-                          }}
-                        >
-                          {rider.name.charAt(0)}
-                        </Avatar>
-                        <Box>
-                          <Typography fontWeight="medium">{rider.name}</Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                            <MapPinIcon sx={{ fontSize: 14, mr: 0.5 }} />
-                            {rider.location}
-                          </Typography>
-                        </Box>
+                        <StarIcon sx={{ fontSize: 16, color: '#ffa726', mr: 0.5 }} />
+                        <Typography variant="caption">4.6</Typography>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
-                          <MailIcon sx={{ fontSize: 14, mr: 1 }} />
-                          {rider.email}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                          <PhoneIcon sx={{ fontSize: 14, mr: 1 }} />
-                          {rider.phone}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusChip(rider.status)}
-                    </TableCell>
-                    <TableCell>
-                      {rider.rating > 0 ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <StarIcon sx={{ color: 'warning.main', fontSize: 16 }} />
-                          <Typography fontWeight="medium">{rider.rating}</Typography>
-                        </Box>
-                      ) : (
-                        <Typography color="text.disabled">No rating</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography fontWeight="medium">{rider.totalDeliveries || 0}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{rider.vehicleType}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">{rider.lastActive}</Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton>
-                        <MoreVerticalIcon />
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={rider.status}
+                      color={getStatusColor(rider.status) as any}
+                      size="small"
+                      icon={rider.status === 'Active' ? <CheckCircleIcon /> : undefined}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold">1250 deliveries</Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Since {new Date(rider.joining_date).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleAssign(rider)}
+                        sx={{ mr: 1 }}
+                      >
+                        <AssignmentIcon />
                       </IconButton>
-                    </TableCell>
-                  </TableRow>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEdit(rider)}
+                        sx={{ mr: 1 }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDelete(rider.id)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        {/* Pagination Controls */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+          <Pagination
+            count={Math.ceil(filteredRiders.length / rowsPerPage)}
+            page={page}
+            onChange={(_e, value) => setPage(value)}
+            color="primary"
+            shape="rounded"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
+      </Card>
+
+      {/* Assignment Dialog */}
+      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Assign Rider to Company & Store</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel>Company</InputLabel>
+              <Select
+                value={selectedCompany}
+                onChange={(e: SelectChangeEvent) => setSelectedCompany(e.target.value)}
+                label="Company"
+              >
+                {companies.map((company) => (
+                  <MenuItem key={company.id} value={company.id}>
+                    {company.name}
+                  </MenuItem>
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          
-          {filteredRiders.length === 0 && (
-            <Box sx={{ textAlign: 'center', py: 6 }}>
-              <Box sx={{ color: 'text.disabled', mb: 2 }}>
-                <SearchIcon sx={{ fontSize: 48 }} />
-              </Box>
-              <Typography variant="h6" fontWeight="medium" gutterBottom>
-                No riders found
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Try adjusting your search or filter criteria
-              </Typography>
-            </Box>
-          )}
-        </Card>
-      </Container>
+              </Select>
+            </FormControl>
+            
+            <FormControl fullWidth>
+              <InputLabel>Store</InputLabel>
+              <Select
+                value={selectedStore}
+                onChange={(e: SelectChangeEvent) => setSelectedStore(e.target.value)}
+                label="Store"
+              >
+                {stores.map((store) => (
+                  <MenuItem key={store.id} value={store.id}>
+                    {store.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAssignSubmit} variant="contained">Submit</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
