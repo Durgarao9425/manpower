@@ -167,10 +167,11 @@ const RiderRegistrationForm = () => {
     setIsSubmitting(true);
     setSubmitStatus({ type: '', message: '' });
     
-  try {
+    try {
   // First create the user
   const userData = {
    ...formData,
+    user_type: 'rider', // Ensure user_type is set for riders
     created_by: 1 
   };
 
@@ -193,6 +194,23 @@ const RiderRegistrationForm = () => {
   const userId = userResult.user_id || userResult.id;
 
   // Then create the rider with user_id
+  // Before creating the rider, ensure documents is valid JSON
+  let documentsValue = formData.documents;
+  if (!documentsValue || documentsValue.trim() === '') {
+    documentsValue = '{}';
+  } else {
+    try {
+      JSON.parse(documentsValue);
+    } catch (e) {
+      setSubmitStatus({
+        type: 'error',
+        message: 'Documents field must be valid JSON.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+  }
+
   const riderData = {
     user_id: userId, // Link to the created user
     rider_id: formData.full_name,
@@ -214,7 +232,7 @@ const RiderRegistrationForm = () => {
     id_card_number: formData.id_card_number,
     id_card_issue_date: formData.id_card_issue_date || null,
     id_card_expiry_date: formData.id_card_expiry_date || null,
-    documents: formData.documents,
+    documents: documentsValue,
     status: formData.status,
     vehicle_type: formData.vehicle_type,
     vehicle_number: formData.vehicle_number,
