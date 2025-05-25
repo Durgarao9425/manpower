@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import type { ChangeEvent } from 'react';
+import React, { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -15,9 +15,9 @@ import {
   Avatar,
   Box,
   FormHelperText,
-} from '@mui/material';
-import { CloudUpload } from '@mui/icons-material';
-import type { SelectChangeEvent } from '@mui/material/Select';
+} from "@mui/material";
+import { CloudUpload } from "@mui/icons-material";
+import type { SelectChangeEvent } from "@mui/material/Select";
 
 interface User {
   company_id?: number | string;
@@ -29,7 +29,7 @@ interface User {
   phone?: string;
   address?: string;
   profile_image?: string;
-  status?: 'active' | 'inactive' | 'suspended';
+  status?: "active" | "inactive" | "suspended";
 }
 
 interface UserFormProps {
@@ -49,7 +49,7 @@ interface UserFormData {
   phone: string;
   address: string;
   profile_image: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: "active" | "inactive" | "suspended";
 }
 
 interface FormErrors {
@@ -64,16 +64,16 @@ interface FormErrors {
 
 const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
   const [formData, setFormData] = useState<UserFormData>({
-    company_id: '',
-    username: '',
-    password: '',
-    email: '',
-    user_type: '',
-    full_name: '',
-    phone: '',
-    address: '',
-    profile_image: '',
-    status: 'active',
+    company_id: "",
+    username: "",
+    password: "",
+    email: "",
+    user_type: "",
+    full_name: "",
+    phone: "",
+    address: "",
+    profile_image: "",
+    status: "active",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -82,30 +82,30 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
   useEffect(() => {
     if (user) {
       setFormData({
-        company_id: user.company_id ?? '',
-        username: user.username ?? '',
-        password: '', // Password is never prefilled for security reasons
-        email: user.email ?? '',
-        user_type: user.user_type ?? '',
-        full_name: user.full_name ?? '',
-        phone: user.phone ?? '',
-        address: user.address ?? '',
-        profile_image: user.profile_image ?? '',
-        status: user.status ?? 'active',
+        company_id: user.company_id ?? "",
+        username: user.username ?? "",
+        password: "", // Password is never prefilled for security reasons
+        email: user.email ?? "",
+        user_type: user.user_type ?? "",
+        full_name: user.full_name ?? "",
+        phone: user.phone ?? "",
+        address: user.address ?? "",
+        profile_image: user.profile_image ?? "",
+        status: user.status ?? "active",
       });
       setIsEditMode(true);
     } else {
       setFormData({
-        company_id: '',
-        username: '',
-        password: '',
-        email: '',
-        user_type: '',
-        full_name: '',
-        phone: '',
-        address: '',
-        profile_image: '',
-        status: 'active',
+        company_id: "",
+        username: "",
+        password: "",
+        email: "",
+        user_type: "",
+        full_name: "",
+        phone: "",
+        address: "",
+        profile_image: "",
+        status: "active",
       });
       setIsEditMode(false);
     }
@@ -113,24 +113,37 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
     setErrors({});
   }, [user]);
 
-  const validateField = (name: keyof UserFormData, value: string | number): string => {
+  const validateField = (
+    name: keyof UserFormData,
+    value: string | number
+  ): string => {
     switch (name) {
-      case 'username':
-        return !value || String(value).trim() === '' ? 'Username is required' : '';
-      case 'password':
-        return !isEditMode && (!value || String(value).trim() === '') ? 'Password is required' : '';
-      case 'email':
-        if (!value || String(value).trim() === '') {
-          return 'Email is required';
+      case "username":
+        return !value || String(value).trim() === ""
+          ? "Username is required"
+          : "";
+      case "password":
+        return !isEditMode && (!value || String(value).trim() === "")
+          ? "Password is required"
+          : "";
+      case "email":
+        if (!value || String(value).trim() === "") {
+          return "Email is required";
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return !emailRegex.test(String(value)) ? 'Please enter a valid email address' : '';
-      case 'user_type':
-        return !value || String(value).trim() === '' ? 'User Type is required' : '';
-      case 'full_name':
-        return !value || String(value).trim() === '' ? 'Full Name is required' : '';
+        return !emailRegex.test(String(value))
+          ? "Please enter a valid email address"
+          : "";
+      case "user_type":
+        return !value || String(value).trim() === ""
+          ? "User Type is required"
+          : "";
+      case "full_name":
+        return !value || String(value).trim() === ""
+          ? "Full Name is required"
+          : "";
       default:
-        return '';
+        return "";
     }
   };
 
@@ -140,18 +153,18 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
     // Required fields
     const requiredFields: (keyof UserFormData)[] = [
-      'username',
-      'email',
-      'user_type',
-      'full_name'
+      "username",
+      "email",
+      "user_type",
+      "full_name",
     ];
 
     // Add password to required fields only in create mode
     if (!isEditMode) {
-      requiredFields.push('password');
+      requiredFields.push("password");
     }
 
-    requiredFields.forEach(field => {
+    requiredFields.forEach((field) => {
       const error = validateField(field, formData[field]);
       if (error) {
         newErrors[field] = error;
@@ -163,7 +176,9 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
     return isValid;
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     const fieldName = name as keyof UserFormData;
 
@@ -174,7 +189,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
     // Clear error for this field when user starts typing
     if (errors[fieldName]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         [fieldName]: undefined,
       }));
@@ -192,7 +207,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
     // Clear error for this field when user makes selection
     if (errors[fieldName]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
         [fieldName]: undefined,
       }));
@@ -221,21 +236,50 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{isEditMode ? 'Edit User' : 'Add New User'}</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>
+        {isEditMode ? "Edit User" : "Add New User"}
+      </DialogTitle>
       <DialogContent>
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 1 }}>
           <Grid container spacing={3}>
+            {/* Left Section: Avatar + Upload */}
             <Grid item xs={12} md={4}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Avatar src={formData.profile_image} sx={{ width: 120, height: 120, mb: 2 }}>
-                  {formData.full_name ? formData.full_name.charAt(0) : 'U'}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  p: 2,
+                  borderRadius: 2,
+                  border: "1px solid #e0e0e0",
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                <Avatar
+                  src={formData.profile_image}
+                  sx={{ width: 100, height: 100, fontSize: 36 }}
+                >
+                  {formData.full_name?.charAt(0) || "U"}
                 </Avatar>
-                <Button variant="outlined" component="label" startIcon={<CloudUpload />}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  size="small"
+                >
                   Upload Image
-                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
                 </Button>
               </Box>
             </Grid>
+
+            {/* Right Section: Form */}
             <Grid item xs={12} md={8}>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
@@ -276,14 +320,15 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField 
-                    fullWidth 
-                    label="Phone" 
-                    name="phone" 
-                    value={formData.phone} 
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    name="phone"
+                    value={formData.phone}
                     onChange={handleChange}
                   />
                 </Grid>
+
                 {!isEditMode && (
                   <Grid item xs={12} sm={6}>
                     <TextField
@@ -299,13 +344,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                     />
                   </Grid>
                 )}
+
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth required error={!!errors.user_type}>
                     <InputLabel>User Type</InputLabel>
-                    <Select 
-                      name="user_type" 
-                      value={formData.user_type} 
-                      onChange={handleSelectChange} 
+                    <Select
+                      name="user_type"
+                      value={formData.user_type}
+                      onChange={handleSelectChange}
                       label="User Type"
                     >
                       <MenuItem value="admin">Admin</MenuItem>
@@ -313,9 +359,12 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                       <MenuItem value="rider">Rider</MenuItem>
                       <MenuItem value="store_manager">Store Manager</MenuItem>
                     </Select>
-                    {errors.user_type && <FormHelperText>{errors.user_type}</FormHelperText>}
+                    {errors.user_type && (
+                      <FormHelperText>{errors.user_type}</FormHelperText>
+                    )}
                   </FormControl>
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
@@ -326,13 +375,14 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                     onChange={handleChange}
                   />
                 </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Status</InputLabel>
-                    <Select 
-                      name="status" 
-                      value={formData.status} 
-                      onChange={handleSelectChange} 
+                    <Select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleSelectChange}
                       label="Status"
                     >
                       <MenuItem value="active">Active</MenuItem>
@@ -341,6 +391,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                     </Select>
                   </FormControl>
                 </Grid>
+
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
@@ -357,10 +408,13 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
           </Grid>
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={onClose} variant="outlined" color="secondary">
+          Cancel
+        </Button>
         <Button onClick={handleSubmit} variant="contained" color="primary">
-          {isEditMode ? 'Update' : 'Create'}
+          {isEditMode ? "Update" : "Create"}
         </Button>
       </DialogActions>
     </Dialog>

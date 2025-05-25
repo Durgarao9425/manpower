@@ -1,28 +1,28 @@
-import React from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+import React from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   IconButton,
   Typography,
   Box,
-  Link
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+  Link,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 // Add type for props
 interface UserTableProps {
   data: any[];
-  columns: { 
-    field: string; 
-    headerName: string; 
-    width?: number; 
+  columns: {
+    field: string;
+    headerName: string;
+    width?: number;
     minWidth?: number;
     clickable?: boolean; // Add clickable property
   }[];
@@ -31,7 +31,13 @@ interface UserTableProps {
   onView?: (row: any) => void; // Add optional onView prop
 }
 
-const ReusableTable: React.FC<UserTableProps> = ({ data, columns, onEdit, onDelete, onView }) => {
+const ReusableTable: React.FC<UserTableProps> = ({
+  data,
+  columns,
+  onEdit,
+  onDelete,
+  onView,
+}) => {
   if (!data || data.length === 0) {
     return (
       <Typography variant="body1" sx={{ p: 2 }}>
@@ -47,55 +53,62 @@ const ReusableTable: React.FC<UserTableProps> = ({ data, columns, onEdit, onDele
   };
 
   return (
-    <Box sx={{ 
-      width: '100%',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      minWidth: '77vw'
-    }}>
-      <TableContainer 
+    <Box
+      sx={{
+        width: "100%",
+        overflowX: "auto",
+        display: "flex",
+        flexDirection: "column",
+        minWidth: "74vw",
+        maxWidth: "100%",
+        mx: "auto",
+      }}
+    >
+      <TableContainer
         component={Paper}
         sx={{
-          width: '100%',
-          display: 'table',
-          overflowX: 'auto',
-          border: '1px solid #e0e0e0',
-          borderRadius: '8px',
-          boxShadow: 'none'
+          width: "100%",
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          boxShadow: "none",
         }}
       >
-        <Table sx={{ 
-          minWidth: '100%',
-          tableLayout: 'auto',
-          borderCollapse: 'separate',
-          borderSpacing: 0
-        }} aria-label="user table">
+        <Table
+          sx={{
+            width: "100%",
+            tableLayout: "fixed", // tighter layout
+            borderCollapse: "collapse",
+          }}
+          size="small" // makes table more compact
+          aria-label="user table"
+        >
           <TableHead>
-            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+            <TableRow sx={{ backgroundColor: "#f9f9f9" }}>
               {columns.map((column) => (
-                <TableCell 
+                <TableCell
                   key={column.field}
                   sx={{
-                    minWidth: column.minWidth || 'auto',
-                    width: column.width || 'auto',
-                    whiteSpace: 'nowrap',
-                    fontWeight: 'bold',
-                    borderBottom: '1px solid #e0e0e0',
-                    borderRight: '1px solid #e0e0e0',
-                    '&:last-child': {
-                      borderRight: 'none'
-                    }
+                    minWidth: column.minWidth || 80,
+                    width: column.width || 120,
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    padding: "6px 12px",
+                    whiteSpace: "nowrap",
+                    borderBottom: "1px solid #e0e0e0",
+                    borderRight: "1px solid #e0e0e0",
+                    "&:last-child": { borderRight: "none" },
                   }}
                 >
                   {column.headerName}
                 </TableCell>
               ))}
-              <TableCell 
-                sx={{ 
-                  width: onView ? '150px' : '120px', // Wider if view button is present
-                  fontWeight: 'bold',
-                  borderBottom: '1px solid #e0e0e0'
+              <TableCell
+                sx={{
+                  width: onView ? "120px" : "100px",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  padding: "6px 12px",
+                  borderBottom: "1px solid #e0e0e0",
                 }}
               >
                 Actions
@@ -103,27 +116,26 @@ const ReusableTable: React.FC<UserTableProps> = ({ data, columns, onEdit, onDele
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row, index) => (
-              <TableRow 
+            {data.map((row) => (
+              <TableRow
                 key={row.id}
-                sx={{ 
-                  '&:last-child td': { borderBottom: 0 },
-                  '&:hover': { backgroundColor: '#fafafa' }
+                sx={{
+                  "&:hover": { backgroundColor: "#fefefe" },
                 }}
               >
                 {columns.map((column) => (
-                  <TableCell 
+                  <TableCell
                     key={`${row.id}-${column.field}`}
                     sx={{
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      borderBottom: '1px solid #e0e0e0',
-                      borderRight: '1px solid #e0e0e0',
-                      '&:last-child': {
-                        borderRight: 'none'
-                      },
-                      cursor: column.clickable ? 'pointer' : 'default'
+                      padding: "6px 12px",
+                      fontSize: "0.82rem",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      borderBottom: "1px solid #e0e0e0",
+                      borderRight: "1px solid #e0e0e0",
+                      "&:last-child": { borderRight: "none" },
+                      cursor: column.clickable ? "pointer" : "default",
                     }}
                     onClick={() => handleCellClick(row, column)}
                   >
@@ -131,13 +143,14 @@ const ReusableTable: React.FC<UserTableProps> = ({ data, columns, onEdit, onDele
                       <Link
                         component="span"
                         sx={{
-                          color: 'primary.main',
-                          textDecoration: 'none',
+                          color: "primary.main",
                           fontWeight: 500,
-                          '&:hover': {
-                            textDecoration: 'underline',
-                            color: 'primary.dark'
-                          }
+                          fontSize: "0.83rem",
+                          textDecoration: "none",
+                          "&:hover": {
+                            textDecoration: "underline",
+                            color: "primary.dark",
+                          },
                         }}
                       >
                         {row[column.field]}
@@ -147,35 +160,49 @@ const ReusableTable: React.FC<UserTableProps> = ({ data, columns, onEdit, onDele
                     )}
                   </TableCell>
                 ))}
-                <TableCell sx={{ borderBottom: '1px solid #e0e0e0' }}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                <TableCell
+                  sx={{
+                    padding: "6px 12px",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <Box sx={{ display: "flex", gap: 0.5 }}>
                     {onView && (
-                      <IconButton 
+                      <IconButton
                         onClick={() => onView(row)}
-                        sx={{ 
-                          color: 'info.main',
-                          '&:hover': { backgroundColor: 'rgba(2, 136, 209, 0.08)' }
+                        size="small"
+                        sx={{
+                          color: "info.main",
+                          "&:hover": {
+                            backgroundColor: "rgba(2, 136, 209, 0.08)",
+                          },
                         }}
-                        title="View Details"
+                        title="View"
                       >
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
                     )}
-                    <IconButton 
+                    <IconButton
                       onClick={() => onEdit(row)}
-                      sx={{ 
-                        color: 'primary.main',
-                        '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.08)' }
+                      size="small"
+                      sx={{
+                        color: "primary.main",
+                        "&:hover": {
+                          backgroundColor: "rgba(25, 118, 210, 0.08)",
+                        },
                       }}
                       title="Edit"
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton 
+                    <IconButton
                       onClick={() => onDelete(row)}
-                      sx={{ 
-                        color: 'error.main',
-                        '&:hover': { backgroundColor: 'rgba(211, 47, 47, 0.08)' }
+                      size="small"
+                      sx={{
+                        color: "error.main",
+                        "&:hover": {
+                          backgroundColor: "rgba(211, 47, 47, 0.08)",
+                        },
                       }}
                       title="Delete"
                     >

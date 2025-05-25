@@ -648,8 +648,8 @@ const FoodDeliveryDashboard = () => {
   );
 
   return (
-    <Box sx={{ bgcolor: '#f5f7fa', minHeight: '100vh',minWidth:'78vw'}}>
-      <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
+    <Box sx={{bgcolor: 'white', minHeight: '100vh',minWidth:'78vw'}}>
+      <Container maxWidth="xl"  sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 }, mt: { xs: 2, sm: 4 },  }}>
         {/* Welcome Section */}
         <Box mb={{ xs: 3, sm: 4 }}>
           <Typography 
