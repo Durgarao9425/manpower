@@ -28,7 +28,7 @@ import {
   Pagination,
   Input
 } from '@mui/material';
-  // Pagination state
+// Pagination state
 
 import type { SelectChangeEvent } from '@mui/material';
 import {
@@ -45,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import AssignDialog from './assignedModel';
 
 interface Rider {
   id: number;
@@ -114,6 +115,25 @@ const RiderListingPage: React.FC = () => {
     fetchCompanies();
     fetchStores();
   }, []);
+  console.log(companies, "companies----------------------")
+  console.log(stores, "stores+++++++++++++++++")
+  // Load all companies on mount
+  useEffect(() => {
+    axios.get("/api/companies")
+      .then((res) => setCompanies(res.data))
+      .catch((err) => console.error("Error loading companies:", err));
+  }, []);
+
+  // Load stores for selected company
+  useEffect(() => {
+    if (selectedCompany) {
+      axios.get(`http://localhost:4003/api/stores?company_id=${selectedCompany}`)
+        .then((res) => setStores(res.data))
+        .catch((err) => console.error("Error loading stores:", err));
+    } else {
+      setStores([]); // Clear if no company selected
+    }
+  }, [selectedCompany]);
 
   useEffect(() => {
     filterRiders();
@@ -142,7 +162,7 @@ const RiderListingPage: React.FC = () => {
     }
   };
 
-  console.log(stores,"stores---------------------")
+  console.log(stores, "stores---------------------")
 
   const fetchStores = async () => {
     try {
@@ -170,8 +190,8 @@ const RiderListingPage: React.FC = () => {
   const filterRiders = () => {
     let filtered = riders.filter(rider => {
       const matchesSearch = rider.rider_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           rider.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           rider.emergency_contact?.includes(searchTerm);
+        rider.account_holder_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        rider.emergency_contact?.includes(searchTerm);
       const matchesStatus = !statusFilter || rider.status === statusFilter;
       const matchesPerformance = !performanceFilter || rider.performance_tier === performanceFilter;
       const matchesVehicle = !vehicleFilter || rider.vehicle_type === vehicleFilter;
@@ -182,7 +202,7 @@ const RiderListingPage: React.FC = () => {
 
   // Pagination logic
   const paginatedRiders = filteredRiders.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-  console.log(paginatedRiders,"paginatedRiders")
+  console.log(paginatedRiders, "paginatedRiders")
 
   const handleEdit = (rider: Rider) => {
     navigate(`/riders/edit/${rider.id}`);
@@ -213,7 +233,7 @@ const RiderListingPage: React.FC = () => {
         company_id: selectedCompany,
         store_id: selectedStore
       });
-      
+
       setAssignDialogOpen(false);
       setSelectedCompany('');
       setSelectedStore('');
@@ -533,58 +553,70 @@ const RiderListingPage: React.FC = () => {
         </Box>
       </Card>
 
-      {/* Assignment Dialog */}
-     <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
-  <DialogTitle>Assign Rider to Company & Store</DialogTitle>
-  <DialogContent>
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
-      
-      <FormControl fullWidth>
-        <InputLabel>Company</InputLabel>
-        <Select
-          value={selectedCompany}
-          onChange={(e: SelectChangeEvent) => setSelectedCompany(e.target.value)}
-          label="Company"
-        >
-          {companies.map((company) => (
-            <MenuItem key={company.id} value={company.id}>
-              {company.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
 
-      <FormControl fullWidth>
-        <InputLabel>Store</InputLabel>
-        <Select
-          value={selectedStore}
-          onChange={(e: SelectChangeEvent) => setSelectedStore(e.target.value)}
-          label="Store"
-        >
-          {stores.map((store) => (
-            <MenuItem key={store.id} value={store.id}>
-              {store.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Assign Rider to Company & Store</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
 
-      <TextField
-        fullWidth
-        label="Company Rider ID"
-        name="company_rider_id"
-        variant="outlined"
-        placeholder="Company Provided Rider Id"
-        // onChange={handleInputChange}
-      />
-      
-    </Box>
-  </DialogContent>
-  <DialogActions sx={{ px: 3, pb: 2 }}>
-    <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
-    <Button onClick={handleAssignSubmit} variant="contained">Submit</Button>
-  </DialogActions>
-</Dialog>
+            <FormControl fullWidth>
+              <InputLabel>Company</InputLabel>
+              <Select
+                value={selectedCompany}
+                onChange={(e: SelectChangeEvent) => {
+                  setSelectedCompany(e.target.value);
+                  setSelectedStore(''); // Reset store when company changes
+                }}
+                label="Company"
+              >
+                {companies.map((company) => (
+                  <MenuItem key={company.id} value={company.id}>
+                    {company?.company_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth disabled={!selectedCompany}>
+              <InputLabel>Store</InputLabel>
+              <Select
+                value={selectedStore}
+                onChange={(e: SelectChangeEvent) => setSelectedStore(e.target.value)}
+                label="Store"
+              >
+
+                {/* Show available stores */}
+                {stores.length > 0 ? (
+                  stores.map((store) => (
+                    <MenuItem key={store.id} value={store.id}>
+                      {store?.store_name || "Unnamed Store"}
+                    </MenuItem>
+                  ))
+                ) : (
+                  // Show when no stores are available
+                  <MenuItem disabled value="">
+                    <em>No stores available</em>
+                  </MenuItem>
+                )}
+              </Select>
+            </FormControl>
+
+
+            <TextField
+              fullWidth
+              label="Company Rider ID"
+              name="company_rider_id"
+              variant="outlined"
+              placeholder="Company Provided Rider Id"
+            />
+
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAssignSubmit} variant="contained">Submit</Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );
