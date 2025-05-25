@@ -22,18 +22,27 @@ import {
     Save
 } from '@mui/icons-material';
 
-const StoreForm = ({ onClose, onSubmit, initialData, companies }) => {
-    const [formData, setFormData] = useState({
-        company_id: '',
-        store_name: '',
-        location: '',
-        address: '',
-        contact_person: '',
-        contact_phone: '',
-        status: 'active'
-    });
-    const [errors, setErrors] = useState({});
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+type Company = { id: number; name?: string; company_name?: string };
+
+interface StoreFormProps {
+  onClose: () => void;
+  onSubmit: (formData: any) => void;
+  initialData: any;
+  companies: Company[];
+}
+
+const StoreForm: React.FC<StoreFormProps> = ({ onClose, onSubmit, initialData, companies }) => {
+  const [formData, setFormData] = useState<any>({
+    company_id: '',
+    store_name: '',
+    location: '',
+    address: '',
+    contact_person: '',
+    contact_phone: '',
+    status: 'active',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
     useEffect(() => {
         if (initialData) {
@@ -41,29 +50,22 @@ const StoreForm = ({ onClose, onSubmit, initialData, companies }) => {
         }
     }, [initialData]);
 
-    const handleInputChange = (field) => (event) => {
-        setFormData(prev => ({
+    const handleInputChange = (field: string) => (event: React.ChangeEvent<{ value: unknown } | HTMLInputElement>) => {
+        setFormData((prev: any) => ({
             ...prev,
-            [field]: event.target.value
+            [field]: (event.target as HTMLInputElement).value,
         }));
         // Clear error for this field
         if (errors[field]) {
-            setErrors(prev => ({
-                ...prev,
-                [field]: ''
-            }));
+            setErrors((prev) => ({ ...prev, [field]: '' }));
         }
     };
 
     const validateForm = () => {
-        const newErrors = {};
+        const newErrors: Record<string, string> = {};
 
-        if (!formData.company_id) {
-            newErrors.company_id = 'Company is required';
-        }
-        if (!formData.store_name.trim()) {
-            newErrors.store_name = 'Store name is required';
-        }
+        if (!formData.company_id) newErrors.company_id = 'Company is required';
+        if (!formData.store_name?.trim()) newErrors.store_name = 'Store name is required';
         if (formData.contact_phone && !/^[\+]?[1-9][\d\s\-\(\)]{7,}$/.test(formData.contact_phone.replace(/\s/g, ''))) {
             newErrors.contact_phone = 'Please enter a valid phone number';
         }
@@ -72,39 +74,21 @@ const StoreForm = ({ onClose, onSubmit, initialData, companies }) => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
             try {
                 onSubmit(formData);
-                setSnackbar({
-                    open: true,
-                    message: `Store ${initialData ? 'updated' : 'created'} successfully!`,
-                    severity: 'success'
-                });
-                setTimeout(() => {
-                    onClose();
-                }, 1500);
+                setSnackbar({ open: true, message: `Store ${initialData ? 'updated' : 'created'} successfully!`, severity: 'success' });
+                setTimeout(() => { onClose(); }, 1500);
             } catch (error) {
-                setSnackbar({
-                    open: true,
-                    message: 'Error saving store. Please try again.',
-                    severity: 'error'
-                });
+                setSnackbar({ open: true, message: 'Error saving store. Please try again.', severity: 'error' });
             }
         }
     };
 
     const handleClear = () => {
-        setFormData({
-            company_id: '',
-            store_name: '',
-            location: '',
-            address: '',
-            contact_person: '',
-            contact_phone: '',
-            status: 'active'
-        });
+        setFormData({ company_id: '', store_name: '', location: '', address: '', contact_person: '', contact_phone: '', status: 'active' });
         setErrors({});
     };
 
@@ -134,11 +118,17 @@ const StoreForm = ({ onClose, onSubmit, initialData, companies }) => {
                                     onChange={handleInputChange('company_id')}
                                     label="Company *"
                                 >
-                                    {companies.map((company) => (
-                                        <MenuItem key={company.id} value={company.id}>
-                                            {company.name}
+                                    {companies && companies.length > 0 ? (
+                                        companies.map((company) => (
+                                            <MenuItem key={company.id} value={company.id}>
+                                                {company.company_name || company.name}
+                                            </MenuItem>
+                                        ))
+                                    ) : (
+                                        <MenuItem value="" disabled>
+                                            No companies found
                                         </MenuItem>
-                                    ))}
+                                    )}
                                 </Select>
                                 {errors.company_id && (
                                     <Typography variant="caption" color="error" sx={{ mt: 1, ml: 2 }}>

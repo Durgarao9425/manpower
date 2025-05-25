@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Box,
   Button,
@@ -42,90 +43,20 @@ import {
 } from '@mui/icons-material';
 import StoreForm from './storeForm';
 
-// Dummy data for companies
-const companies = [
-  { id: 1, name: 'TechCorp Solutions' },
-  { id: 2, name: 'Retail Giants Inc' },
-  { id: 3, name: 'Local Market Chain' },
-  { id: 4, name: 'Digital Commerce Co' }
-];
+type Store = {
+  id: number;
+  company_id: number;
+  store_name: string;
+  location: string;
+  address: string;
+  contact_person: string;
+  contact_phone: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
 
-// Dummy store data
-const initialStores = [
-  {
-    id: 1,
-    company_id: 1,
-    store_name: 'TechCorp Downtown',
-    location: 'Downtown District',
-    address: '123 Main Street, Downtown, NY 10001',
-    contact_person: 'John Smith',
-    contact_phone: '+1 (555) 123-4567',
-    status: 'active',
-    created_at: '2024-01-15T10:30:00Z',
-    updated_at: '2024-01-15T10:30:00Z'
-  },
-  {
-    id: 2,
-    company_id: 1,
-    store_name: 'TechCorp Mall',
-    location: 'Shopping Mall',
-    address: '456 Mall Avenue, Shopping Center, NY 10002',
-    contact_person: 'Sarah Johnson',
-    contact_phone: '+1 (555) 234-5678',
-    status: 'active',
-    created_at: '2024-01-20T14:15:00Z',
-    updated_at: '2024-01-20T14:15:00Z'
-  },
-  {
-    id: 3,
-    company_id: 2,
-    store_name: 'Retail Giants Central',
-    location: 'Central Plaza',
-    address: '789 Central Plaza, Business District, NY 10003',
-    contact_person: 'Mike Davis',
-    contact_phone: '+1 (555) 345-6789',
-    status: 'inactive',
-    created_at: '2024-02-01T09:45:00Z',
-    updated_at: '2024-02-01T09:45:00Z'
-  },
-  {
-    id: 4,
-    company_id: 3,
-    store_name: 'Local Market West',
-    location: 'West Side',
-    address: '321 West Boulevard, West Side, NY 10004',
-    contact_person: 'Emily Wilson',
-    contact_phone: '+1 (555) 456-7890',
-    status: 'active',
-    created_at: '2024-02-10T16:20:00Z',
-    updated_at: '2024-02-10T16:20:00Z'
-  },
-  {
-    id: 5,
-    company_id: 4,
-    store_name: 'Digital Commerce Hub',
-    location: 'Tech Park',
-    address: '654 Innovation Drive, Tech Park, NY 10005',
-    contact_person: 'Robert Brown',
-    contact_phone: '+1 (555) 567-8901',
-    status: 'active',
-    created_at: '2024-02-15T11:10:00Z',
-    updated_at: '2024-02-15T11:10:00Z'
-  },
-  {
-    id: 6,
-    company_id: 2,
-    store_name: 'Retail Giants North',
-    location: 'North District',
-    address: '987 North Street, North District, NY 10006',
-    contact_person: 'Lisa Garcia',
-    contact_phone: '+1 (555) 678-9012',
-    status: 'inactive',
-    created_at: '2024-03-01T13:30:00Z',
-    updated_at: '2024-03-01T13:30:00Z'
-  }
-];
-
+type Company = { id: number; name: string };
 
 // Store Card Component
 const StoreCard = ({ store, onEdit, onDelete, companyName }) => {
@@ -194,24 +125,53 @@ const StoreCard = ({ store, onEdit, onDelete, companyName }) => {
 
 // Main Store Management Component
 const StoreManagement = () => {
-  const [stores, setStores] = useState(initialStores);
-  const [filteredStores, setFilteredStores] = useState(initialStores);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
-  const [showForm, setShowForm] = useState(false); // Changed from formOpen to showForm
-  const [editingStore, setEditingStore] = useState(null);
-  const [filters, setFilters] = useState({
-    company: '',
-    status: ''
-  });
+  const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filteredStores, setFilteredStores] = useState<Store[]>([]);
+  const [page, setPage] = useState<number>(0);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [showForm, setShowForm] = useState<boolean>(false);
+  const [editingStore, setEditingStore] = useState<Store | null>(null);
+  const [filters, setFilters] = useState<{ company: string; status: string }>({ company: '', status: '' });
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Fetch stores from the backend API
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('/api/stores');
+        setStores(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch stores');
+        setLoading(false);
+      }
+    };
+    fetchStores();
+  }, []);
+
+  // Fetch companies from backend
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await axios.get('/api/companies');
+        setCompanies(response.data);
+      } catch (err) {
+        // Optionally handle error
+      }
+    };
+    fetchCompanies();
+  }, []);
 
   // Apply filters
   useEffect(() => {
     let filtered = stores;
     
     if (filters.company) {
-      filtered = filtered.filter(store => store.company_id === filters.company);
+      filtered = filtered.filter(store => store.company_id === Number(filters.company));
     }
     
     if (filters.status) {
@@ -222,10 +182,10 @@ const StoreManagement = () => {
     setPage(0);
   }, [filters, stores]);
 
-  const handleFilterChange = (field) => (event) => {
+  const handleFilterChange = (field: string) => (event: React.ChangeEvent<{ value: unknown }>) => {
     setFilters(prev => ({
       ...prev,
-      [field]: event.target.value
+      [field]: event.target.value as string
     }));
   };
 
@@ -238,32 +198,32 @@ const StoreManagement = () => {
     setShowForm(true); // Show the form page
   };
 
-  const handleEditStore = (store) => {
+  const handleEditStore = (store: Store) => {
     setEditingStore(store);
     setShowForm(true); // Show the form page
   };
 
-  const handleDeleteStore = (id) => {
+  const handleDeleteStore = (id: number) => {
     setStores(prev => prev.filter(store => store.id !== id));
   };
 
-  const handleFormSubmit = (formData) => {
-    if (editingStore) {
-      // Update existing store
-      setStores(prev => prev.map(store => 
-        store.id === editingStore.id 
-          ? { ...store, ...formData, updated_at: new Date().toISOString() }
-          : store
-      ));
-    } else {
-      // Add new store
-      const newStore = {
-        ...formData,
-        id: Math.max(...stores.map(s => s.id)) + 1,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setStores(prev => [...prev, newStore]);
+  const handleFormSubmit = async (formData: Store) => {
+    try {
+      if (editingStore) {
+        // Update existing store (not implemented here)
+        setStores(prev => prev.map(store => store.id === editingStore.id ? { ...store, ...formData, updated_at: new Date().toISOString() } : store));
+      } else {
+        // Add new store to backend
+        const response = await axios.post('/api/stores', {
+          ...formData,
+          company_id: Number(formData.company_id),
+        });
+        setStores(prev => [...prev, response.data]);
+      }
+      setShowForm(false);
+      setEditingStore(null);
+    } catch (error) {
+      alert('Failed to create store.');
     }
   };
 
@@ -272,7 +232,7 @@ const StoreManagement = () => {
     setEditingStore(null);
   };
 
-  const getCompanyName = (companyId) => {
+  const getCompanyName = (companyId: number) => {
     const company = companies.find(c => c.id === companyId);
     return company ? company.name : 'Unknown Company';
   };
@@ -293,6 +253,10 @@ const StoreManagement = () => {
       />
     );
   }
+
+  // Show loading/error states
+  if (loading) return <div>Loading stores...</div>;
+  if (error) return <div>{error}</div>;
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -330,7 +294,7 @@ const StoreManagement = () => {
                 <MenuItem value="">All Companies</MenuItem>
                 {companies.map((company) => (
                   <MenuItem key={company.id} value={company.id}>
-                    {company.name}
+                    {company.company_name || company.name}
                   </MenuItem>
                 ))}
               </Select>
