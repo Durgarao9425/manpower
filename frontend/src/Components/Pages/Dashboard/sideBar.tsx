@@ -272,8 +272,8 @@
 //           </div>
 
 //           {drawerOpen && (
-//             <button 
-//               onClick={handleDrawerToggle} 
+//             <button
+//               onClick={handleDrawerToggle}
 //               style={{
 //                 marginLeft: 'auto',
 //                 width: 28,
@@ -369,10 +369,10 @@
 
 //         {/* Bottom User Section */}
 //         <div style={{ padding: 12, marginTop: 'auto' }}>
-//           <div style={{ 
-//             height: 1, 
-//             backgroundColor: themeColors.borderColor, 
-//             marginBottom: 12 
+//           <div style={{
+//             height: 1,
+//             backgroundColor: themeColors.borderColor,
+//             marginBottom: 12
 //           }} />
 
 //           {drawerOpen ? (
@@ -481,16 +481,16 @@
 //               textAlign: 'center'
 //             }}>
 //               <div style={{ fontSize: '3rem', marginBottom: 12 }}>🛵</div>
-//               <h1 style={{ 
-//                 color: themeColors.textPrimary, 
+//               <h1 style={{
+//                 color: themeColors.textPrimary,
 //                 marginBottom: 6,
 //                 fontSize: '1.5rem',
 //                 fontWeight: 500
 //               }}>
 //                 Welcome to ManPower
 //               </h1>
-//               <p style={{ 
-//                 color: themeColors.textSecondary, 
+//               <p style={{
+//                 color: themeColors.textSecondary,
 //                 fontSize: '1rem',
 //                 margin: 0,
 //                 lineHeight: 1.4
@@ -517,15 +517,15 @@
 //                     border: `1px solid ${themeColors.borderColor}`,
 //                   }}>
 //                     <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>{stat.icon}</div>
-//                     <div style={{ 
-//                       fontSize: '1.2rem', 
-//                       fontWeight: 500, 
+//                     <div style={{
+//                       fontSize: '1.2rem',
+//                       fontWeight: 500,
 //                       color: stat.color,
 //                       marginBottom: 2
 //                     }}>
 //                       {stat.value}
 //                     </div>
-//                     <div style={{ 
+//                     <div style={{
 //                       color: themeColors.textSecondary,
 //                       fontSize: '0.8rem'
 //                     }}>
@@ -590,7 +590,6 @@
 
 // export default ManPowerSideNav;
 
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -616,7 +615,7 @@ import {
   CssBaseline,
   BottomNavigation,
   BottomNavigationAction,
-  Chip
+  Chip,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -645,7 +644,7 @@ import {
   Search as SearchIcon,
   Help as HelpIcon,
   BusinessCenter,
-  Receipt
+  Receipt,
 } from "@mui/icons-material";
 import {
   TwoWheeler as ScooterIcon,
@@ -659,9 +658,8 @@ import {
   AccountBalance as SettlementIcon,
   Receipt as InvoiceIcon,
 } from "@mui/icons-material";
-import SecurityIcon from '@mui/icons-material/Security';
-import FileUploadIcon from '@mui/icons-material/FileUpload';
-
+import SecurityIcon from "@mui/icons-material/Security";
+import FileUploadIcon from "@mui/icons-material/FileUpload";
 
 // Theme colors
 const themeColors = {
@@ -675,7 +673,7 @@ const themeColors = {
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
-  highlight: "#ECF9F1"
+  highlight: "#ECF9F1",
 };
 
 // Width of the drawer when expanded
@@ -683,26 +681,83 @@ const drawerWidth = 260;
 
 // Navigation items with nested options
 const navigationItems = [
-  { id: "dashboard", text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
+  {
+    id: "dashboard",
+    text: "Dashboard",
+    icon: <DashboardIcon />,
+    path: "/dashboard",
+  },
   {
     id: "user",
     text: "User",
     icon: <PersonIcon />,
-    path: "/user-page"
+    path: "/user-page",
   },
-  { id: "companies", text: "Companies", icon: <CompaniesIcon />, path: "/companies" },
+  {
+    id: "companies",
+    text: "Companies",
+    icon: <CompaniesIcon />,
+    path: "/companies",
+  },
   { id: "stores", text: "Stores", icon: <StoresIcon />, path: "/stores" },
-  { id: "riders", text: "Riders", icon: <RidersIcon />, path: "/riders", badge: 3 },
-  { id: "orders", text: "Orders", icon: <OrdersIcon />, path: "/orders", badge: 5 },
-  { id: "attendance", text: "Rider Attendance", icon: <AttendanceIcon />, path: "/rider-attendace" },
-  { id: "role_permissions", text: "Role Permissions", icon: <SecurityIcon />, path: "/role-permissions" },
-  { id: "data_import", text: "Data Import", icon: <FileUploadIcon />, path: "/data-import" },
-  { id: "payments", text: "Payments", icon: <PaymentsIcon />, path: "/payments" },
-  { id: "earnings", text: "Earnings", icon: <EarningsIcon />, path: "/earnings" },
+  {
+    id: "riders",
+    text: "Riders",
+    icon: <RidersIcon />,
+    path: "/riders",
+    badge: 3,
+  },
+  {
+    id: "orders",
+    text: "Orders",
+    icon: <OrdersIcon />,
+    path: "/orders",
+    badge: 5,
+  },
+  {
+    id: "attendance",
+    text: "Rider Attendance",
+    icon: <AttendanceIcon />,
+    path: "/rider-attendace",
+  },
+  {
+    id: "role_permissions",
+    text: "Role Permissions",
+    icon: <SecurityIcon />,
+    path: "/role-permissions",
+  },
+  {
+    id: "data_import",
+    text: "Data Import",
+    icon: <FileUploadIcon />,
+    path: "/data-import",
+  },
+  {
+    id: "payments",
+    text: "Payments",
+    icon: <PaymentsIcon />,
+    path: "/payments",
+  },
+  {
+    id: "earnings",
+    text: "Earnings",
+    icon: <EarningsIcon />,
+    path: "/earnings",
+  },
   { id: "advance", text: "Advance", icon: <AdvanceIcon />, path: "/advance" },
-  { id: "settlement", text: "Settlement", icon: <SettlementIcon />, path: "/settlement" },
+  {
+    id: "settlement",
+    text: "Settlement",
+    icon: <SettlementIcon />,
+    path: "/settlement",
+  },
   { id: "invoice", text: "Invoice", icon: <InvoiceIcon />, path: "/invoice" },
-  { id: "settings", text: "Settings", icon: <SettingsIcon />, path: "/settings" },
+  {
+    id: "settings",
+    text: "Settings",
+    icon: <SettingsIcon />,
+    path: "/settings",
+  },
 ];
 
 // Mobile bottom navigation items
@@ -729,7 +784,9 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {}
+  );
   const [mobileNavValue, setMobileNavValue] = useState(0);
 
   // Set initial expanded state based on active path
@@ -738,10 +795,12 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
 
     // Find which section should be expanded based on current path
     let expandedSections = {};
-    navigationItems.forEach(item => {
+    navigationItems.forEach((item) => {
       if (item.children) {
-        const isChildActive = item.children.some(child =>
-          currentPath === child.path || (child.path !== "/" && currentPath.startsWith(child.path))
+        const isChildActive = item.children.some(
+          (child) =>
+            currentPath === child.path ||
+            (child.path !== "/" && currentPath.startsWith(child.path))
         );
         if (isChildActive) {
           expandedSections[item.id] = true;
@@ -753,7 +812,8 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
 
     // Set mobile navigation value
     const bottomNavIndex = bottomNavItems.findIndex(
-      item => currentPath === item.path ||
+      (item) =>
+        currentPath === item.path ||
         (item.path !== "/" && currentPath.startsWith(item.path))
     );
     setMobileNavValue(bottomNavIndex >= 0 ? bottomNavIndex : 0);
@@ -766,9 +826,9 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
 
   // Toggle expand/collapse of menu sections
   const handleToggleExpand = (itemId: string) => {
-    setExpandedItems(prev => ({
+    setExpandedItems((prev) => ({
       ...prev,
-      [itemId]: !prev[itemId]
+      [itemId]: !prev[itemId],
     }));
   };
 
@@ -782,8 +842,10 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
 
   // Check if a route is active
   const isActive = (path: string) => {
-    return location.pathname === path ||
-      (path !== "/" && location.pathname.startsWith(path));
+    return (
+      location.pathname === path ||
+      (path !== "/" && location.pathname.startsWith(path))
+    );
   };
 
   // Drawer content
@@ -807,20 +869,25 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
           justifyContent: drawerOpen ? "space-between" : "center",
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Avatar sx={{
-            bgcolor: themeColors.primary,
-            width: 36,
-            height: 36
-          }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Avatar
+            sx={{
+              bgcolor: themeColors.primary,
+              width: 36,
+              height: 36,
+            }}
+          >
             <ScooterIcon />
           </Avatar>
           {drawerOpen && (
-            <Typography variant="h6" sx={{
-              fontWeight: 700,
-              color: themeColors.primary,
-              whiteSpace: 'nowrap'
-            }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                color: themeColors.primary,
+                whiteSpace: "nowrap",
+              }}
+            >
               Man Power
             </Typography>
           )}
@@ -902,7 +969,11 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                       const isItemActive = isActive(child.path);
 
                       return (
-                        <ListItem key={child.id} disablePadding sx={{ display: "block", mb: 0.5 }}>
+                        <ListItem
+                          key={child.id}
+                          disablePadding
+                          sx={{ display: "block", mb: 0.5 }}
+                        >
                           <ListItemButton
                             onClick={() => handleNavigation(child.path)}
                             sx={{
@@ -911,9 +982,13 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                               px: 2.5,
                               py: 0.75,
                               borderRadius: 2,
-                              bgcolor: isItemActive ? themeColors.highlight : "transparent",
+                              bgcolor: isItemActive
+                                ? themeColors.highlight
+                                : "transparent",
                               "&:hover": {
-                                bgcolor: isItemActive ? themeColors.highlight : "rgba(12, 114, 66, 0.08)",
+                                bgcolor: isItemActive
+                                  ? themeColors.highlight
+                                  : "rgba(12, 114, 66, 0.08)",
                               },
                             }}
                           >
@@ -922,7 +997,9 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                                 minWidth: 0,
                                 mr: 2,
                                 justifyContent: "center",
-                                color: isItemActive ? themeColors.primary : themeColors.textSecondary,
+                                color: isItemActive
+                                  ? themeColors.primary
+                                  : themeColors.textSecondary,
                               }}
                             >
                               {child.icon}
@@ -931,7 +1008,9 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                               primary={child.text}
                               primaryTypographyProps={{
                                 fontWeight: isItemActive ? 600 : 400,
-                                color: isItemActive ? themeColors.primary : themeColors.textSecondary,
+                                color: isItemActive
+                                  ? themeColors.primary
+                                  : themeColors.textSecondary,
                                 fontSize: "0.9rem",
                               }}
                             />
@@ -949,8 +1028,8 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                                 color="success"
                                 sx={{
                                   height: 20,
-                                  fontSize: '0.7rem',
-                                  ml: 1
+                                  fontSize: "0.7rem",
+                                  ml: 1,
                                 }}
                               />
                             )}
@@ -971,9 +1050,13 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                     px: 2.5,
                     py: 1,
                     borderRadius: 2,
-                    bgcolor: isActive(item.path) ? themeColors.highlight : "transparent",
+                    bgcolor: isActive(item.path)
+                      ? themeColors.highlight
+                      : "transparent",
                     "&:hover": {
-                      bgcolor: isActive(item.path) ? themeColors.highlight : "rgba(12, 114, 66, 0.08)",
+                      bgcolor: isActive(item.path)
+                        ? themeColors.highlight
+                        : "rgba(12, 114, 66, 0.08)",
                     },
                   }}
                 >
@@ -982,7 +1065,9 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                       minWidth: 0,
                       mr: drawerOpen ? 2 : "auto",
                       justifyContent: "center",
-                      color: isActive(item.path) ? themeColors.primary : themeColors.textSecondary,
+                      color: isActive(item.path)
+                        ? themeColors.primary
+                        : themeColors.textSecondary,
                     }}
                   >
                     {item.icon}
@@ -995,7 +1080,9 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                     }}
                     primaryTypographyProps={{
                       fontWeight: isActive(item.path) ? 600 : 500,
-                      color: isActive(item.path) ? themeColors.primary : themeColors.textPrimary,
+                      color: isActive(item.path)
+                        ? themeColors.primary
+                        : themeColors.textPrimary,
                     }}
                   />
                   {item.badge > 0 && drawerOpen && (
@@ -1017,13 +1104,24 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
         <Divider sx={{ borderColor: themeColors.borderColor, mb: 2 }} />
 
         {drawerOpen ? (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ width: 32, height: 32, bgcolor: themeColors.secondary }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Avatar
+                sx={{ width: 32, height: 32, bgcolor: themeColors.secondary }}
+              >
                 <PersonIcon fontSize="small" />
               </Avatar>
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: themeColors.textPrimary }}>
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: 600, color: themeColors.textPrimary }}
+                >
                   Admin User
                 </Typography>
                 <Typography variant="caption" color="textSecondary">
@@ -1034,7 +1132,7 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
             <IconButton
               size="small"
               sx={{ color: themeColors.textSecondary }}
-              onClick={() => navigate('/logout')}
+              onClick={() => navigate("/logout")}
             >
               <LogoutIcon fontSize="small" />
             </IconButton>
@@ -1043,17 +1141,17 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
           <Tooltip title="Profile" placement="right">
             <IconButton
               sx={{
-                display: 'flex',
-                mx: 'auto',
-                color: themeColors.textPrimary
+                display: "flex",
+                mx: "auto",
+                color: themeColors.textPrimary,
               }}
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate("/profile")}
             >
               <Avatar
                 sx={{
                   width: 40,
                   height: 40,
-                  bgcolor: themeColors.secondary
+                  bgcolor: themeColors.secondary,
                 }}
               >
                 <PersonIcon />
@@ -1074,8 +1172,12 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
         position="fixed"
         elevation={0}
         sx={{
-          width: { md: drawerOpen ? `calc(100% - ${drawerWidth}px)` : `calc(100% - 80px)` },
-          ml: { md: drawerOpen ? `${drawerWidth}px` : '80px' },
+          width: {
+            md: drawerOpen
+              ? `calc(100% - ${drawerWidth}px)`
+              : `calc(100% - 80px)`,
+          },
+          ml: { md: drawerOpen ? `${drawerWidth}px` : "80px" },
           bgcolor: themeColors.cardBg,
           borderBottom: `1px solid ${themeColors.borderColor}`,
           transition: "all 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
@@ -1100,35 +1202,35 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
           <Box
             sx={{
               flexGrow: 1,
-              display: { xs: 'none', md: 'flex' },
-              justifyContent: 'start'
+              display: { xs: "none", md: "flex" },
+              justifyContent: "start",
             }}
           >
-            <Box
+            {/* <Box
               sx={{
-                display: 'flex',
-                alignItems: 'center',
+                display: "flex",
+                alignItems: "center",
                 bgcolor: themeColors.background,
                 borderRadius: 2,
                 px: 2,
                 py: 0.5,
-                width: '100%',
+                width: "100%",
                 maxWidth: 400,
               }}
-            >
-              <SearchIcon sx={{ color: themeColors.textSecondary, mr: 1 }} />
-              <input
+            > */}
+              {/* <SearchIcon sx={{ color: themeColors.textSecondary, mr: 1 }} /> */}
+              {/* <input
                 placeholder="Search..."
                 style={{
-                  border: 'none',
-                  outline: 'none',
-                  width: '100%',
-                  background: 'transparent',
+                  border: "none",
+                  outline: "none",
+                  width: "100%",
+                  background: "transparent",
                   color: themeColors.textPrimary,
-                  fontSize: '0.9rem',
+                  fontSize: "0.9rem",
                 }}
-              />
-            </Box>
+              /> */}
+            {/* </Box> */}
           </Box>
 
           {/* Right side actions */}
@@ -1151,13 +1253,13 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
               <IconButton
                 edge="end"
                 sx={{ ml: 1, color: themeColors.textPrimary }}
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate("/profile")}
               >
                 <Avatar
                   sx={{
                     width: 34,
                     height: 34,
-                    bgcolor: themeColors.primary
+                    bgcolor: themeColors.primary,
                   }}
                 >
                   <PersonIcon fontSize="small" />
@@ -1221,10 +1323,12 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
         sx={{
           flexGrow: 1,
           width: { md: `calc(100% - ${drawerOpen ? drawerWidth : 80}px)` },
-          p: { xs: 2, sm: 3 },
-          mt: { xs: 7, sm: 8 },
+          p: { xs: 0, sm: 0 },
+          mt: { xs: 5, sm: 6 },
           mb: { xs: 7, md: 2 },
-          bgcolor: themeColors.background,
+          bgcolor:
+            "linear-gradient(to right, #ff9a9e, #fad0c4, #fad0c4, #fbc2eb, #a18cd1)",
+
           minHeight: "100vh",
           transition: "all 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms",
         }}
@@ -1262,7 +1366,10 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
                 label={item.label}
                 icon={item.icon}
                 sx={{
-                  color: mobileNavValue === index ? themeColors.primary : themeColors.textSecondary,
+                  color:
+                    mobileNavValue === index
+                      ? themeColors.primary
+                      : themeColors.textSecondary,
                   "&.Mui-selected": {
                     color: themeColors.primary,
                   },
@@ -1277,4 +1384,3 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
 };
 
 export default SideNav;
-
