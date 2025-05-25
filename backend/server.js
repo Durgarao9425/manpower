@@ -110,6 +110,87 @@ app.put('/api/users/:id', (req, res) => {
   });
 });
 
+// Get all companies
+app.get('/api/companies', (req, res) => {
+  db.query('SELECT id, user_id, company_name, company_email, company_phone, company_gst, company_address, industry, logo, created_by, payment_terms FROM companies', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Create a new company
+app.post('/api/companies', async (req, res) => {
+  const {
+    company_name,
+    company_email,
+    company_phone,
+    company_gst,
+    company_address,
+    industry,
+    logo,
+    created_by,
+    payment_terms
+  } = req.body;
+
+  // 1. Create a user of type 'company' in users table
+  const username = company_email || company_name.replace(/\s+/g, '').toLowerCase();
+  const password = await bcrypt.hash('defaultPassword123', 10); // You may want to generate/send a real password
+  const user_type = 'company';
+  const full_name = company_name;
+  const status = 'active';
+
+  const userSql = `INSERT INTO users (username, password, email, user_type, full_name, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`;
+  db.query(userSql, [username, password, company_email, user_type, full_name, status], function(err, userResult) {
+    if (err) {
+      console.error('User creation failed:', err);
+      return res.status(500).json({ error: 'User creation failed', details: err });
+    }
+    const user_id = userResult.insertId;
+    // 2. Create the company with the new user_id
+    const companySql = `INSERT INTO companies (user_id, company_name, company_email, company_phone, company_gst, company_address, industry, logo, created_by, payment_terms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    db.query(companySql, [user_id, company_name, company_email, company_phone, company_gst, company_address, industry, logo, created_by, payment_terms], function(err, companyResult) {
+      if (err) {
+        console.error('Company creation failed:', err);
+        return res.status(500).json({ error: 'Company creation failed', details: err });
+      }
+      res.json({ id: companyResult.insertId, user_id, ...req.body });
+    });
+  });
+});
+
+// Update a company
+app.put('/api/companies/:id', (req, res) => {
+  const { id } = req.params;
+  const {
+    user_id,
+    company_name,
+    company_email,
+    company_phone,
+    company_gst,
+    company_address,
+    industry,
+    logo,
+    created_by,
+    payment_terms
+  } = req.body;
+  const sql = `UPDATE companies SET user_id=?, company_name=?, company_email=?, company_phone=?, company_gst=?, company_address=?, industry=?, logo=?, created_by=?, payment_terms=? WHERE id=?`;
+  db.query(sql, [user_id, company_name, company_email, company_phone, company_gst, company_address, industry, logo, created_by, payment_terms, id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Company not found' });
+    res.json({ success: true });
+  });
+});
+
+// Delete a company
+app.delete('/api/companies/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM companies WHERE id = ?', [id], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Company not found' });
+    res.json({ success: true });
+  });
+});
+
 const PORT = process.env.PORT || 4003;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -21,6 +21,7 @@ import StoreManagement from "../Components/Pages/StorePage/storePage";
 import RiderAttendanceApp from "../Components/Pages/RiderAttendace/RiderAttendance";
 import UserListing from "../Components/Pages/UserPage/userList";
 import DataImportSystem from "../Components/Pages/DataImport/DataImport";
+import CompanyPage from "../Components/Pages/Company/companyPage";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -66,7 +67,7 @@ const AppRoutes = () => {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<TransportDashboard />} />
           <Route path="/riders" element={<RiderListingPage />} />
-          <Route path="/companies" element={<CompanyListPage />} />
+          <Route path="/companies" element={<CompanyPage />} />
           <Route path="/settings" element={<ThemeSettings />} />
           <Route path="/stores" element={<StoreManagement />} />
           <Route path="/rider-attendace" element={<RiderAttendanceApp />} />
