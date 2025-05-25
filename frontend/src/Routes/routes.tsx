@@ -24,6 +24,10 @@ import DataImportSystem from "../Components/Pages/DataImport/DataImport";
 import CompanyPage from "../Components/Pages/Company/companyPage";
 import RoleManagementPage from "../Components/Pages/RolePermissions/RolePermissions";
 import OrderManagementSystem from "../Components/Pages/OrderPage/OrderPage";
+import RiderManagement from "../Components/Pages/RidersPage/riderList";
+import RiderProfileForm from "../Components/Pages/RidersPage/Riderform";
+import RiderForm from "../Components/Pages/RidersPage/Riderform";
+import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -77,6 +81,7 @@ const AppRoutes = () => {
           <Route path="/data-import" element={<DataImportSystem />} />
           <Route path="/role-permissions" element={<RoleManagementPage />} />
           <Route path="/orders" element={<OrderManagementSystem />} />
+          <Route path="/rider-form" element={<RiderRegistrationForm />} />
         </Route>
       </Route>
 
