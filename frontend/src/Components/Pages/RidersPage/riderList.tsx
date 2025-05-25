@@ -25,7 +25,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Pagination
+  Pagination,
+  Input
 } from '@mui/material';
   // Pagination state
 
@@ -533,46 +534,58 @@ const RiderListingPage: React.FC = () => {
       </Card>
 
       {/* Assignment Dialog */}
-      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Rider to Company & Store</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Company</InputLabel>
-              <Select
-                value={selectedCompany}
-                onChange={(e: SelectChangeEvent) => setSelectedCompany(e.target.value)}
-                label="Company"
-              >
-                {companies.map((company) => (
-                  <MenuItem key={company.id} value={company.id}>
-                    {company.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth>
-              <InputLabel>Store</InputLabel>
-              <Select
-                value={selectedStore}
-                onChange={(e: SelectChangeEvent) => setSelectedStore(e.target.value)}
-                label="Store"
-              >
-                {stores.map((store) => (
-                  <MenuItem key={store.id} value={store.id}>
-                    {store.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAssignSubmit} variant="contained">Submit</Button>
-        </DialogActions>
-      </Dialog>
+     <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
+  <DialogTitle>Assign Rider to Company & Store</DialogTitle>
+  <DialogContent>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+      
+      <FormControl fullWidth>
+        <InputLabel>Company</InputLabel>
+        <Select
+          value={selectedCompany}
+          onChange={(e: SelectChangeEvent) => setSelectedCompany(e.target.value)}
+          label="Company"
+        >
+          {companies.map((company) => (
+            <MenuItem key={company.id} value={company.id}>
+              {company.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth>
+        <InputLabel>Store</InputLabel>
+        <Select
+          value={selectedStore}
+          onChange={(e: SelectChangeEvent) => setSelectedStore(e.target.value)}
+          label="Store"
+        >
+          {stores.map((store) => (
+            <MenuItem key={store.id} value={store.id}>
+              {store.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <TextField
+        fullWidth
+        label="Company Rider ID"
+        name="company_rider_id"
+        variant="outlined"
+        placeholder="Company Provided Rider Id"
+        // onChange={handleInputChange}
+      />
+      
+    </Box>
+  </DialogContent>
+  <DialogActions sx={{ px: 3, pb: 2 }}>
+    <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+    <Button onClick={handleAssignSubmit} variant="contained">Submit</Button>
+  </DialogActions>
+</Dialog>
+
     </Box>
   );
 };
