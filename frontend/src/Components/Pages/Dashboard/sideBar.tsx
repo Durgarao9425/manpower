@@ -243,7 +243,7 @@
 //             >
 //               🛵
 //             </div>
-            
+
 //             {drawerOpen && (
 //               <div>
 //                 <h1
@@ -301,7 +301,7 @@
 //         >
 //           {navigationItems.map((item) => {
 //             const itemActive = isActive(item.id);
-            
+
 //             return (
 //               <div key={item.id} style={{ marginBottom: 4 }}>
 //                 <button
@@ -336,7 +336,7 @@
 //                   }}
 //                 >
 //                   <span style={{ fontSize: '1.2rem' }}>{item.icon}</span>
-                  
+
 //                   {drawerOpen && (
 //                     <>
 //                       <span style={{ flex: 1 }}>{item.text}</span>
@@ -374,7 +374,7 @@
 //             backgroundColor: themeColors.borderColor, 
 //             marginBottom: 12 
 //           }} />
-          
+
 //           {drawerOpen ? (
 //             <div
 //               style={{
@@ -497,7 +497,7 @@
 //               }}>
 //                 Delivery Management System
 //               </p>
-              
+
 //               <div style={{
 //                 display: 'grid',
 //                 gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -659,6 +659,9 @@ import {
   AccountBalance as SettlementIcon,
   Receipt as InvoiceIcon,
 } from "@mui/icons-material";
+import SecurityIcon from '@mui/icons-material/Security';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+
 
 // Theme colors
 const themeColors = {
@@ -681,11 +684,19 @@ const drawerWidth = 260;
 // Navigation items with nested options
 const navigationItems = [
   { id: "dashboard", text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
-  { id: "riders", text: "Riders", icon: <RidersIcon />, path: "/riders", badge: 3 },
+  {
+    id: "user",
+    text: "User",
+    icon: <PersonIcon />,
+    path: "/user-page"
+  },
   { id: "companies", text: "Companies", icon: <CompaniesIcon />, path: "/companies" },
   { id: "stores", text: "Stores", icon: <StoresIcon />, path: "/stores" },
-  { id: "attendance", text: "Rider Attendance", icon: <AttendanceIcon />, path: "/rider-attendace" },
+  { id: "riders", text: "Riders", icon: <RidersIcon />, path: "/riders", badge: 3 },
   { id: "orders", text: "Orders", icon: <OrdersIcon />, path: "/orders", badge: 5 },
+  { id: "attendance", text: "Rider Attendance", icon: <AttendanceIcon />, path: "/rider-attendace" },
+  { id: "role_permissions", text: "Role Permissions", icon: <SecurityIcon />, path: "/role-permissions" },
+  { id: "data_import", text: "Data Import", icon: <FileUploadIcon />, path: "/data-import" },
   { id: "payments", text: "Payments", icon: <PaymentsIcon />, path: "/payments" },
   { id: "earnings", text: "Earnings", icon: <EarningsIcon />, path: "/earnings" },
   { id: "advance", text: "Advance", icon: <AdvanceIcon />, path: "/advance" },
@@ -796,24 +807,24 @@ const SideNav: React.FC<SideNavProps> = ({ children, pendingAlerts = 5 }) => {
           justifyContent: drawerOpen ? "space-between" : "center",
         }}
       >
-     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Avatar sx={{ 
-                bgcolor: themeColors.primary,
-                width: 36,
-                height: 36
-              }}>
-                <ScooterIcon />
-              </Avatar>
-              {drawerOpen && (
-                <Typography variant="h6" sx={{ 
-                  fontWeight: 700,
-                  color: themeColors.primary,
-                  whiteSpace: 'nowrap'
-                }}>
-                  Man Power
-                </Typography>
-              )}
-            </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Avatar sx={{
+            bgcolor: themeColors.primary,
+            width: 36,
+            height: 36
+          }}>
+            <ScooterIcon />
+          </Avatar>
+          {drawerOpen && (
+            <Typography variant="h6" sx={{
+              fontWeight: 700,
+              color: themeColors.primary,
+              whiteSpace: 'nowrap'
+            }}>
+              Man Power
+            </Typography>
+          )}
+        </Box>
 
         {!isMobile && (
           <IconButton onClick={handleDrawerToggle} edge="end" size="small">

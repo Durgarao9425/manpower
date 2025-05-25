@@ -22,17 +22,19 @@ import {
     Alert,
     IconButton
 } from '@mui/material';
-import { ViewList, ViewModule } from '@mui/icons-material';
+import { ViewList, ViewModule, ArrowBack } from '@mui/icons-material';
 import ReusableTable from './userTable';
 import ReusableCard from './userCard';
 import UserForm from './userform';
+import UserView from './UserView'; // Import the UserView component
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
+import axios from 'axios';
 import type { SelectChangeEvent } from '@mui/material/Select';
 
 // User type for TypeScript
 interface User {
-    id: number;
+    id?: number;
     company_id: number | null;
     username: string;
     password?: string;
@@ -51,7 +53,9 @@ const UserListing = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
-    const [openForm, setOpenForm] = useState(false);
+    const [showForm, setShowForm] = useState(false);
+    const [showView, setShowView] = useState(false); // New state for view mode
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null); // Selected user for viewing
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [page, setPage] = useState(1);
     const [rowsPerPage] = useState(10);
@@ -66,6 +70,16 @@ const UserListing = () => {
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
+
+    // API Base URL
+    const API_BASE_URL = 'http://localhost:4003/api';
+
+    const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
 
     const handleDeleteClick = (user: User) => {
         setUserToDelete(user);
@@ -73,28 +87,32 @@ const UserListing = () => {
     };
 
     const handleEdit = (user: User) => {
-        console.log('Edit user:', user);
+        setCurrentUser(user);
+        setShowForm(true);
     };
 
     const handleDelete = (user: User) => {
-        console.log('Delete user:', user);
+        handleDeleteClick(user);
     };
+
+    // New function to handle view
+    const handleView = (user: User) => {
+        if (user.id) {
+            setSelectedUserId(user.id);
+            setShowView(true);
+        }
+    };
+
     const handleDeleteConfirm = async () => {
-        if (userToDelete) {
+        if (userToDelete && userToDelete.id) {
             try {
-                const response = await fetch(`http://localhost:4003/api/users/${userToDelete.id}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    setUsers(users.filter(user => user.id !== userToDelete.id));
-                    setSnackbarMessage(`${userToDelete.full_name} deleted successfully`);
-                } else {
-                    setSnackbarMessage('Failed to delete user');
-                }
+                await axios.delete(`${API_BASE_URL}/users/${userToDelete.id}`);
+                setUsers(users.filter(user => user.id !== userToDelete.id));
+                showSnackbar(`${userToDelete.full_name} deleted successfully`);
             } catch (error) {
-                setSnackbarMessage('Error deleting user');
+                console.error('Error deleting user:', error);
+                showSnackbar('Failed to delete user', 'error');
             }
-            setSnackbarOpen(true);
         }
         setDeleteConfirmOpen(false);
         setUserToDelete(null);
@@ -109,19 +127,21 @@ const UserListing = () => {
         setSnackbarOpen(false);
     };
 
-    // Mock data fetch - replace with actual API call
+    // Fetch users with error handling
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(`${API_BASE_URL}/users`);
+            setUsers(response.data);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            showSnackbar('Failed to fetch users', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const response = await fetch('http://localhost:4003/api/users');
-                const data = await response.json();
-                setUsers(data);
-                setLoading(false);
-            } catch (error) {
-                console.error('Error fetching users:', error);
-                setLoading(false);
-            }
-        };
         fetchUsers();
     }, []);
 
@@ -133,63 +153,40 @@ const UserListing = () => {
 
     const handleAddUser = () => {
         setCurrentUser(null);
-        setOpenForm(true);
+        setShowForm(true);
     };
 
     const handleEditUser = (user: User) => {
         setCurrentUser(user);
-        setOpenForm(true);
+        setShowForm(true);
     };
 
-    const handleCloseForm = () => {
-        setOpenForm(false);
+    const handleBackToList = () => {
+        setShowForm(false);
+        setShowView(false); // Reset view mode too
+        setCurrentUser(null);
+        setSelectedUserId(null);
     };
 
     const handleSaveUser = async (userData: User) => {
-        if (userData.id) {
-            // Edit mode: update user
-            try {
-                const response = await fetch(`http://localhost:4003/api/users/${userData.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
-                });
-                if (response.ok) {
-                    setUsers(prev => prev.map(u => u.id === userData.id ? { ...u, ...userData } : u));
-                    setSnackbarMessage('User updated successfully');
-                    setSnackbarOpen(true);
-                } else {
-                    setSnackbarMessage('Failed to update user');
-                    setSnackbarOpen(true);
-                }
-            } catch (error) {
-                setSnackbarMessage('Error updating user');
-                setSnackbarOpen(true);
+        try {
+            if (currentUser?.id) {
+                // Edit mode: update user
+                const response = await axios.put(`${API_BASE_URL}/users/${currentUser?.id}`, userData);
+                setUsers(prev => prev.map(u => u.id === currentUser?.id ? response.data : u));
+                showSnackbar('User updated successfully');
+            } else {
+                // Create mode: add new user
+                const response = await axios.post(`${API_BASE_URL}/users`, userData);
+                setUsers(prev => [...prev, response.data]);
+                showSnackbar('User created successfully');
             }
-        } else {
-            // Create mode: add new user
-            try {
-                const response = await fetch('http://localhost:4003/api/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(userData)
-                });
-                if (response.ok) {
-                    // Refresh user list after save
-                    const newUser = await response.json();
-                    setUsers(prev => [...prev, newUser]);
-                    setSnackbarMessage('User created successfully');
-                    setSnackbarOpen(true);
-                } else {
-                    setSnackbarMessage('Failed to create user');
-                    setSnackbarOpen(true);
-                }
-            } catch (error) {
-                setSnackbarMessage('Error creating user');
-                setSnackbarOpen(true);
-            }
+            setShowForm(false);
+            setCurrentUser(null);
+        } catch (error) {
+            console.error('Error saving user:', error);
+            showSnackbar(userData.id ? 'Failed to update user' : 'Failed to create user', 'error');
         }
-        setOpenForm(false);
     };
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,7 +194,6 @@ const UserListing = () => {
         setPage(1); // Reset to first page when searching
     };
 
-    // Fix: handleFilterChange for MUI Select
     const handleFilterChange = (e: SelectChangeEvent<string>) => {
         const { name, value } = e.target;
         setFilters(prev => ({
@@ -210,9 +206,9 @@ const UserListing = () => {
     const filteredUsers = users.filter(user => {
         // Search term filter
         const matchesSearch =
-            user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+            user?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
         // User type filter
         const matchesUserType = filters.user_type ? user.user_type === filters.user_type : true;
@@ -232,6 +228,80 @@ const UserListing = () => {
         (page - 1) * rowsPerPage,
         page * rowsPerPage
     );
+
+    // Show user view as full page
+    if (showView && selectedUserId) {
+        return (
+            <Container maxWidth="xl">
+                <Box sx={{ my: 4, minWidth: '77vw' }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            mb: 3
+                        }}
+                    >
+                        <IconButton 
+                            onClick={handleBackToList}
+                            sx={{ 
+                                bgcolor: 'primary.main', 
+                                color: 'white',
+                                '&:hover': { bgcolor: 'primary.dark' }
+                            }}
+                        >
+                            <ArrowBack />
+                        </IconButton>
+                        <Typography variant="h4" component="h1" fontWeight={600}>
+                            User Details
+                        </Typography>
+                    </Box>
+
+                    <UserView selectedUserId={selectedUserId} />
+                </Box>
+            </Container>
+        );
+    }
+
+    // Show form as full page
+    if (showForm) {
+        return (
+            <Container maxWidth="xl">
+                <Box sx={{ my: 4, minWidth: '77vw' }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            mb: 3
+                        }}
+                    >
+                        <IconButton 
+                            onClick={handleBackToList}
+                            sx={{ 
+                                bgcolor: 'primary.main', 
+                                color: 'white',
+                                '&:hover': { bgcolor: 'primary.dark' }
+                            }}
+                        >
+                            <ArrowBack />
+                        </IconButton>
+                        <Typography variant="h4" component="h1" fontWeight={600}>
+                            {currentUser ? 'Edit User' : 'Add New User'}
+                        </Typography>
+                    </Box>
+
+                    <UserForm
+                        open={true}
+                        onClose={handleBackToList}
+                        onSave={handleSaveUser}
+                        user={currentUser}
+                        isFullPage={true}
+                    />
+                </Box>
+            </Container>
+        );
+    }
 
     return (
         <Container maxWidth="xl">
@@ -257,6 +327,7 @@ const UserListing = () => {
                             variant="contained"
                             color="primary"
                             onClick={handleAddUser}
+                            sx={{ px: 3, py: 1.5 }}
                         >
                             Add New User
                         </Button>
@@ -282,8 +353,8 @@ const UserListing = () => {
                 </Box>
 
                 {/* Search and Filters */}
-                <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                    <Grid container spacing={2}>
+                <Box sx={{ mb: 3, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+                    <Grid container spacing={3}>
                         <Grid item xs={12} md={3}>
                             <TextField
                                 fullWidth
@@ -291,6 +362,7 @@ const UserListing = () => {
                                 variant="outlined"
                                 value={searchTerm}
                                 onChange={handleSearchChange}
+                                placeholder="Search by username, email, or name..."
                             />
                         </Grid>
                         <Grid item xs={12} md={3}>
@@ -326,13 +398,28 @@ const UserListing = () => {
                                 </Select>
                             </FormControl>
                         </Grid>
-
+                        <Grid item xs={12} md={3}>
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setFilters({ user_type: '', status: '', company_id: '' });
+                                    setPage(1);
+                                }}
+                                fullWidth
+                                sx={{ height: '56px' }}
+                            >
+                                Clear Filters
+                            </Button>
+                        </Grid>
                     </Grid>
                 </Box>
 
                 {/* Content Area */}
                 {loading ? (
-                    <Typography>Loading users...</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                        <Typography variant="h6">Loading users...</Typography>
+                    </Box>
                 ) : (
                     <>
                         {viewMode === 'list' ? (
@@ -340,9 +427,10 @@ const UserListing = () => {
                                 data={paginatedUsers as any[]}
                                 onEdit={handleEditUser}
                                 onDelete={handleDeleteClick}
+                                onView={handleView} // Pass the view handler
                                 columns={[
                                     { field: 'id', headerName: 'ID', width: 70 },
-                                    { field: 'username', headerName: 'Username', width: 130 },
+                                    { field: 'username', headerName: 'Username', width: 130, clickable: true },
                                     { field: 'email', headerName: 'Email', width: 200 },
                                     { field: 'full_name', headerName: 'Full Name', width: 180 },
                                     { field: 'user_type', headerName: 'User Type', width: 150 },
@@ -354,6 +442,7 @@ const UserListing = () => {
                                 data={paginatedUsers}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
+                                onView={handleView} // Pass the view handler to card component too
                                 labels={{
                                     email: 'Email Address',
                                     company_id: 'Company ID',
@@ -363,8 +452,7 @@ const UserListing = () => {
                             />
                         )}
 
-
-
+                        {/* Delete Confirmation Dialog */}
                         <Dialog
                             open={deleteConfirmOpen}
                             onClose={handleDeleteCancel}
@@ -387,7 +475,7 @@ const UserListing = () => {
                             <DialogContent>
                                 <Box
                                     sx={{
-                                        p: 2,
+                                        p: 3,
                                         mt: 1,
                                         mb: 2,
                                         border: '1px solid #e0e0e0',
@@ -398,65 +486,58 @@ const UserListing = () => {
                                 >
                                     <Typography variant="body1">
                                         Are you sure you want to delete{' '}
-                                        <b>{userToDelete?.full_name || '-'}</b>?
+                                        <strong>{userToDelete?.full_name || '-'}</strong>?
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                        This action cannot be undone.
                                     </Typography>
                                 </Box>
                             </DialogContent>
 
-                            <DialogActions>
-                                <Button onClick={() => {
-                                    handleDeleteCancel();
-                                    //   setDeleteSelectedItem(null);
-                                }}>
-                                    No
+                            <DialogActions sx={{ p: 3 }}>
+                                <Button onClick={handleDeleteCancel} variant="outlined">
+                                    Cancel
                                 </Button>
-
-                                <Tooltip title="Delete User" arrow>
-                                    <Button
-                                        onClick={handleDeleteConfirm}
-                                        color="error"
-                                        variant="contained"
-                                        startIcon={<DeleteIcon />}
-                                    >
-                                        Yes
-                                    </Button>
-                                </Tooltip>
+                                <Button
+                                    onClick={handleDeleteConfirm}
+                                    color="error"
+                                    variant="contained"
+                                    startIcon={<DeleteIcon />}
+                                >
+                                    Delete User
+                                </Button>
                             </DialogActions>
                         </Dialog>
 
-                        {/* Success Notification */}
+                        {/* Snackbar Notifications */}
                         <Snackbar
                             open={snackbarOpen}
-                            autoHideDuration={3000}
+                            autoHideDuration={4000}
                             onClose={handleSnackbarClose}
                             anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
                         >
-                            <Alert onClose={handleSnackbarClose} severity="success">
+                            <Alert 
+                                onClose={handleSnackbarClose} 
+                                severity={snackbarSeverity}
+                                variant="filled"
+                            >
                                 {snackbarMessage}
                             </Alert>
                         </Snackbar>
 
-
                         {/* Pagination */}
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
                             <Pagination
                                 count={count}
                                 page={page}
                                 onChange={(_event, value) => setPage(value)}
                                 color="primary"
+                                size="large"
                             />
                         </Box>
                     </>
                 )}
             </Box>
-
-            {/* User Form Dialog */}
-            <UserForm
-                open={openForm}
-                onClose={handleCloseForm}
-                onSave={handleSaveUser}
-                user={currentUser}
-            />
         </Container>
     );
 };

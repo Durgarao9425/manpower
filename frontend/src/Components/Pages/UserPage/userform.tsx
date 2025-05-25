@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,12 +14,56 @@ import {
   Grid,
   Avatar,
   Box,
-  Typography
+  FormHelperText,
 } from '@mui/material';
 import { CloudUpload } from '@mui/icons-material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 
-const UserForm = ({ open, onClose, onSave, user }) => {
-  const [formData, setFormData] = useState({
+interface User {
+  company_id?: number | string;
+  username?: string;
+  password?: string;
+  email?: string;
+  user_type?: string;
+  full_name?: string;
+  phone?: string;
+  address?: string;
+  profile_image?: string;
+  status?: 'active' | 'inactive' | 'suspended';
+}
+
+interface UserFormProps {
+  open: boolean;
+  onClose: () => void;
+  onSave: (data: UserFormData) => void;
+  user?: User;
+}
+
+interface UserFormData {
+  company_id: number | string;
+  username: string;
+  password: string;
+  email: string;
+  user_type: string;
+  full_name: string;
+  phone: string;
+  address: string;
+  profile_image: string;
+  status: 'active' | 'inactive' | 'suspended';
+}
+
+interface FormErrors {
+  company_id?: string;
+  username?: string;
+  password?: string;
+  email?: string;
+  user_type?: string;
+  full_name?: string;
+  phone?: string;
+}
+
+const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
+  const [formData, setFormData] = useState<UserFormData>({
     company_id: '',
     username: '',
     password: '',
@@ -28,24 +73,25 @@ const UserForm = ({ open, onClose, onSave, user }) => {
     phone: '',
     address: '',
     profile_image: '',
-    status: 'active'
+    status: 'active',
   });
 
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     if (user) {
       setFormData({
-        company_id: user.company_id || '',
-        username: user.username || '',
-        password: '',
-        email: user.email || '',
-        user_type: user.user_type || '',
-        full_name: user.full_name || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        profile_image: user.profile_image || '',
-        status: user.status || 'active'
+        company_id: user.company_id ?? '',
+        username: user.username ?? '',
+        password: '', // Password is never prefilled for security reasons
+        email: user.email ?? '',
+        user_type: user.user_type ?? '',
+        full_name: user.full_name ?? '',
+        phone: user.phone ?? '',
+        address: user.address ?? '',
+        profile_image: user.profile_image ?? '',
+        status: user.status ?? 'active',
       });
       setIsEditMode(true);
     } else {
@@ -59,32 +105,114 @@ const UserForm = ({ open, onClose, onSave, user }) => {
         phone: '',
         address: '',
         profile_image: '',
-        status: 'active'
+        status: 'active',
       });
       setIsEditMode(false);
     }
+    // Clear errors when user changes
+    setErrors({});
   }, [user]);
 
-  const handleChange = (e) => {
+  const validateField = (name: keyof UserFormData, value: string | number): string => {
+    switch (name) {
+      case 'username':
+        return !value || String(value).trim() === '' ? 'Username is required' : '';
+      case 'password':
+        return !isEditMode && (!value || String(value).trim() === '') ? 'Password is required' : '';
+      case 'email':
+        if (!value || String(value).trim() === '') {
+          return 'Email is required';
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return !emailRegex.test(String(value)) ? 'Please enter a valid email address' : '';
+      case 'user_type':
+        return !value || String(value).trim() === '' ? 'User Type is required' : '';
+      case 'full_name':
+        return !value || String(value).trim() === '' ? 'Full Name is required' : '';
+      default:
+        return '';
+    }
+  };
+
+  const validateAllFields = (): boolean => {
+    const newErrors: FormErrors = {};
+    let isValid = true;
+
+    // Required fields
+    const requiredFields: (keyof UserFormData)[] = [
+      'username',
+      'email',
+      'user_type',
+      'full_name'
+    ];
+
+    // Add password to required fields only in create mode
+    if (!isEditMode) {
+      requiredFields.push('password');
+    }
+
+    requiredFields.forEach(field => {
+      const error = validateField(field, formData[field]);
+      if (error) {
+        newErrors[field] = error;
+        isValid = false;
+      }
+    });
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    const fieldName = name as keyof UserFormData;
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [fieldName]: value,
     }));
+
+    // Clear error for this field when user starts typing
+    if (errors[fieldName]) {
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: undefined,
+      }));
+    }
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<string>) => {
+    const { name, value } = e.target;
+    const fieldName = name as keyof UserFormData;
+
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+
+    // Clear error for this field when user makes selection
+    if (errors[fieldName]) {
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: undefined,
+      }));
+    }
   };
 
   const handleSubmit = () => {
-    onSave(formData);
+    if (validateAllFields()) {
+      onSave(formData);
+    }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          profile_image: reader.result
+          profile_image: reader.result as string,
         }));
       };
       reader.readAsDataURL(file);
@@ -93,32 +221,18 @@ const UserForm = ({ open, onClose, onSave, user }) => {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {isEditMode ? 'Edit User' : 'Add New User'}
-      </DialogTitle>
+      <DialogTitle>{isEditMode ? 'Edit User' : 'Add New User'}</DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           <Grid container spacing={3}>
             <Grid item xs={12} md={4}>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Avatar
-                  src={formData.profile_image}
-                  sx={{ width: 120, height: 120, mb: 2 }}
-                >
+                <Avatar src={formData.profile_image} sx={{ width: 120, height: 120, mb: 2 }}>
                   {formData.full_name ? formData.full_name.charAt(0) : 'U'}
                 </Avatar>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                >
+                <Button variant="outlined" component="label" startIcon={<CloudUpload />}>
                   Upload Image
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
+                  <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
                 </Button>
               </Box>
             </Grid>
@@ -132,6 +246,8 @@ const UserForm = ({ open, onClose, onSave, user }) => {
                     value={formData.username}
                     onChange={handleChange}
                     required
+                    error={!!errors.username}
+                    helperText={errors.username}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -142,6 +258,8 @@ const UserForm = ({ open, onClose, onSave, user }) => {
                     value={formData.full_name}
                     onChange={handleChange}
                     required
+                    error={!!errors.full_name}
+                    helperText={errors.full_name}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -153,14 +271,16 @@ const UserForm = ({ open, onClose, onSave, user }) => {
                     value={formData.email}
                     onChange={handleChange}
                     required
+                    error={!!errors.email}
+                    helperText={errors.email}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    name="phone"
-                    value={formData.phone}
+                  <TextField 
+                    fullWidth 
+                    label="Phone" 
+                    name="phone" 
+                    value={formData.phone} 
                     onChange={handleChange}
                   />
                 </Grid>
@@ -173,25 +293,27 @@ const UserForm = ({ open, onClose, onSave, user }) => {
                       type="password"
                       value={formData.password}
                       onChange={handleChange}
-                      required={!isEditMode}
+                      required
+                      error={!!errors.password}
+                      helperText={errors.password}
                     />
                   </Grid>
                 )}
                 <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
+                  <FormControl fullWidth required error={!!errors.user_type}>
                     <InputLabel>User Type</InputLabel>
-                    <Select
-                      name="user_type"
-                      value={formData.user_type}
-                      onChange={handleChange}
+                    <Select 
+                      name="user_type" 
+                      value={formData.user_type} 
+                      onChange={handleSelectChange} 
                       label="User Type"
-                      required
                     >
                       <MenuItem value="admin">Admin</MenuItem>
                       <MenuItem value="company">Company</MenuItem>
                       <MenuItem value="rider">Rider</MenuItem>
                       <MenuItem value="store_manager">Store Manager</MenuItem>
                     </Select>
+                    {errors.user_type && <FormHelperText>{errors.user_type}</FormHelperText>}
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -207,10 +329,10 @@ const UserForm = ({ open, onClose, onSave, user }) => {
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
                     <InputLabel>Status</InputLabel>
-                    <Select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleChange}
+                    <Select 
+                      name="status" 
+                      value={formData.status} 
+                      onChange={handleSelectChange} 
                       label="Status"
                     >
                       <MenuItem value="active">Active</MenuItem>
