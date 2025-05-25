@@ -193,8 +193,6 @@ const RiderRegistrationForm = () => {
   const userResult = await userResponse.json();
   const userId = userResult.user_id || userResult.id;
 
-  // Then create the rider with user_id
-  // Before creating the rider, ensure documents is valid JSON
   let documentsValue = formData.documents;
   if (!documentsValue || documentsValue.trim() === '') {
     documentsValue = '{}';
