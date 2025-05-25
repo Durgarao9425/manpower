@@ -420,7 +420,7 @@ const FoodDeliveryDashboard = () => {
   const mainStats = [
     {
       title: 'Total Riders',
-      value: '2,847',
+      value: '18',
       change: '+12%',
       trend: 'up',
       icon: <DeliveryDining sx={{ fontSize: { xs: 32, sm: 40 } }} />,
