@@ -29,12 +29,14 @@ const companiesRouter = require('./src/routes/companies')(db);
 const ridersRouter = require('./src/routes/riders')(db);
 const storesRouter = require('./src/routes/stores')(db);
 const loginRoute = require('./src/routes/login')(db);
+const riderDocumentsRouter = require('./src/routes/rider_documents')(db);
 
 app.use('/api/users', usersRouter);
 app.use('/api/companies', companiesRouter);
 app.use('/api/riders', ridersRouter);
 app.use('/api/stores', storesRouter);
 app.use('/api/login', loginRoute);
+app.use('/api/rider-documents', riderDocumentsRouter);
 
 const PORT = process.env.PORT || 4003;
 app.listen(PORT, () => {
