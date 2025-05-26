@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import RiderRegistrationForm from './Riderform';
 import {
   Box,
   Typography,
@@ -45,7 +46,6 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import AssignDialog from './assignedModel';
 
 interface Rider {
   id: number;
@@ -103,6 +103,7 @@ const RiderListingPage: React.FC = () => {
   const [performanceFilter, setPerformanceFilter] = useState('');
   const [vehicleFilter, setVehicleFilter] = useState('');
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -140,6 +141,7 @@ const RiderListingPage: React.FC = () => {
     setPage(1); // Reset to first page on filter/search change
   }, [riders, searchTerm, statusFilter, performanceFilter, vehicleFilter]);
 
+  // Fetch riders from API (no dummy data)
   const fetchRiders = async () => {
     try {
       setLoading(true);
@@ -148,6 +150,7 @@ const RiderListingPage: React.FC = () => {
       calculateStats(response.data);
     } catch (error) {
       console.error('Error fetching riders:', error);
+      setRiders([]);
     } finally {
       setLoading(false);
     }
@@ -268,6 +271,22 @@ const RiderListingPage: React.FC = () => {
     return status === 'Active' ? 'success' : 'error';
   };
 
+  if (showRegistrationForm) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+            Add New Rider
+          </Typography>
+          <Button variant="outlined" onClick={() => setShowRegistrationForm(false)}>
+            Back to List
+          </Button>
+        </Box>
+        <RiderRegistrationForm />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -283,7 +302,7 @@ const RiderListingPage: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => navigate('/riders/create')}
+          onClick={() => setShowRegistrationForm(true)}
           sx={{ px: 3, py: 1.5 }}
         >
           ADD NEW RIDER
@@ -445,7 +464,13 @@ const RiderListingPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedRiders.map((rider) => (
+              {paginatedRiders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    No riders found.
+                  </TableCell>
+                </TableRow>
+              ) : paginatedRiders.map((rider) => (
                 <TableRow key={rider.id}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
