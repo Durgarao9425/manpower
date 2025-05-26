@@ -73,7 +73,19 @@ const RiderRegistrationForm = () => {
     status: 'Active',
     joining_date: new Date().toISOString().split('T')[0], // Default to today
     last_certificate_date: '',
-    created_by: 1
+    created_by: 1,
+
+    // Rider Documents
+    rider_documents: [{
+      document_type: '',
+      document_number: '',
+      document_file: null,
+      expiry_date: '',
+      verification_status: 'pending',
+      remarks: '',
+      verified_by: '',
+      verification_date: ''
+    }]
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -254,6 +266,42 @@ const RiderRegistrationForm = () => {
       type: 'success',
       message: `Rider registered successfully! User ID: ${userId}, Rider ID: ${riderResult.rider_id || riderResult.id}`
     });
+    // Save rider_documents after rider is created
+    if (formData.rider_documents && formData.rider_documents.length > 0) {
+      for (const doc of formData.rider_documents) {
+        // Prepare FormData for file upload if needed
+        let payload;
+        if (doc.document_file instanceof File) {
+          payload = new FormData();
+          payload.append('rider_id', riderResult.rider_id || riderResult.id);
+          payload.append('document_type', doc.document_type);
+          payload.append('document_number', doc.document_number);
+          payload.append('expiry_date', doc.expiry_date);
+          payload.append('verification_status', doc.verification_status);
+          payload.append('remarks', doc.remarks);
+          payload.append('verified_by', doc.verified_by);
+          payload.append('verification_date', doc.verification_date);
+          payload.append('document_file', doc.document_file);
+        } else {
+          payload = {
+            rider_id: riderResult.rider_id || riderResult.id,
+            document_type: doc.document_type,
+            document_number: doc.document_number,
+            document_file: doc.document_file || '',
+            expiry_date: doc.expiry_date,
+            verification_status: doc.verification_status,
+            remarks: doc.remarks,
+            verified_by: doc.verified_by,
+            verification_date: doc.verification_date
+          };
+        }
+        await fetch('http://localhost:4003/api/rider-documents', {
+          method: 'POST',
+          headers: payload instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
+          body: payload instanceof FormData ? payload : JSON.stringify(payload)
+        });
+      }
+    }
     // ... rest of success handling
   } else {
     throw new Error(riderResult.error || 'Failed to create rider');
@@ -267,6 +315,15 @@ const RiderRegistrationForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDocumentChange = (index, e) => {
+    const { name, value, files } = e.target;
+    setFormData(prev => {
+      const docs = [...prev.rider_documents];
+      docs[index][name] = name === 'document_file' ? files[0] : value;
+      return { ...prev, rider_documents: docs };
+    });
   };
 
   const SectionHeader = ({ icon, title }) => (
@@ -730,6 +787,122 @@ const RiderRegistrationForm = () => {
                   </FormControl>
                 </Grid>
               </Grid>
+
+              {/* Rider Documents */}
+              <SectionHeader 
+                icon={<Description sx={{ color: '#0891b2' }} />} 
+                title="Rider Documents" 
+              />
+              {formData.rider_documents.map((doc, idx) => (
+                <Grid container spacing={3} key={idx} sx={{ mb: 2 }}>
+                  <Grid item xs={12} md={4}>
+                    <FormControl fullWidth variant="outlined">
+                      <InputLabel>Document Type</InputLabel>
+                      <Select
+                        name="document_type"
+                        value={doc.document_type}
+                        onChange={e => handleDocumentChange(idx, e)}
+                        label="Document Type"
+                      >
+                        <MenuItem value="aadhar_card">Aadhar Card</MenuItem>
+                        <MenuItem value="pan_card">PAN Card</MenuItem>
+                        <MenuItem value="driving_license">Driving License</MenuItem>
+                        <MenuItem value="insurance">Insurance</MenuItem>
+                        <MenuItem value="bank_details">Bank Details</MenuItem>
+                        <MenuItem value="upi_id">UPI ID</MenuItem>
+                        <MenuItem value="other">Other</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Document Number"
+                      name="document_number"
+                      value={doc.document_number}
+                      onChange={e => handleDocumentChange(idx, e)}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Button
+                      variant="contained"
+                      component="label"
+                      sx={{ width: '100%' }}
+                    >
+                      Upload File
+                      <input
+                        type="file"
+                        name="document_file"
+                        hidden
+                        onChange={e => handleDocumentChange(idx, e)}
+                      />
+                    </Button>
+                    {doc.document_file && <Typography variant="caption">{doc.document_file.name}</Typography>}
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      label="Expiry Date"
+                      name="expiry_date"
+                      type="date"
+                      value={doc.expiry_date}
+                      onChange={e => handleDocumentChange(idx, e)}
+                      InputLabelProps={{ shrink: true }}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <FormControl fullWidth variant="outlined">
+                      <InputLabel>Verification Status</InputLabel>
+                      <Select
+                        name="verification_status"
+                        value={doc.verification_status}
+                        onChange={e => handleDocumentChange(idx, e)}
+                        label="Verification Status"
+                      >
+                        <MenuItem value="pending">Pending</MenuItem>
+                      
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      label="Remarks"
+                      name="remarks"
+                      value={doc.remarks}
+                      onChange={e => handleDocumentChange(idx, e)}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      label="Verified By (User ID)"
+                      name="verified_by"
+                      value={doc.verified_by}
+                      onChange={e => handleDocumentChange(idx, e)}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <TextField
+                      fullWidth
+                      label="Verification Date"
+                      name="verification_date"
+                      type="date"
+                      value={doc.verification_date}
+                      onChange={e => handleDocumentChange(idx, e)}
+                      InputLabelProps={{ shrink: true }}
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Grid>
+              ))}
+              <Button variant="outlined" onClick={() => setFormData(prev => ({ ...prev, rider_documents: [...prev.rider_documents, { document_type: '', document_number: '', document_file: null, expiry_date: '', verification_status: 'pending', remarks: '', verified_by: '', verification_date: '' }] }))} sx={{ mb: 2 }}>
+                Add Another Document
+              </Button>
 
               {/* Submit Button */}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 6, pt: 3, borderTop: 1, borderColor: 'divider' }}>
