@@ -24,12 +24,14 @@ db.connect((err) => {
   console.log('Connected to database.');
 });
 
-const usersRouter = require('./src/routes/users')(db);
-const companiesRouter = require('./src/routes/companies')(db);
-const ridersRouter = require('./src/routes/riders')(db);
-const storesRouter = require('./src/routes/stores')(db);
-const loginRoute = require('./src/routes/login')(db);
-const riderDocumentsRouter = require('./src/routes/rider_documents')(db);
+const usersRouter = require('./src/routes/users');
+const companiesRouter = require('./src/routes/companies');
+const ridersRouter = require('./src/routes/riders');
+const storesRouter = require('./src/routes/stores');
+const loginRoute = require('./src/routes/login');
+const riderDocumentsRouter = require('./src/routes/rider_documents');
+const riderAssignmentsRouter = require('./src/routes/rider_assignments');
+const ordersRoutes = require('./src/routes/orders');
 
 app.use('/api/users', usersRouter);
 app.use('/api/companies', companiesRouter);
@@ -37,6 +39,8 @@ app.use('/api/riders', ridersRouter);
 app.use('/api/stores', storesRouter);
 app.use('/api/login', loginRoute);
 app.use('/api/rider-documents', riderDocumentsRouter);
+app.use('/api/rider-assignments', riderAssignmentsRouter);
+app.use('/api', ordersRoutes);
 
 const PORT = process.env.PORT || 4003;
 app.listen(PORT, () => {

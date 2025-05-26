@@ -116,6 +116,9 @@ const RiderListingPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [dense, setDense] = useState(false);
+  const [companyRiderId, setCompanyRiderId] = useState('');
+  const [assignSuccess, setAssignSuccess] = useState('');
+  const [pendingStoreId, setPendingStoreId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRiders();
@@ -143,6 +146,14 @@ const RiderListingPage: React.FC = () => {
       setStores([]); // Clear if no company selected
     }
   }, [selectedCompany]);
+
+  // Set selectedStore from pendingStoreId after stores are loaded
+  useEffect(() => {
+    if (pendingStoreId && stores.some(store => store.id?.toString() === pendingStoreId)) {
+      setSelectedStore(pendingStoreId);
+      setPendingStoreId(null);
+    }
+  }, [stores, pendingStoreId]);
 
   useEffect(() => {
     filterRiders();
@@ -243,26 +254,46 @@ const RiderListingPage: React.FC = () => {
     }
   };
 
-  const handleAssign = (rider: Rider) => {
+  // When opening the assign dialog, fetch the latest assignment for the selected rider
+  const handleAssign = async (rider: Rider) => {
     setSelectedRider(rider);
-    setAssignDialogOpen(true);
+    try {
+      const res = await axios.get(`http://localhost:4003/api/rider-assignments/by-rider/${rider.id}`);
+      const assignment = Array.isArray(res.data) ? res.data[0] : res.data;
+      if (assignment) {
+        setSelectedCompany(assignment.company_id?.toString() || '');
+        setPendingStoreId(assignment.store_id?.toString() || '');
+        setCompanyRiderId(assignment.company_rider_id || '');
+      } else {
+        setSelectedCompany('');
+        setPendingStoreId('');
+        setCompanyRiderId('');
+      }
+      setAssignDialogOpen(true);
+    } catch (err) {
+      setSelectedCompany('');
+      setPendingStoreId('');
+      setCompanyRiderId('');
+      setAssignDialogOpen(true);
+    }
   };
 
   const handleAssignSubmit = async () => {
-    if (!selectedRider || !selectedCompany || !selectedStore) return;
-
+    if (!selectedRider || !selectedCompany || !selectedStore || !companyRiderId) return;
     try {
       await axios.post('http://localhost:4003/api/rider-assignments', {
         rider_id: selectedRider.id,
         company_id: selectedCompany,
-        store_id: selectedStore
+        store_id: selectedStore,
+        company_rider_id: companyRiderId
       });
-
       setAssignDialogOpen(false);
       setSelectedCompany('');
       setSelectedStore('');
       setSelectedRider(null);
-      // Show success message
+      setCompanyRiderId('');
+      setAssignSuccess('Rider assigned successfully!');
+      setTimeout(() => setAssignSuccess(''), 3000);
     } catch (error) {
       console.error('Error assigning rider:', error);
     }
@@ -690,6 +721,9 @@ const RiderListingPage: React.FC = () => {
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Assign Rider to Company & Store</DialogTitle>
         <DialogContent>
+          {assignSuccess && (
+            <Typography color="success.main" sx={{ mb: 2 }}>{assignSuccess}</Typography>
+          )}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
             <FormControl fullWidth>
               <InputLabel>Company</InputLabel>
@@ -738,6 +772,8 @@ const RiderListingPage: React.FC = () => {
               name="company_rider_id"
               variant="outlined"
               placeholder="Company Provided Rider Id"
+              value={companyRiderId}
+              onChange={e => setCompanyRiderId(e.target.value)}
             />
           </Box>
         </DialogContent>
