@@ -9,12 +9,10 @@ import {
 import { useEffect } from "react";
 
 // Page Components
-import LoginPage from "../Components/Pages/Dashboard/Login/login";
 import Logout from "../Components/Pages/Dashboard/Login/logout";
 import Layout from "../Components/Pages/Dashboard/layout";
 import TransportDashboard from "../Components/Pages/Dashboard/dashboard";
 import RiderListingPage from "../Components/Pages/RidersPage/riderList";
-import CompanyListPage from "../Components/Pages/Company/caompanyPage";
 import ThemeSettings from "../Components/Pages/SettingPage/ThemSettingPage";
 import RiderDashboardApp from "../Components/Pages/RiderDashboard/RiderDashboard";
 import StoreManagement from "../Components/Pages/StorePage/storePage";
@@ -24,11 +22,9 @@ import DataImportSystem from "../Components/Pages/DataImport/DataImport";
 import CompanyPage from "../Components/Pages/Company/companyPage";
 import RoleManagementPage from "../Components/Pages/RolePermissions/RolePermissions";
 import OrderManagementSystem from "../Components/Pages/OrderPage/OrderPage";
-import RiderManagement from "../Components/Pages/RidersPage/riderList";
-import RiderProfileForm from "../Components/Pages/RidersPage/Riderform";
-import RiderForm from "../Components/Pages/RidersPage/Riderform";
 import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
 import CompanySettings from "../Components/Pages/SettingPage/Settings";
+import LoginPage from "../Components/Pages/Dashboard/Login/login";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {

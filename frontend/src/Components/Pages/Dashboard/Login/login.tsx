@@ -124,38 +124,57 @@ export default function LoginPage() {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    console.log(formData,"formDataformData")
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Send login credentials to backend for authentication
+      const response = await fetch("http://localhost:4003/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
+      });
 
-      // Check credentials
-      if (formData.username === "admin" && formData.password === "admin123") {
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", "admin");
-        if (formData.rememberMe) {
-          localStorage.setItem("rememberedUser", formData.username);
-        } else {
-          localStorage.removeItem("rememberedUser");
-        }
-        navigate("/dashboard");
-      } else if (
-        formData.username === "rider" &&
-        formData.password === "rider123"
-      ) {
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", "rider");
-        if (formData.rememberMe) {
-          localStorage.setItem("rememberedUser", formData.username);
-        } else {
-          localStorage.removeItem("rememberedUser");
-        }
-        navigate("/rider-dashboard");
-      } else {
-        setLoginError("Invalid username or password");
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLoginError(data.message || "Invalid username or password");
+        return;
       }
+console.log(data,"data------------------------")
+      // If login successful, store user data
+      if (data.user) {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", data.user.user_type);
+        localStorage.setItem("userId", data.user.id.toString());
+        localStorage.setItem("userName", data.user.full_name);
+        localStorage.setItem("userEmail", data.user.email);
+        
+        if (formData.rememberMe) {
+          localStorage.setItem("rememberedUser", formData.username);
+        } else {
+          localStorage.removeItem("rememberedUser");
+        }
+
+        // Navigate based on user type
+        if (data.user.user_type === "admin") {
+          navigate("/dashboard");
+        } else if (data.user.user_type === "rider") {
+          navigate("/rider-dashboard");
+        } else {
+          setLoginError("Access denied. Invalid user type.");
+        }
+      } else {
+        setLoginError("Invalid response from server");
+      }
+
     } catch (error) {
-      setLoginError("An error occurred during login. Please try again.");
+      console.error("Login error:", error);
+      setLoginError("Unable to connect to server. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -163,6 +182,10 @@ export default function LoginPage() {
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
+  };
+
+  const handleCreateAccount = () => {
+    navigate("/rider-form");
   };
 
   return (
@@ -175,6 +198,7 @@ export default function LoginPage() {
           alignItems: "center",
           justifyContent: "center",
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          overflow: "hidden",
         }}
       >
         <IconButton
@@ -197,14 +221,15 @@ export default function LoginPage() {
         <Paper
           elevation={24}
           sx={{
-            width: { xs: 320, sm: 400 }, // fixed width
-            minHeight: 400, // fixed height
+            width: { xs: "90%", sm: 400, md: 400 },
+            maxWidth: 400,
             p: 3,
             backgroundColor: "rgba(255, 255, 255, 0.95)",
             backdropFilter: "blur(10px)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
+            mx: 2,
           }}
         >
           <Box sx={{ textAlign: "center", mb: 3 }}>
@@ -326,7 +351,7 @@ export default function LoginPage() {
                   fullWidth
                   variant="text"
                   size="small"
-                  onClick={() => {}}
+                  onClick={handleCreateAccount}
                 >
                   Create Account
                 </Button>
