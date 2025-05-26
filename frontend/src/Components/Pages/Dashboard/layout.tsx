@@ -1,20 +1,21 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+import { Box, useTheme, useMediaQuery } from '@mui/material';
 import SideNav from './sideBar';
-import ManPowerSideNav from './sideBar';
 
 const Layout: React.FC = () => {
-  // Get pending alerts from the appropriate source based on the route
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
   const getPendingAlerts = () => {
-    // This is a placeholder - you would likely get this from a context or prop
-    return 2;
+    return 1;
   };
 
   return (
-    <SideNav>
+    <SideNav pendingAlerts={getPendingAlerts()}>
       <Outlet />
     </SideNav>
   );
 };
 
-export default Layout; 
+export default Layout;

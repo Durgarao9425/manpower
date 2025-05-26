@@ -27,9 +27,11 @@ import {
   DialogContent,
   DialogActions,
   Pagination,
-  Input
+  Input,
+  Switch,
+  FormControlLabel,
+  TablePagination
 } from '@mui/material';
-// Pagination state
 
 import type { SelectChangeEvent } from '@mui/material';
 import {
@@ -109,15 +111,21 @@ const RiderListingPage: React.FC = () => {
   const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedStore, setSelectedStore] = useState('');
   const [stores, setStores] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 5;
+  
+  // Enhanced pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [dense, setDense] = useState(false);
+
   useEffect(() => {
     fetchRiders();
     fetchCompanies();
     fetchStores();
   }, []);
+
   console.log(companies, "companies----------------------")
   console.log(stores, "stores+++++++++++++++++")
+
   // Load all companies on mount
   useEffect(() => {
     axios.get("/api/companies")
@@ -138,7 +146,7 @@ const RiderListingPage: React.FC = () => {
 
   useEffect(() => {
     filterRiders();
-    setPage(1); // Reset to first page on filter/search change
+    setPage(0); // Reset to first page on filter/search change
   }, [riders, searchTerm, statusFilter, performanceFilter, vehicleFilter]);
 
   // Fetch riders from API (no dummy data)
@@ -203,9 +211,22 @@ const RiderListingPage: React.FC = () => {
     setFilteredRiders(filtered);
   };
 
-  // Pagination logic
-  const paginatedRiders = filteredRiders.slice((page - 1) * rowsPerPage, page * rowsPerPage);
-  console.log(paginatedRiders, "paginatedRiders")
+  // Enhanced pagination handlers
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleDenseChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDense(event.target.checked);
+  };
+
+  // Get paginated data
+  const paginatedRiders = filteredRiders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const handleEdit = (rider: Rider) => {
     navigate(`/riders/edit/${rider.id}`);
@@ -273,7 +294,7 @@ const RiderListingPage: React.FC = () => {
 
   if (showRegistrationForm) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, width: '100%' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
             Add New Rider
@@ -288,22 +309,42 @@ const RiderListingPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, width: '100%', maxWidth: '100%' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center', 
+        mb: 3,
+        width: '100%',
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          flex: 1,
+          minWidth: 0,
+          gap: 1,
+        }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ color: '#1976d2', fontWeight: 'bold' }}
+          >
             Rider Management
           </Typography>
-          <Typography variant="subtitle1" color="textSecondary">
+          <Typography variant="subtitle1" color="text.secondary">
             Manage delivery riders, their profiles, documents, and assignments
           </Typography>
         </Box>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setShowRegistrationForm(true)}
-          sx={{ px: 3, py: 1.5 }}
+          sx={{ px: 3, py: 1.5, flexShrink: 0 }}
         >
           ADD NEW RIDER
         </Button>
@@ -448,40 +489,84 @@ const RiderListingPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Table Controls */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6" component="div">
+          Riders List ({filteredRiders.length} total)
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={dense}
+              onChange={handleDenseChange}
+              color="primary"
+            />
+          }
+          label="Dense padding"
+        />
+      </Box>
+
       {/* Riders Table */}
-      <Card>
-        <TableContainer component={Paper}>
-          <Table>
+      <Card sx={{ width: '100%', overflow: 'hidden' }}>
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            width: '100%',
+            maxHeight: dense ? 400 : 600,
+            overflow: 'auto'
+          }}
+        >
+          <Table 
+            stickyHeader
+            size={dense ? 'small' : 'medium'}
+            sx={{ 
+              minWidth: 1200, // Ensure minimum width for proper layout
+              width: '100%',
+              tableLayout: 'fixed' // Fixed layout for consistent column widths
+            }}
+          >
             <TableHead>
               <TableRow>
-                <TableCell>Rider</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Vehicle</TableCell>
-                <TableCell>Performance</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Stats</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell sx={{ width: '20%', minWidth: 200 }}>Rider</TableCell>
+                <TableCell sx={{ width: '15%', minWidth: 150 }}>Contact</TableCell>
+                <TableCell sx={{ width: '15%', minWidth: 120 }}>Vehicle</TableCell>
+                <TableCell sx={{ width: '15%', minWidth: 120 }}>Performance</TableCell>
+                <TableCell sx={{ width: '10%', minWidth: 100 }}>Status</TableCell>
+                <TableCell sx={{ width: '15%', minWidth: 120 }}>Stats</TableCell>
+                <TableCell sx={{ width: '10%', minWidth: 120 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {paginatedRiders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    No riders found.
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No riders found.
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : paginatedRiders.map((rider) => (
-                <TableRow key={rider.id}>
+                <TableRow key={rider.id} hover>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
+                      <Avatar sx={{ mr: 2, bgcolor: '#1976d2', width: dense ? 32 : 40, height: dense ? 32 : 40 }}>
                         {rider.account_holder_name?.charAt(0) || rider.rider_code.charAt(0)}
                       </Avatar>
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight="bold">
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography 
+                          variant={dense ? "body2" : "subtitle2"} 
+                          fontWeight="bold"
+                          noWrap
+                          title={rider.account_holder_name || 'N/A'}
+                        >
                           {rider.account_holder_name || 'N/A'}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
+                        <Typography 
+                          variant="caption" 
+                          color="textSecondary"
+                          noWrap
+                          title={`${rider.rider_code} • ${rider.rider_id}`}
+                        >
                           {rider.rider_code} • {rider.rider_id}
                         </Typography>
                       </Box>
@@ -489,31 +574,36 @@ const RiderListingPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Box>
-                      <Typography variant="body2">📞 {rider.emergency_contact}</Typography>
-                      <Typography variant="body2">✉️ {rider.upi_id}</Typography>
+                      <Typography variant={dense ? "caption" : "body2"} noWrap>
+                        📞 {rider.emergency_contact}
+                      </Typography>
+                      <Typography variant={dense ? "caption" : "body2"} noWrap>
+                        ✉️ {rider.upi_id}
+                      </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <BikeIcon sx={{ mr: 1 }} />
-                      <Box>
-                        <Typography variant="body2">{rider.vehicle_type}</Typography>
-                        <Typography variant="caption" color="textSecondary">
+                      <BikeIcon sx={{ mr: 1, fontSize: dense ? 16 : 20 }} />
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant={dense ? "caption" : "body2"} noWrap>
+                          {rider.vehicle_type}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary" noWrap>
                           {rider.vehicle_number}
                         </Typography>
                       </Box>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                       <Chip
                         label={rider.performance_tier}
                         color={getPerformanceColor(rider.performance_tier) as any}
                         size="small"
-                        sx={{ mr: 1 }}
                       />
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <StarIcon sx={{ fontSize: 16, color: '#ffa726', mr: 0.5 }} />
+                        <StarIcon sx={{ fontSize: 14, color: '#ffa726', mr: 0.5 }} />
                         <Typography variant="caption">4.6</Typography>
                       </Box>
                     </Box>
@@ -528,34 +618,37 @@ const RiderListingPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <Box>
-                      <Typography variant="body2" fontWeight="bold">1250 deliveries</Typography>
+                      <Typography variant={dense ? "caption" : "body2"} fontWeight="bold">
+                        1250 deliveries
+                      </Typography>
                       <Typography variant="caption" color="textSecondary">
                         Since {new Date(rider.joining_date).toLocaleDateString()}
                       </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Box>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <IconButton
                         size="small"
                         onClick={() => handleAssign(rider)}
-                        sx={{ mr: 1 }}
+                        title="Assign"
                       >
-                        <AssignmentIcon />
+                        <AssignmentIcon fontSize={dense ? "small" : "medium"} />
                       </IconButton>
                       <IconButton
                         size="small"
                         onClick={() => handleEdit(rider)}
-                        sx={{ mr: 1 }}
+                        title="Edit"
                       >
-                        <EditIcon />
+                        <EditIcon fontSize={dense ? "small" : "medium"} />
                       </IconButton>
                       <IconButton
                         size="small"
                         onClick={() => handleDelete(rider.id)}
                         color="error"
+                        title="Delete"
                       >
-                        <DeleteIcon />
+                        <DeleteIcon fontSize={dense ? "small" : "medium"} />
                       </IconButton>
                     </Box>
                   </TableCell>
@@ -564,26 +657,40 @@ const RiderListingPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-        {/* Pagination Controls */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-          <Pagination
-            count={Math.ceil(filteredRiders.length / rowsPerPage)}
-            page={page}
-            onChange={(_e, value) => setPage(value)}
-            color="primary"
-            shape="rounded"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
+        
+        {/* Enhanced Pagination */}
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25, 50, 100]}
+          component="div"
+          count={filteredRiders.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="Rows per page:"
+          labelDisplayedRows={({ from, to, count }) => 
+            `${from}-${to} of ${count !== -1 ? count : `more than ${to}`}`
+          }
+          showFirstButton
+          showLastButton
+          sx={{
+            borderTop: '1px solid rgba(224, 224, 224, 1)',
+            '& .MuiTablePagination-toolbar': {
+              paddingLeft: 2,
+              paddingRight: 2,
+            },
+            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+              margin: 0,
+            }
+          }}
+        />
       </Card>
 
-
+      {/* Assignment Dialog */}
       <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Assign Rider to Company & Store</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
-
             <FormControl fullWidth>
               <InputLabel>Company</InputLabel>
               <Select
@@ -609,7 +716,6 @@ const RiderListingPage: React.FC = () => {
                 onChange={(e: SelectChangeEvent) => setSelectedStore(e.target.value)}
                 label="Store"
               >
-
                 {/* Show available stores */}
                 {stores.length > 0 ? (
                   stores.map((store) => (
@@ -626,7 +732,6 @@ const RiderListingPage: React.FC = () => {
               </Select>
             </FormControl>
 
-
             <TextField
               fullWidth
               label="Company Rider ID"
@@ -634,7 +739,6 @@ const RiderListingPage: React.FC = () => {
               variant="outlined"
               placeholder="Company Provided Rider Id"
             />
-
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -642,7 +746,6 @@ const RiderListingPage: React.FC = () => {
           <Button onClick={handleAssignSubmit} variant="contained">Submit</Button>
         </DialogActions>
       </Dialog>
-
     </Box>
   );
 };
