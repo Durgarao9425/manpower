@@ -58,18 +58,19 @@ import axios from 'axios';
 
 // Theme colors
 const themeColors = {
-  primary: "#0C7242",
-  secondary: "#1E293B",
-  background: "#F1F5F9",
-  cardBg: "#FFFFFF",
-  textPrimary: "#1E293B",
-  textSecondary: "#64748B",
-  borderColor: "#E2E8F0",
-  success: "#10B981",
-  warning: "#F59E0B",
-  error: "#EF4444",
-  highlight: "#ECF9F1"
+  primary: "#1D4ED8",      // blue-700
+  secondary: "#1E40AF",    // blue-900
+  background: "#DBEAFE",   // blue-100
+  cardBg: "#FFFFFF",       // keep white for cards
+  textPrimary: "#1E3A8A",  // blue-800
+  textSecondary: "#3B82F6",// blue-500
+  borderColor: "#BFDBFE",  // blue-200
+  success: "#10B981",      // keep green for success
+  warning: "#F59E0B",      // keep orange for warning
+  error: "#EF4444",        // keep red for error
+  highlight: "#DBEAFE"     // light blue highlight (same as background)
 };
+
 
 // Navigation items with icons and permissions
 const navigationModules = [
@@ -144,7 +145,7 @@ const RoleManagementPage = () => {
       const response = await axios.get(`${API_BASE_URL}/users`);
       const adminUsers = response.data.filter((user: User) => user.user_type === 'admin');
       setAdminUsers(adminUsers);
-      
+
       // Initialize permissions for each admin user
       const initialPermissions: { [userId: number]: UserPermissions } = {};
       adminUsers.forEach((user: User) => {
@@ -194,7 +195,7 @@ const RoleManagementPage = () => {
     const currentUser = adminUsers.find(user => user.id === userId);
     if (!currentUser) return;
 
-    const allChecked = navigationModules.every(module => 
+    const allChecked = navigationModules.every(module =>
       permissions[userId]?.[module.id]?.[permissionType]
     );
 
@@ -230,10 +231,10 @@ const RoleManagementPage = () => {
         user_type: 'admin',
         status: 'active'
       };
-      
+
       const response = await axios.post(`${API_BASE_URL}/users`, userData);
       setAdminUsers(prev => [...prev, response.data]);
-      
+
       // Initialize permissions for new user
       setPermissions(prev => ({
         ...prev,
@@ -242,7 +243,7 @@ const RoleManagementPage = () => {
           [module.id]: { view: false, edit: false, delete: false }
         }), {})
       }));
-      
+
       setShowAddUserDialog(false);
       setNewUserData({ username: '', email: '', full_name: '', password: '' });
       showSnackbar('Admin user added successfully!');
@@ -270,7 +271,7 @@ const RoleManagementPage = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 4,minWidth:'77vw'}}>
+      <Container maxWidth="xl" sx={{ py: 4, minWidth: '77vw' }}>
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
           <Typography variant="h6" color="textSecondary">Loading admin users...</Typography>
         </Box>
@@ -279,7 +280,7 @@ const RoleManagementPage = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4,minWidth:'77vw'}}>
+    <Container maxWidth="xl" sx={{ py: 4, minWidth: '77vw' }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight="bold" color={themeColors.textPrimary} gutterBottom>
@@ -293,8 +294,8 @@ const RoleManagementPage = () => {
       {/* Main Content Card */}
       <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
         {/* Tabs Header */}
-        <Box sx={{ 
-          bgcolor: themeColors.cardBg, 
+        <Box sx={{
+          bgcolor: themeColors.cardBg,
           borderBottom: `1px solid ${themeColors.borderColor}`,
           px: 3,
           pt: 2

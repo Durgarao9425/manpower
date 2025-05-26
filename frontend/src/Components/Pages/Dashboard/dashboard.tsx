@@ -27,7 +27,7 @@
 // const TransportDashboard = () => {
 //   const theme = useTheme();
 //   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
 //   // Sample data - replace with your actual data
 //   const stats = {
 //     totalRiders: 248,
@@ -39,7 +39,7 @@
 //     activeRiders: 183,
 //     pendingPayments: 12
 //   };
-  
+
 //   // Recent orders data
 //   const recentOrders = [
 //     { id: 1, orderId: '#FD-2023-001', customer: 'John Doe', restaurant: 'Burger King', amount: 24.50, status: 'Delivered', time: '2 min ago' },
@@ -48,7 +48,7 @@
 //     { id: 4, orderId: '#FD-2023-004', customer: 'Emily Davis', restaurant: 'Subway', amount: 12.50, status: 'Delivered', time: '1 hour ago' },
 //     { id: 5, orderId: '#FD-2023-005', customer: 'Michael Wilson', restaurant: 'McDonald\'s', amount: 28.30, status: 'Cancelled', time: '2 hours ago' },
 //   ];
-  
+
 //   // Chart data
 //   const earningsData = [
 //     ['Day', 'Earnings'],
@@ -60,7 +60,7 @@
 //     ['Sat', 2200],
 //     ['Sun', 1800],
 //   ];
-  
+
 //   const orderStatusData = [
 //     ['Status', 'Count'],
 //     ['Delivered', 75],
@@ -68,7 +68,7 @@
 //     ['Preparing', 8],
 //     ['Cancelled', 2],
 //   ];
-  
+
 //   // Stats cards component
 //   const StatCard = ({ icon, title, value, color, progress }) => (
 //     <Card sx={{ height: '100%', borderLeft: `4px solid ${color}` }}>
@@ -124,11 +124,11 @@
 //       <Typography variant="h4" fontWeight="bold" gutterBottom>
 //         Dashboard Overview
 //       </Typography>
-      
+
 //       <Typography variant="subtitle1" color="textSecondary" sx={{ mb: 3 }}>
 //         Welcome back! Here's what's happening with your food delivery business today.
 //       </Typography>
-      
+
 //       {/* Summary Stats */}
 //       <Grid container spacing={3} sx={{ mb: 3 }}>
 //         <Grid item xs={12} sm={6} md={3}>
@@ -168,7 +168,7 @@
 //           />
 //         </Grid>
 //       </Grid>
-      
+
 //       {/* Today's Stats */}
 //       <Grid container spacing={3} sx={{ mb: 3 }}>
 //         <Grid item xs={12} sm={6} md={3}>
@@ -204,7 +204,7 @@
 //           />
 //         </Grid>
 //       </Grid>
-      
+
 //       {/* Charts and Recent Orders */}
 //       <Grid container spacing={3}>
 //         <Grid item xs={12} md={8}>
@@ -242,7 +242,7 @@
 //             </CardContent>
 //           </Card>
 //         </Grid>
-        
+
 //         <Grid item xs={12} md={4}>
 //           <Card sx={{ height: '100%' }}>
 //             <CardContent>
@@ -280,7 +280,7 @@
 //             </CardContent>
 //           </Card>
 //         </Grid>
-        
+
 //         <Grid item xs={12}>
 //           <Card>
 //             <CardContent>
@@ -512,9 +512,9 @@ const FoodDeliveryDashboard = () => {
   ];
 
   const StatCard = ({ stat }) => (
-    <Card 
-      elevation={0} 
-      sx={{ 
+    <Card
+      elevation={0}
+      sx={{
         height: '100%',
         background: 'linear-gradient(135deg, #fff 0%, #f8f9ff 100%)',
         border: '1px solid rgba(0,0,0,0.05)',
@@ -550,7 +550,7 @@ const FoodDeliveryDashboard = () => {
             )}
             <Typography
               variant="body2"
-              sx={{ 
+              sx={{
                 color: stat.trend === 'up' ? '#4CAF50' : '#F44336',
                 fontWeight: 600,
                 fontSize: { xs: '0.75rem', sm: '0.875rem' }
@@ -560,18 +560,18 @@ const FoodDeliveryDashboard = () => {
             </Typography>
           </Box>
         </Box>
-        <Typography 
-          variant={isMobile ? "h5" : "h4"} 
-          fontWeight="700" 
-          color="text.primary" 
+        <Typography
+          variant={isMobile ? "h5" : "h4"}
+          fontWeight="700"
+          color="text.primary"
           mb={1}
           sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
         >
           {stat.value}
         </Typography>
-        <Typography 
-          variant="body2" 
-          color="text.secondary" 
+        <Typography
+          variant="body2"
+          color="text.secondary"
           fontWeight="500"
           sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
         >
@@ -603,9 +603,9 @@ const FoodDeliveryDashboard = () => {
 
   // Mobile Order Card Component
   const MobileOrderCard = ({ order }) => (
-    <Card 
+    <Card
       elevation={0}
-      sx={{ 
+      sx={{
         mb: 2,
         border: '1px solid rgba(0,0,0,0.05)',
         borderRadius: 2,
@@ -652,16 +652,16 @@ const FoodDeliveryDashboard = () => {
       <Container maxWidth="xl"  sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 }, mt: { xs: 2, sm: 4 },  }}>
         {/* Welcome Section */}
         <Box mb={{ xs: 3, sm: 4 }}>
-          <Typography 
-            variant={isMobile ? "h5" : "h4"} 
-            fontWeight="700" 
-            color="text.primary" 
+          <Typography
+            variant={isMobile ? "h5" : "h4"}
+            fontWeight="700"
+            color="text.primary"
             gutterBottom
           >
             Good {timeOfDay}, Admin! 👋
           </Typography>
-          <Typography 
-            variant="body1" 
+          <Typography
+            variant="body1"
             color="text.secondary"
             sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
           >
@@ -670,10 +670,10 @@ const FoodDeliveryDashboard = () => {
         </Box>
 
         {/* Main Stats */}
-        <Typography 
-          variant={isMobile ? "body1" : "h6"} 
-          fontWeight="600" 
-          color="text.primary" 
+        <Typography
+          variant={isMobile ? "body1" : "h6"}
+          fontWeight="600"
+          color="text.primary"
           mb={2}
         >
           📊 Overview Statistics
@@ -687,10 +687,10 @@ const FoodDeliveryDashboard = () => {
         </Grid>
 
         {/* Today's Stats */}
-        <Typography 
-          variant={isMobile ? "body1" : "h6"} 
-          fontWeight="600" 
-          color="text.primary" 
+        <Typography
+          variant={isMobile ? "body1" : "h6"}
+          fontWeight="600"
+          color="text.primary"
           mb={2}
         >
           📈 Today's Performance
@@ -706,28 +706,28 @@ const FoodDeliveryDashboard = () => {
         <Grid container spacing={{ xs: 3, sm: 4 }}>
           {/* Recent Orders */}
           <Grid item xs={12} lg={7}>
-            <Paper 
+            <Paper
               elevation={0}
-              sx={{ 
+              sx={{
                 borderRadius: { xs: 2, sm: 3 },
                 border: '1px solid rgba(0,0,0,0.05)',
                 overflow: 'hidden'
               }}
             >
-              <Box sx={{ 
-                p: { xs: 2, sm: 3 }, 
-                bgcolor: '#fafbff', 
-                borderBottom: '1px solid rgba(0,0,0,0.05)' 
+              <Box sx={{
+                p: { xs: 2, sm: 3 },
+                bgcolor: '#fafbff',
+                borderBottom: '1px solid rgba(0,0,0,0.05)'
               }}>
-                <Typography 
-                  variant={isMobile ? "body1" : "h6"} 
-                  fontWeight="600" 
+                <Typography
+                  variant={isMobile ? "body1" : "h6"}
+                  fontWeight="600"
                   color="text.primary"
                 >
                   🛵 Recent Orders
                 </Typography>
               </Box>
-              
+
               {/* Mobile View - Cards */}
               {isMobile ? (
                 <Box sx={{ p: 2 }}>
@@ -765,9 +765,9 @@ const FoodDeliveryDashboard = () => {
                       {recentOrders.map((order, index) => (
                         <TableRow key={index} sx={{ '&:hover': { bgcolor: '#f8f9ff' } }}>
                           <TableCell>
-                            <Typography 
-                              variant="body2" 
-                              fontWeight="600" 
+                            <Typography
+                              variant="body2"
+                              fontWeight="600"
                               color="primary"
                               sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                             >
@@ -794,8 +794,8 @@ const FoodDeliveryDashboard = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            <Typography 
-                              fontWeight="600" 
+                            <Typography
+                              fontWeight="600"
                               color="success.main"
                               sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                             >
@@ -803,8 +803,8 @@ const FoodDeliveryDashboard = () => {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography 
-                              variant="body2" 
+                            <Typography
+                              variant="body2"
                               color="text.secondary"
                               sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                             >
@@ -822,22 +822,22 @@ const FoodDeliveryDashboard = () => {
 
           {/* Top Restaurants */}
           <Grid item xs={12} lg={5}>
-            <Paper 
+            <Paper
               elevation={0}
-              sx={{ 
+              sx={{
                 borderRadius: { xs: 2, sm: 3 },
                 border: '1px solid rgba(0,0,0,0.05)',
                 height: 'fit-content'
               }}
             >
-              <Box sx={{ 
-                p: { xs: 2, sm: 3 }, 
-                bgcolor: '#fafbff', 
-                borderBottom: '1px solid rgba(0,0,0,0.05)' 
+              <Box sx={{
+                p: { xs: 2, sm: 3 },
+                bgcolor: '#fafbff',
+                borderBottom: '1px solid rgba(0,0,0,0.05)'
               }}>
-                <Typography 
-                  variant={isMobile ? "body1" : "h6"} 
-                  fontWeight="600" 
+                <Typography
+                  variant={isMobile ? "body1" : "h6"}
+                  fontWeight="600"
                   color="text.primary"
                 >
                   🏆 Top Performing Restaurants
@@ -845,9 +845,9 @@ const FoodDeliveryDashboard = () => {
               </Box>
               <List sx={{ p: 0 }}>
                 {topRestaurants.map((restaurant, index) => (
-                  <ListItem 
+                  <ListItem
                     key={index}
-                    sx={{ 
+                    sx={{
                       py: { xs: 2, sm: 2.5 },
                       px: { xs: 2, sm: 3 },
                       borderBottom: index < topRestaurants.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
@@ -855,8 +855,8 @@ const FoodDeliveryDashboard = () => {
                     }}
                   >
                     <ListItemIcon>
-                      <Avatar 
-                        sx={{ 
+                      <Avatar
+                        sx={{
                           bgcolor: `hsl(${index * 60}, 70%, 50%)`,
                           width: { xs: 32, sm: 40 },
                           height: { xs: 32, sm: 40 },
@@ -870,17 +870,17 @@ const FoodDeliveryDashboard = () => {
                     <ListItemText
                       primary={
                         <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-                          <Typography 
-                            fontWeight="600" 
+                          <Typography
+                            fontWeight="600"
                             color="text.primary"
                             sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                           >
                             {restaurant.name}
                           </Typography>
-                          <Chip 
+                          <Chip
                             label={restaurant.growth}
                             size="small"
-                            sx={{ 
+                            sx={{
                               bgcolor: '#e8f5e8',
                               color: '#4CAF50',
                               fontWeight: 600,
@@ -890,23 +890,23 @@ const FoodDeliveryDashboard = () => {
                         </Box>
                       }
                       secondary={
-                        <Stack 
-                          direction={{ xs: 'column', sm: 'row' }} 
-                          justifyContent="space-between" 
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          justifyContent="space-between"
                           alignItems={{ xs: 'flex-start', sm: 'center' }}
                           spacing={1}
                           sx={{ mt: 1 }}
                         >
-                          <Typography 
-                            variant="body2" 
+                          <Typography
+                            variant="body2"
                             color="text.secondary"
                             sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                           >
                             {restaurant.orders} orders • ⭐ {restaurant.rating}
                           </Typography>
-                          <Typography 
-                            variant="body2" 
-                            fontWeight="600" 
+                          <Typography
+                            variant="body2"
+                            fontWeight="600"
                             color="success.main"
                             sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                           >
@@ -924,10 +924,10 @@ const FoodDeliveryDashboard = () => {
 
         {/* Quick Actions */}
         <Box mt={{ xs: 3, sm: 5 }}>
-          <Typography 
-            variant={isMobile ? "body1" : "h6"} 
-            fontWeight="600" 
-            color="text.primary" 
+          <Typography
+            variant={isMobile ? "body1" : "h6"}
+            fontWeight="600"
+            color="text.primary"
             mb={2}
           >
             ⚡ Quick Actions
@@ -940,9 +940,9 @@ const FoodDeliveryDashboard = () => {
               { title: 'Analytics', icon: <Analytics />, color: '#9C27B0', desc: 'View detailed reports' },
             ].map((action, index) => (
               <Grid item xs={6} sm={6} md={3} key={index}>
-                <Card 
+                <Card
                   elevation={0}
-                  sx={{ 
+                  sx={{
                     p: { xs: 2, sm: 3 },
                     borderRadius: { xs: 2, sm: 3 },
                     border: '1px solid rgba(0,0,0,0.05)',
@@ -968,21 +968,21 @@ const FoodDeliveryDashboard = () => {
                       mb: { xs: 1.5, sm: 2 },
                     }}
                   >
-                    {React.cloneElement(action.icon, { 
-                      sx: { fontSize: { xs: 20, sm: 24 } } 
+                    {React.cloneElement(action.icon, {
+                      sx: { fontSize: { xs: 20, sm: 24 } }
                     })}
                   </Box>
-                  <Typography 
-                    variant={isMobile ? "body2" : "h6"} 
-                    fontWeight="600" 
-                    color="text.primary" 
+                  <Typography
+                    variant={isMobile ? "body2" : "h6"}
+                    fontWeight="600"
+                    color="text.primary"
                     mb={1}
                     sx={{ fontSize: { xs: '0.875rem', sm: '1.25rem' } }}
                   >
                     {action.title}
                   </Typography>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     color="text.secondary"
                     sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                   >
