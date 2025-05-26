@@ -2,25 +2,25 @@ const db = require('./config/database');
 const csv = require('csv-parser');
 const fs = require('fs');
 
-// Get all companies
+// Get all companies (for orders page, return plain array)
 exports.getCompanies = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM companies');
-    res.json({ status: 'success', companies: rows });
+    const [rows] = await db.query('SELECT id, name FROM companies');
+    res.json(rows); // Return array, not wrapped object
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Get stores for a company
+// Get stores for a company (for orders page, return plain array)
 exports.getCompanyStores = async (req, res) => {
   const companyId = req.query.company_id;
-  if (!companyId) return res.status(400).json({ status: 'error', message: 'company_id required' });
+  if (!companyId) return res.status(400).json({ error: 'company_id required' });
   try {
-    const [rows] = await db.query('SELECT * FROM company_stores WHERE company_id = ?', [companyId]);
-    res.json({ status: 'success', stores: rows });
+    const [rows] = await db.query('SELECT id, name FROM company_stores WHERE company_id = ?', [companyId]);
+    res.json(rows); // Return array, not wrapped object
   } catch (err) {
-    res.status(500).json({ status: 'error', message: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Box,
   Card,
@@ -24,7 +25,6 @@ import {
   Container,
   Avatar,
   Stack,
-  Divider,
   AppBar,
   Toolbar,
   Switch,
@@ -54,58 +54,17 @@ import {
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import * as XLSX from 'xlsx';
 
-// Dummy data for demonstration
-const dummyOrders = [
-  {
-    id: 1,
-    fileName: 'daily_orders_2025-05-25_001439.xlsx',
-    uploadDate: '2025-05-25 18:44',
-    orderDate: '2025-05-25',
-    company: 'Big Basket',
-    store: 'Kukatpully',
-    ridersCount: 15,
-    orders: 250,
-    status: 'Processed'
-  },
-  {
-    id: 2,
-    fileName: 'daily_orders_2025-05-24_224947.xlsx',
-    uploadDate: '2025-05-24 17:19',
-    orderDate: '2025-05-24',
-    company: 'Big Basket',
-    store: 'Kukatpully',
-    ridersCount: 12,
-    orders: 180,
-    status: 'Processed'
-  },
-  {
-    id: 3,
-    fileName: 'daily_orders_2025-05-23_112233.xlsx',
-    uploadDate: '2025-05-23 14:30',
-    orderDate: '2025-05-23',
-    company: 'Swiggy',
-    store: 'Gachibowli',
-    ridersCount: 20,
-    orders: 320,
-    status: 'Processing'
-  },
-  {
-    id: 4,
-    fileName: 'daily_orders_2025-05-22_095511.xlsx',
-    uploadDate: '2025-05-22 12:25',
-    orderDate: '2025-05-22',
-    company: 'Zomato',
-    store: 'Madhapur',
-    ridersCount: 8,
-    orders: 95,
-    status: 'Failed'
-  }
-];
+// Types for company and store
+interface Company {
+  id: number;
+  name: string;
+}
+interface Store {
+  id: number;
+  name: string;
+}
 
-const companies = ['Big Basket', 'Swiggy', 'Zomato', 'Amazon Fresh'];
-const stores = ['Kukatpully', 'Gachibowli', 'Madhapur', 'Kondapur', 'Miyapur'];
-
-function TabPanel({ children, value, index, ...other }) {
+function TabPanel({ children, value, index, ...other }: { children: React.ReactNode, value: number, index: number }) {
   return (
     <div
       role="tabpanel"
@@ -126,16 +85,18 @@ function TabPanel({ children, value, index, ...other }) {
 export default function OrderManagementSystem() {
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [company, setCompany] = useState('');
-  const [store, setStore] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [company, setCompany] = useState<string>('');
+  const [store, setStore] = useState<string>('');
   const [orderDate, setOrderDate] = useState('2025-05-25');
   const [defaultAmount, setDefaultAmount] = useState(40);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [orders, setOrders] = useState(dummyOrders);
+  const [orders, setOrders] = useState<any[]>([]);
   const [showAlert, setShowAlert] = useState(false);
-  const [excelData, setExcelData] = useState(null);
+  const [excelData, setExcelData] = useState<any[] | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
 
   const isMobile = useMediaQuery('(max-width:600px)');
 
@@ -228,26 +189,24 @@ export default function OrderManagementSystem() {
     },
   });
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
 
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files && event.target.files[0];
     if (file && file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
       setSelectedFile(file);
       setShowAlert(false);
-      
-      // Read Excel file
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const data = new Uint8Array(e.target.result);
+          if (!e.target) return;
+          const data = new Uint8Array(e.target.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
-          
           setExcelData(jsonData);
           console.log('Excel Data:', jsonData);
           console.log('Excel Headers:', Object.keys(jsonData[0] || {}));
@@ -260,7 +219,7 @@ export default function OrderManagementSystem() {
       reader.readAsArrayBuffer(file);
     } else {
       setShowAlert(true);
-      event.target.value = '';
+      if (event.target) event.target.value = '';
     }
   };
 
@@ -269,29 +228,20 @@ export default function OrderManagementSystem() {
       setShowAlert(true);
       return;
     }
-
     setIsUploading(true);
     setUploadProgress(0);
     setShowAlert(false);
-
     console.log('Starting upload process...');
     console.log('Selected File:', selectedFile.name);
-    console.log('Company:', company);
-    console.log('Store:', store);
-    console.log('Order Date:', orderDate);
-    console.log('Excel Data Being Uploaded:', excelData);
-
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsUploading(false);
-          
           const ridersCount = excelData ? excelData.length : Math.floor(Math.random() * 20) + 5;
-          const totalOrders = excelData ? 
-            excelData.reduce((sum, row) => sum + (parseInt(row.order_count) || 0), 0) : 
+          const totalOrders = excelData ?
+            excelData.reduce((sum, row) => sum + (parseInt((row as any).order_count) || 0), 0) :
             Math.floor(Math.random() * 200) + 100;
-          
           const newOrder = {
             id: orders.length + 1,
             fileName: selectedFile.name,
@@ -302,18 +252,16 @@ export default function OrderManagementSystem() {
             ridersCount,
             orders: totalOrders,
             status: 'Processing',
-            excelData: excelData
+            excelData: excelData || undefined
           };
-          
           setOrders([newOrder, ...orders]);
           console.log('Order uploaded successfully:', newOrder);
-          
           setSelectedFile(null);
           setCompany('');
           setStore('');
           setExcelData(null);
-          document.getElementById('file-input').value = '';
-          
+          const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
+          if (fileInput) fileInput.value = '';
           return 0;
         }
         return prev + 10;
@@ -321,7 +269,7 @@ export default function OrderManagementSystem() {
     }, 200);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'Processed': return 'success';
       case 'Processing': return 'warning';
@@ -330,7 +278,7 @@ export default function OrderManagementSystem() {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Processed': return <CheckCircle sx={{ fontSize: 16 }} />;
       case 'Processing': return <Schedule sx={{ fontSize: 16 }} />;
@@ -339,11 +287,11 @@ export default function OrderManagementSystem() {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, gradient, delay = 0 }) => (
+  const StatCard = ({ title, value, icon: Icon, gradient, delay = 0 }: { title: string, value: number, icon: any, gradient: string, delay?: number }) => (
     <Zoom in={true} timeout={500} style={{ transitionDelay: `${delay}ms` }}>
       <Card 
         sx={{ 
-          height: { xs: '120px', sm: '140px' }, // Adjusted height for smaller cards
+          height: { xs: '120px', sm: '140px' },
           background: gradient,
           color: 'white',
           position: 'relative',
@@ -368,7 +316,7 @@ export default function OrderManagementSystem() {
           <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ height: '100%' }}>
             <Box sx={{ flex: 1 }}>
               <Typography 
-                variant={{ xs: 'h5', sm: 'h4' }} 
+                variant="h4"
                 component="div" 
                 fontWeight="bold" 
                 sx={{ mb: 0.5, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}
@@ -390,6 +338,53 @@ export default function OrderManagementSystem() {
       </Card>
     </Zoom>
   );
+
+  // Fetch companies on mount
+  useEffect(() => {
+    console.log('Fetching companies...');
+    fetch('/api/companies')
+      .then(res => res.json())
+      .then((data) => {
+        console.log('API response for companies:', data);
+        // Transform the API response to match our interface
+        const transformedData = data.map((company: any) => ({
+          id: company.id,
+          name: company.company_name
+        }));
+        console.log('Transformed companies data:', transformedData);
+        setCompanies(transformedData);
+      })
+      .catch((error) => {
+        console.error('Error fetching companies:', error);
+        setCompanies([]);
+      });
+  }, []);
+
+  // Fetch stores when company changes
+  useEffect(() => {
+    if (company) {
+      console.log(`Fetching stores for company_id: ${company}...`);
+      fetch(`/api/stores?company_id=${encodeURIComponent(company)}`)
+        .then(res => res.json())
+        .then((data) => {
+          console.log('API response for stores:', data);
+          // Transform the API response to match our interface
+          const transformedData = data.map((store: any) => ({
+            id: store.id,
+            name: store.store_name
+          }));
+          console.log('Transformed stores data:', transformedData);
+          setStores(transformedData);
+        })
+        .catch((error) => {
+          console.error('Error fetching stores:', error);
+          setStores([]);
+        });
+    } else {
+      setStores([]);
+    }
+    setStore(''); // Reset store selection when company changes
+  }, [company]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -520,8 +515,8 @@ export default function OrderManagementSystem() {
                         sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                       >
                         {companies.map((comp) => (
-                          <MenuItem key={comp} value={comp}>
-                            {comp}
+                          <MenuItem key={comp.id} value={comp.id.toString()}>
+                            {comp.name}
                           </MenuItem>
                         ))}
                       </TextField>
@@ -535,10 +530,11 @@ export default function OrderManagementSystem() {
                         value={store}
                         onChange={(e) => setStore(e.target.value)}
                         sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                        disabled={!company}
                       >
                         {stores.map((st) => (
-                          <MenuItem key={st} value={st}>
-                            {st}
+                          <MenuItem key={st.id} value={st.id.toString()}>
+                            {st.name}
                           </MenuItem>
                         ))}
                       </TextField>
@@ -783,7 +779,7 @@ export default function OrderManagementSystem() {
                         type="number"
                         label="Amount Per Order (₹)"
                         value={defaultAmount}
-                        onChange={(e) => setDefaultAmount(e.target.value)}
+                        onChange={(e) => setDefaultAmount(Number(e.target.value))}
                         sx={{ 
                           mb: 3,
                           '& .MuiOutlinedInput-root': { borderRadius: 2 }
