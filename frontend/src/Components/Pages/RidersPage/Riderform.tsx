@@ -619,78 +619,7 @@ const RiderRegistrationForm = () => {
                 </Grid>
               </Grid>
 
-              {/* ID & Documents */}
-              <SectionHeader 
-                icon={<Description sx={{ color: '#0891b2' }} />} 
-                title="ID & Documents" 
-              />
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth variant="outlined">
-                    <InputLabel>ID Proof Type</InputLabel>
-                    <Select
-                      name="id_proof"
-                      value={formData.id_proof}
-                      onChange={handleInputChange}
-                      label="ID Proof Type"
-                    >
-                      <MenuItem value="">Select ID Proof</MenuItem>
-                      <MenuItem value="Aadhar">Aadhar Card</MenuItem>
-                      <MenuItem value="Passport">Passport</MenuItem>
-                      <MenuItem value="Driving License">Driving License</MenuItem>
-                      <MenuItem value="Voter ID">Voter ID</MenuItem>
-                      <MenuItem value="PAN">PAN Card</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="ID Card Number"
-                    name="id_card_number"
-                    value={formData.id_card_number}
-                    onChange={handleInputChange}
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="ID Card Issue Date"
-                    name="id_card_issue_date"
-                    type="date"
-                    value={formData.id_card_issue_date}
-                    onChange={handleInputChange}
-                    InputLabelProps={{ shrink: true }}
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="ID Card Expiry Date"
-                    name="id_card_expiry_date"
-                    type="date"
-                    value={formData.id_card_expiry_date}
-                    onChange={handleInputChange}
-                    InputLabelProps={{ shrink: true }}
-                    variant="outlined"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Documents (JSON format)"
-                    name="documents"
-                    value={formData.documents}
-                    onChange={handleInputChange}
-                    placeholder='{"license":"path/to/license.pdf", "insurance":"path/to/insurance.pdf"}'
-                    multiline
-                    rows={3}
-                    variant="outlined"
-                  />
-                </Grid>
-              </Grid>
+           
 
               {/* Vehicle Information */}
               <SectionHeader 
