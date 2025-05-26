@@ -52,6 +52,7 @@ import {
   Dashboard
 } from '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import * as XLSX from 'xlsx';
 
 // Dummy data for demonstration
 const dummyOrders = [
@@ -61,7 +62,7 @@ const dummyOrders = [
     uploadDate: '2025-05-25 18:44',
     orderDate: '2025-05-25',
     company: 'Big Basket',
-    store: 'Kukatpally',
+    store: 'Kukatpully',
     ridersCount: 15,
     orders: 250,
     status: 'Processed'
@@ -72,7 +73,7 @@ const dummyOrders = [
     uploadDate: '2025-05-24 17:19',
     orderDate: '2025-05-24',
     company: 'Big Basket',
-    store: 'Kukatpally',
+    store: 'Kukatpully',
     ridersCount: 12,
     orders: 180,
     status: 'Processed'
@@ -102,7 +103,7 @@ const dummyOrders = [
 ];
 
 const companies = ['Big Basket', 'Swiggy', 'Zomato', 'Amazon Fresh'];
-const stores = ['Kukatpally', 'Gachibowli', 'Madhapur', 'Kondapur', 'Miyapur'];
+const stores = ['Kukatpully', 'Gachibowli', 'Madhapur', 'Kondapur', 'Miyapur'];
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -134,6 +135,7 @@ export default function OrderManagementSystem() {
   const [isUploading, setIsUploading] = useState(false);
   const [orders, setOrders] = useState(dummyOrders);
   const [showAlert, setShowAlert] = useState(false);
+  const [excelData, setExcelData] = useState(null);
 
   const isMobile = useMediaQuery('(max-width:600px)');
 
@@ -235,6 +237,27 @@ export default function OrderManagementSystem() {
     if (file && file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
       setSelectedFile(file);
       setShowAlert(false);
+      
+      // Read Excel file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          
+          setExcelData(jsonData);
+          console.log('Excel Data:', jsonData);
+          console.log('Excel Headers:', Object.keys(jsonData[0] || {}));
+          console.log('Total Rows:', jsonData.length);
+        } catch (error) {
+          console.error('Error reading Excel file:', error);
+          setShowAlert(true);
+        }
+      };
+      reader.readAsArrayBuffer(file);
     } else {
       setShowAlert(true);
       event.target.value = '';
@@ -251,11 +274,23 @@ export default function OrderManagementSystem() {
     setUploadProgress(0);
     setShowAlert(false);
 
+    console.log('Starting upload process...');
+    console.log('Selected File:', selectedFile.name);
+    console.log('Company:', company);
+    console.log('Store:', store);
+    console.log('Order Date:', orderDate);
+    console.log('Excel Data Being Uploaded:', excelData);
+
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setIsUploading(false);
+          
+          const ridersCount = excelData ? excelData.length : Math.floor(Math.random() * 20) + 5;
+          const totalOrders = excelData ? 
+            excelData.reduce((sum, row) => sum + (parseInt(row.order_count) || 0), 0) : 
+            Math.floor(Math.random() * 200) + 100;
           
           const newOrder = {
             id: orders.length + 1,
@@ -264,16 +299,19 @@ export default function OrderManagementSystem() {
             orderDate,
             company,
             store: store || 'Not specified',
-            ridersCount: Math.floor(Math.random() * 20) + 5,
-            orders: Math.floor(Math.random() * 200) + 100,
-            status: 'Processing'
+            ridersCount,
+            orders: totalOrders,
+            status: 'Processing',
+            excelData: excelData
           };
           
           setOrders([newOrder, ...orders]);
+          console.log('Order uploaded successfully:', newOrder);
           
           setSelectedFile(null);
           setCompany('');
           setStore('');
+          setExcelData(null);
           document.getElementById('file-input').value = '';
           
           return 0;
@@ -305,7 +343,7 @@ export default function OrderManagementSystem() {
     <Zoom in={true} timeout={500} style={{ transitionDelay: `${delay}ms` }}>
       <Card 
         sx={{ 
-          height: '100%',
+          height: { xs: '120px', sm: '140px' }, // Adjusted height for smaller cards
           background: gradient,
           color: 'white',
           position: 'relative',
@@ -326,18 +364,26 @@ export default function OrderManagementSystem() {
           },
         }}
       >
-        <CardContent sx={{ position: 'relative', zIndex: 1 }}>
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-            <Box>
-              <Typography variant="h3" component="div" fontWeight="bold" sx={{ mb: 1, color: 'white' }}>
+        <CardContent sx={{ position: 'relative', zIndex: 1, p: 2, '&:last-child': { pb: 2 } }}>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ height: '100%' }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography 
+                variant={{ xs: 'h5', sm: 'h4' }} 
+                component="div" 
+                fontWeight="bold" 
+                sx={{ mb: 0.5, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem' } }}
+              >
                 {value}
               </Typography>
-              <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+              <Typography 
+                variant="body2" 
+                sx={{ color: 'rgba(255,255,255,0.9)', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+              >
                 {title}
               </Typography>
             </Box>
-            <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 56, height: 56 }}>
-              <Icon sx={{ fontSize: 28, color: 'white' }} />
+            <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: { xs: 40, sm: 48 }, height: { xs: 40, sm: 48 } }}>
+              <Icon sx={{ fontSize: { xs: 20, sm: 24 }, color: 'white' }} />
             </Avatar>
           </Stack>
         </CardContent>
@@ -348,7 +394,7 @@ export default function OrderManagementSystem() {
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', 
-        transition: 'all 0.3s ease',minWidth:'77vw'}}>
+        transition: 'all 0.3s ease', minWidth: '77vw' }}>
         {/* App Bar */}
         <AppBar 
           position="static" 
@@ -379,10 +425,10 @@ export default function OrderManagementSystem() {
           </Toolbar>
         </AppBar>
 
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          {/* Stats Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={4}>
+        <Container maxWidth="xl" sx={{ py: 3 }}>
+          {/* Stats Cards - Adjusted for smaller size */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={4}>
               <StatCard
                 title="Total Uploads"
                 value={orders.length}
@@ -391,7 +437,7 @@ export default function OrderManagementSystem() {
                 delay={0}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} sm={6} md={4}>
               <StatCard
                 title="Total Orders"
                 value={orders.reduce((sum, order) => sum + order.orders, 0)}
@@ -400,7 +446,7 @@ export default function OrderManagementSystem() {
                 delay={100}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} sm={12} md={4}>
               <StatCard
                 title="Active Companies"
                 value={new Set(orders.map(order => order.company)).size}
@@ -539,6 +585,23 @@ export default function OrderManagementSystem() {
                     </Grid>
                   </Grid>
 
+                  {/* Display Excel Data Preview */}
+                  {excelData && (
+                    <Alert 
+                      severity="success" 
+                      sx={{ mb: 4, borderRadius: 2 }}
+                    >
+                      <Typography variant="subtitle2" gutterBottom fontWeight={600}>
+                        Excel File Loaded Successfully!
+                      </Typography>
+                      <Typography variant="body2">
+                        • Total Records: {excelData.length}<br/>
+                        • Columns: {Object.keys(excelData[0] || {}).join(', ')}<br/>
+                        • Data logged to console for inspection
+                      </Typography>
+                    </Alert>
+                  )}
+
                   <Alert 
                     severity="info" 
                     sx={{ mb: 4, borderRadius: 2, bgcolor: theme.palette.mode === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)' }}
@@ -659,7 +722,12 @@ export default function OrderManagementSystem() {
                             </TableCell>
                             <TableCell>
                               <Stack direction="row" spacing={1}>
-                                <IconButton size="small" color="primary" sx={{ '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.1)' } }}>
+                                <IconButton 
+                                  size="small" 
+                                  color="primary" 
+                                  sx={{ '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.1)' } }}
+                                  onClick={() => order.excelData && console.log('View Data:', order.excelData)}
+                                >
                                   <Visibility fontSize="small" />
                                 </IconButton>
                                 <IconButton size="small" color="success" sx={{ '&:hover': { bgcolor: 'rgba(46, 125, 50, 0.1)' } }}>

@@ -25,24 +25,24 @@ import {
 type Company = { id: number; name?: string; company_name?: string };
 
 interface StoreFormProps {
-  onClose: () => void;
-  onSubmit: (formData: any) => void;
-  initialData: any;
-  companies: Company[];
+    onClose: () => void;
+    onSubmit: (formData: any) => void;
+    initialData: any;
+    companies: Company[];
 }
 
 const StoreForm: React.FC<StoreFormProps> = ({ onClose, onSubmit, initialData, companies }) => {
-  const [formData, setFormData] = useState<any>({
-    company_id: '',
-    store_name: '',
-    location: '',
-    address: '',
-    contact_person: '',
-    contact_phone: '',
-    status: 'active',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
+    const [formData, setFormData] = useState<any>({
+        company_id: '',
+        store_name: '',
+        location: '',
+        address: '',
+        contact_person: '',
+        contact_phone: '',
+        status: 'active',
+    });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
     useEffect(() => {
         if (initialData) {
@@ -211,6 +211,66 @@ const StoreForm: React.FC<StoreFormProps> = ({ onClose, onSubmit, initialData, c
                                 helperText={errors.contact_phone}
                             />
                         </Grid>
+
+
+                        <Grid item xs={12} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Latitude"
+                                name="custom_latitude"
+                                value={formData.custom_latitude}
+                                onChange={handleInputChange('custom_latitude')}
+                                onKeyDown={(e) => {
+                                    const key = e.key;
+                                    const allowedSpecialKeys = [
+                                        "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", ".", "End", "Home"
+                                    ];
+                                    const ctrlCombination = e.ctrlKey && ["c", "x", "z", "v"].includes(key.toLowerCase());
+                                    if (!allowedSpecialKeys.includes(key) && isNaN(parseInt(key)) && !ctrlCombination) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                error={!!errors.custom_latitude}
+                                helperText={errors.custom_latitude}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Longitude"
+                                name="custom_longitude"
+                                value={formData.custom_longitude}
+                                onChange={handleInputChange('custom_longitude')}
+                                onKeyDown={(e) => {
+                                    const key = e.key;
+                                    const allowedSpecialKeys = [
+                                        "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", ".", "End", "Home"
+                                    ];
+                                    const ctrlCombination = e.ctrlKey && ["c", "x", "z", "v"].includes(key.toLowerCase());
+                                    if (!allowedSpecialKeys.includes(key) && isNaN(parseInt(key)) && !ctrlCombination) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                error={!!errors.custom_longitude}
+                                helperText={errors.custom_longitude}
+                            />
+                        </Grid>
+
+                        <Grid item xs={12} md={4}>
+                            <TextField
+                                fullWidth
+                                label="Radius"
+                                name="custom_radius"
+                                value={formData.custom_radius}
+                                onChange={handleInputChange('custom_radius')}
+                                error={!!errors.custom_radius}
+                                helperText={errors.custom_radius}
+                            />
+                        </Grid>
+
+
+
                     </Grid>
 
                     {/* Action Buttons */}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Box, useTheme, useMediaQuery } from '@mui/material';
-import SideNav from './sideBar';
+import { SideNav } from './sideBar';
 
 const Layout: React.FC = () => {
   const theme = useTheme();
