@@ -288,11 +288,12 @@ const RiderRegistrationForm = () => {
   });
 
   const riderResult = await riderResponse.json();
+  const riderPrimaryId = riderResult.id || riderResult.rider_id; // Use numeric id for documents
 
   if (riderResponse.ok) {
     setSubmitStatus({
       type: 'success',
-      message: `Rider registered successfully! User ID: ${userId}, Rider ID: ${riderResult.rider_id || riderResult.id}`
+      message: `Rider registered successfully! User ID: ${userId}, Rider ID: ${riderPrimaryId}`
     });
     // Save rider_documents after rider is created
     if (formData.rider_documents && formData.rider_documents.length > 0) {
@@ -301,7 +302,7 @@ const RiderRegistrationForm = () => {
         let payload;
         if (doc.document_file instanceof File) {
           payload = new FormData();
-          payload.append('rider_id', riderResult.rider_id || riderResult.id);
+          payload.append('rider_id', riderPrimaryId);
           payload.append('document_type', doc.document_type);
           payload.append('document_number', doc.document_number);
           payload.append('expiry_date', doc.expiry_date);
@@ -312,7 +313,7 @@ const RiderRegistrationForm = () => {
           payload.append('document_file', doc.document_file);
         } else {
           payload = {
-            rider_id: riderResult.rider_id || riderResult.id,
+            rider_id: riderPrimaryId,
             document_type: doc.document_type,
             document_number: doc.document_number,
             document_file: doc.document_file || '',
@@ -446,7 +447,7 @@ const RiderRegistrationForm = () => {
                     required
                     variant="outlined"
                     error={!!errors.phone_number}
-                    helperText={errors.phone_number || "Enter 10-digit phone number"}
+                    helperText={errors.phone_number}
                     placeholder="9876543210"
                   />
                 </Grid>

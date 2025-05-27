@@ -100,4 +100,26 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Get attendance records for a rider (optionally by month/year)
+router.get('/attendance', async (req, res) => {
+  const { rider_id, month, year } = req.query;
+  if (!rider_id) return res.status(400).json({ error: 'Missing rider_id' });
+  let sql = `SELECT * FROM rider_attendance WHERE rider_id = ?`;
+  const params = [rider_id];
+  if (month && year) {
+    sql += ' AND MONTH(attendance_date) = ? AND YEAR(attendance_date) = ?';
+    params.push(month, year);
+  } else if (year) {
+    sql += ' AND YEAR(attendance_date) = ?';
+    params.push(year);
+  }
+  sql += ' ORDER BY attendance_date DESC';
+  try {
+    const [rows] = await db.query(sql, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
