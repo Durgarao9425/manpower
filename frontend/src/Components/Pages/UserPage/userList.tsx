@@ -191,27 +191,7 @@ const UserListing = () => {
       } else {
         // Create mode: add new user
         const response = await axios.post(`${API_BASE_URL}/users`, userData);
-        const createdUser = response.data;
-        // If user_type is rider or company, send a second request to create the minimal record
-        if (userData.user_type === 'rider') {
-          await axios.post(`${API_BASE_URL}/riders`, {
-            rider_id: userData.full_name,
-            user_id: createdUser.id,
-            rider_code: userData.username,
-            created_by: userData.created_by || 1,
-            status: userData.status || 'Active',
-          });
-        } else if (userData.user_type === 'company') {
-          await axios.post(`${API_BASE_URL}/companies`, {
-            user_id: createdUser.id,
-            company_name: userData.full_name,
-            company_email: userData.email,
-            company_phone: userData.phone,
-            logo: userData.profile_image,
-            created_by: userData.created_by || 1,
-          });
-        }
-        setUsers((prev) => [...prev, createdUser]);
+        setUsers((prev) => [...prev, response.data]);
         showSnackbar("User created successfully");
       }
       setShowForm(false);

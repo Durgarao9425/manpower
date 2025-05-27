@@ -50,12 +50,16 @@ interface UserFormData {
   address: string;
   profile_image: string;
   status: "active" | "inactive" | "suspended";
-  created_by?: number;
-  company_name?: string;
 }
 
 interface FormErrors {
-  [key: string]: string | undefined;
+  company_id?: string;
+  username?: string;
+  password?: string;
+  email?: string;
+  user_type?: string;
+  full_name?: string;
+  phone?: string;
 }
 
 const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
@@ -212,17 +216,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
   const handleSubmit = () => {
     if (validateAllFields()) {
-      // Add backend-required fields for minimal inserts
-      let dataToSend = { ...formData };
-      if (formData.user_type === 'rider') {
-        dataToSend.created_by = 1; // Or get from context/session if available
-        dataToSend.status = formData.status || 'Active';
-      }
-      if (formData.user_type === 'company') {
-        dataToSend.created_by = 1; // Or get from context/session if available
-        dataToSend.company_name = formData.full_name; // Use full_name as company_name if not present
-      }
-      onSave(dataToSend);
+      onSave(formData);
     }
   };
 
