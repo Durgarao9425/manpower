@@ -42,6 +42,13 @@ app.use('/api/rider-documents', riderDocumentsRouter);
 app.use('/api/rider-assignments', riderAssignmentsRouter);
 app.use('/api', ordersRoutes);
 
+// Log registered routes
+app._router.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(`Registered route: ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+  }
+});
+
 const PORT = process.env.PORT || 4003;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

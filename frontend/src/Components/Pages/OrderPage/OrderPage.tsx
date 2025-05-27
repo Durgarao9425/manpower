@@ -195,7 +195,7 @@ export default function OrderManagementSystem() {
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files && event.target.files[0];
-    if (file && file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+    if (file && (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.type === 'text/csv')) {
       setSelectedFile(file);
       setShowAlert(false);
       const reader = new FileReader();
@@ -223,7 +223,7 @@ export default function OrderManagementSystem() {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!selectedFile || !company || !orderDate) {
       setShowAlert(true);
       return;
@@ -231,42 +231,35 @@ export default function OrderManagementSystem() {
     setIsUploading(true);
     setUploadProgress(0);
     setShowAlert(false);
-    console.log('Starting upload process...');
-    console.log('Selected File:', selectedFile.name);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          const ridersCount = excelData ? excelData.length : Math.floor(Math.random() * 20) + 5;
-          const totalOrders = excelData ?
-            excelData.reduce((sum, row) => sum + (parseInt((row as any).order_count) || 0), 0) :
-            Math.floor(Math.random() * 200) + 100;
-          const newOrder = {
-            id: orders.length + 1,
-            fileName: selectedFile.name,
-            uploadDate: new Date().toLocaleString(),
-            orderDate,
-            company,
-            store: store || 'Not specified',
-            ridersCount,
-            orders: totalOrders,
-            status: 'Processing',
-            excelData: excelData || undefined
-          };
-          setOrders([newOrder, ...orders]);
-          console.log('Order uploaded successfully:', newOrder);
-          setSelectedFile(null);
-          setCompany('');
-          setStore('');
-          setExcelData(null);
-          const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
-          if (fileInput) fileInput.value = '';
-          return 0;
-        }
-        return prev + 10;
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('company_id', company);
+      formData.append('order_date', orderDate);
+      if (store) formData.append('store_id', store);
+
+      const response = await fetch('/api/orders/upload-daily', {
+        method: 'POST',
+        body: formData,
       });
-    }, 200);
+      if (!response.ok) throw new Error('Upload failed');
+      const result = await response.json();
+      setUploadProgress(100);
+      setIsUploading(false);
+      // Optionally, refresh order history or show success
+      alert('Upload successful!');
+      setSelectedFile(null);
+      setExcelData(null);
+      setCompany('');
+      setStore('');
+      // Clear file input
+      const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
+      if (fileInput) fileInput.value = '';
+    } catch (err) {
+      setIsUploading(false);
+      setShowAlert(true);
+      alert('Upload failed. Please check your file and try again.');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -557,7 +550,7 @@ export default function OrderManagementSystem() {
                       <input
                         id="file-input"
                         type="file"
-                        accept=".xlsx"
+                        accept=".csv, .xlsx"
                         onChange={handleFileChange}
                         style={{ display: 'none' }}
                       />
@@ -575,7 +568,7 @@ export default function OrderManagementSystem() {
                             '&:hover': { borderWidth: 2 }
                           }}
                         >
-                          {selectedFile ? selectedFile.name : 'Choose Excel File'}
+                          {selectedFile ? selectedFile.name : 'Choose Excel/CSV File'}
                         </Button>
                       </label>
                     </Grid>
@@ -606,7 +599,7 @@ export default function OrderManagementSystem() {
                       File Format Requirements:
                     </Typography>
                     <Typography variant="body2" component="div">
-                      • File must be in Excel (.xlsx) format<br/>
+                      • File must be in Excel (.xlsx) or CSV format<br/>
                       • First row must contain column headers<br/>
                       • Must include columns: company_rider_id and order_count<br/>
                       • Rider Name column is optional for display purposes
