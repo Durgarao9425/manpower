@@ -238,7 +238,7 @@ export default function OrderManagementSystem() {
       formData.append('order_date', orderDate);
       if (store) formData.append('store_id', store);
 
-      const response = await fetch('/api/orders/upload-daily', {
+      const response = await fetch('http://localhost:4003/api/orders/upload-daily', {
         method: 'POST',
         body: formData,
       });
@@ -246,7 +246,6 @@ export default function OrderManagementSystem() {
       const result = await response.json();
       setUploadProgress(100);
       setIsUploading(false);
-      // Optionally, refresh order history or show success
       alert('Upload successful!');
       setSelectedFile(null);
       setExcelData(null);
