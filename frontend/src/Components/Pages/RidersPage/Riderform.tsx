@@ -182,10 +182,25 @@ const RiderRegistrationForm = () => {
     try {
   // First create the user
   const userData = {
-   ...formData,
-    user_type: 'rider', // Ensure user_type is set for riders
-    created_by: 1 
+    username: formData.username,
+    password: formData.password,
+    email: formData.email,
+    user_type: 'rider',
+    full_name: formData.full_name,
+    phone: formData.phone_number,
+    address: formData.address,
+    status: 'active',
+    created_by: 1
   };
+
+  if (!userData.password || userData.password.trim() === '') {
+    setSubmitStatus({
+      type: 'error',
+      message: 'Password cannot be empty. Please enter or generate a password.'
+    });
+    setIsSubmitting(false);
+    return;
+  }
 
   console.log('Creating user:', userData);
   
@@ -199,11 +214,24 @@ const RiderRegistrationForm = () => {
 
   if (!userResponse.ok) {
     const userError = await userResponse.json();
-    throw new Error(userError.error || 'Failed to create user');
+    setSubmitStatus({
+      type: 'error',
+      message: userError.error || 'Failed to create user',
+    });
+    setIsSubmitting(false);
+    return;
   }
 
   const userResult = await userResponse.json();
-  const userId = userResult.user_id || userResult.id;
+  const userId = userResult.id;
+  if (!userId) {
+    setSubmitStatus({
+      type: 'error',
+      message: 'User creation failed: No user ID returned.',
+    });
+    setIsSubmitting(false);
+    return;
+  }
 
   let documentsValue = formData.documents;
   if (!documentsValue || documentsValue.trim() === '') {
