@@ -36,6 +36,56 @@ export const Attendance = () => {
         'Other'
     ];
 
+    // Replace with actual authentication/user context
+    const riderId = 1; // TODO: Replace with real rider ID from auth context
+    const riderName = 'Rider Name'; // TODO: Replace with real rider name from auth context
+
+    // API helpers
+    const punchIn = async () => {
+        try {
+            const res = await fetch('http://localhost:4003/api/attendance/punch-in', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rider_id: riderId, marked_by: riderName })
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Punch In failed');
+            return true;
+        } catch (err) {
+            showToastMessage(err.message);
+            return false;
+        }
+    };
+
+    const punchOut = async () => {
+        try {
+            const res = await fetch('http://localhost:4003/api/attendance/punch-out', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rider_id: riderId, marked_by: riderName })
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Punch Out failed');
+            return true;
+        } catch (err) {
+            showToastMessage(err.message);
+            return false;
+        }
+    };
+
+    const markAbsent = async (reason) => {
+        try {
+            const res = await fetch('http://localhost:4003/api/attendance/absent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rider_id: riderId, marked_by: riderName, remarks: reason })
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Mark Absent failed');
+            return true;
+        } catch (err) {
+            showToastMessage(err.message);
+            return false;
+        }
+    };
+
     // Update current time every second
     useEffect(() => {
         const timer = setInterval(() => {
@@ -114,21 +164,25 @@ export const Attendance = () => {
         setDragX(clampedX);
     };
 
-    const handleEnd = () => {
+    const handleEnd = async () => {
         if (!isDragging || attendanceState === 'completed') return;
         setIsDragging(false);
 
         if (dragX > maxDragDistance * 0.85) {
             setDragX(maxDragDistance);
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 const now = new Date();
                 if (attendanceState === 'punch-in') {
+                    const success = await punchIn();
+                    if (!success) { setDragX(0); return; }
                     setPunchInTime(now);
                     setAttendanceState('punch-out');
                     setWorkingTime(0);
                     showToastMessage('Punched in successfully!');
                 } else if (attendanceState === 'punch-out') {
+                    const success = await punchOut();
+                    if (!success) { setDragX(0); return; }
                     setPunchOutTime(now);
                     setAttendanceState('completed');
 
@@ -215,9 +269,10 @@ export const Attendance = () => {
         }
     };
 
-    const handleMarkAsAbsent = () => {
+    const handleMarkAsAbsent = async () => {
         if (!absentReason) return;
-
+        const success = await markAbsent(absentReason);
+        if (!success) return;
         const now = new Date();
         const newRecord = {
             id: Date.now(),
@@ -228,7 +283,6 @@ export const Attendance = () => {
             status: 'Absent',
             reason: absentReason
         };
-
         setAttendanceRecords(prev => [newRecord, ...prev]);
         setShowAbsentModal(false);
         setAbsentReason('');

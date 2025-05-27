@@ -32,6 +32,7 @@ const loginRoute = require('./src/routes/login');
 const riderDocumentsRouter = require('./src/routes/rider_documents');
 const riderAssignmentsRouter = require('./src/routes/rider_assignments');
 const ordersRoutes = require('./src/routes/orders');
+const attendanceRouter = require('./src/routes/attendance');
 
 app.use('/api/users', usersRouter);
 app.use('/api/companies', companiesRouter);
@@ -41,6 +42,7 @@ app.use('/api/login', loginRoute);
 app.use('/api/rider-documents', riderDocumentsRouter);
 app.use('/api/rider-assignments', riderAssignmentsRouter);
 app.use('/api', ordersRoutes);
+app.use('/api/attendance', attendanceRouter);
 
 // Log registered routes
 app._router.stack.forEach((middleware) => {

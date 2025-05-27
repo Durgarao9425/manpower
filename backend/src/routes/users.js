@@ -16,15 +16,47 @@ router.get('/', async (req, res) => {
 // Create a new user
 router.post('/', async (req, res) => {
   const {
-    company_id, username, password, email, user_type, full_name, phone, address, profile_image, status
+    company_id, username, password, email, user_type, full_name, phone, address, profile_image, status,
+    // Rider fields
+    rider_id, rider_code, created_by,
+    // Company fields
+    company_name, company_email, company_phone, logo
   } = req.body;
   try {
     const hashedPassword = password ? await bcrypt.hash(password, 10) : '';
     const sql = `INSERT INTO users (company_id, username, password, email, user_type, full_name, phone, address, profile_image, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`;
     const result = await db.query(sql, [company_id || null, username, hashedPassword, email, user_type, full_name, phone, address, profile_image, status]);
-    res.json({ id: result.insertId, ...req.body, password: undefined });
+    const user_id = result.insertId;
+    let extra = {};
+    if (user_type === 'rider') {
+      // Insert only minimal fields into riders
+      const riderSql = `INSERT INTO riders (rider_id, user_id, rider_code, created_by, status) VALUES (?, ?, ?, ?, ?)`;
+      try {
+        const [riderResult] = await db.query(riderSql, [
+          rider_id || full_name, user_id, rider_code || username, created_by, status || 'Active'
+        ]);
+        extra.rider_id = riderResult.insertId;
+      } catch (riderErr) {
+        console.error('Rider insert error:', riderErr);
+        return res.status(500).json({ error: 'Rider insert error', details: riderErr.message });
+      }
+    } else if (user_type === 'company') {
+      // Insert only minimal fields into companies
+      const companySql = `INSERT INTO companies (user_id, company_name, company_email, company_phone, logo, created_by) VALUES (?, ?, ?, ?, ?, ?)`;
+      try {
+        const [companyResult] = await db.query(companySql, [
+          user_id, company_name || full_name, company_email || email, company_phone || phone, logo, created_by
+        ]);
+        extra.company_id = companyResult.insertId;
+      } catch (companyErr) {
+        console.error('Company insert error:', companyErr);
+        return res.status(500).json({ error: 'Company insert error', details: companyErr.message });
+      }
+    }
+    res.json({ id: user_id, ...req.body, ...extra, password: undefined });
   } catch (err) {
-    res.status(500).json({ error: 'Error hashing password' });
+    console.error('User insert error:', err);
+    res.status(500).json({ error: 'User insert error', details: err.message });
   }
 });
 
