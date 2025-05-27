@@ -27,6 +27,7 @@ import CompanySettings from "../Components/Pages/SettingPage/Settings";
 import LoginPage from "../Components/Pages/Dashboard/Login/login";
 import ReusableListingPage from "../Components/Pages/RiderAttendace/AttendanceListingPage";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
+import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -84,6 +85,7 @@ const AppRoutes = () => {
           <Route path="/settings" element={<CompanySettings />} />
           <Route path="/rider-attendance" element={<RiderAttendanceApp />} />
           <Route path="/dynami-dashboard" element={<RiderDashboard />} />
+          <Route path="/upload-orders" element={<OrdersListingPage />} />
 
 
         </Route>

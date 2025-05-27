@@ -68,20 +68,28 @@ import ReplayIcon from '@mui/icons-material/Replay';
 
 
 const themeColors = {
-  primary: "#4F46E5",
+  primary: "#0F52BA", // Solid version of your main brand color
+  primaryGradient: "linear-gradient(135deg, #0F52BA, #008080, #00A86B, #50C878, #8A2BE2, #4169E1, #37FDFC)",
+
   secondary: "#6B7280",
+
   background: "#FFFFFF",
   cardBg: "#F9FAFB",
   sidebarBg: "#FFFFFF",
+
   textPrimary: "#111827",
   textSecondary: "#6B7280",
+
   borderColor: "#E5E7EB",
+
   success: "#10B981",
   warning: "#F59E0B",
   error: "#EF4444",
+
   highlight: "#4F46E5",
-  hoverBg: "#F3F4F6",
+  hoverBg: "#F3F4F6"
 };
+
 
 const presets = [
   { color: '#10B981', name: 'Green' },
@@ -112,7 +120,17 @@ const navigationItems = [
     submenu: [
       { id: "riders-list", text: "Riders", icon: <PeopleIcon />, path: "/riders" },
       { id: "rider-attendance", text: "Rider Attendance", icon: <AccessTimeIcon />, path: "/rider-attendance" },
-      { id: "orders", text: "Orders", icon: <LocalShippingIcon />, path: "/orders" },
+    ]
+  },
+
+   {
+    id: "orders",
+    text: "Orders",
+    icon: <LocalShippingIcon />,
+    hasSubmenu: true,
+    submenu: [
+      { id: "dailyorder", text: "Daily Orders", icon: <PeopleIcon />, path: "/orders" },
+      { id: "weekly-orders", text: "Weekly orders", icon: <AccessTimeIcon />, path: "/upload-orders" },
     ]
   },
   {
