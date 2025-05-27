@@ -417,44 +417,139 @@ const FoodDeliveryDashboard = () => {
   }, []);
 
   // Mock data
-  const mainStats = [
+ const mainStats = [
     {
-      title: 'Total Riders',
-      value: '18',
-      change: '+12%',
+      title: 'Total active users',
+      value: '18,765',
+      change: '+2.6%',
       trend: 'up',
-      icon: <DeliveryDining sx={{ fontSize: { xs: 32, sm: 40 } }} />,
       color: '#4CAF50',
-      bgColor: 'rgba(76, 175, 80, 0.1)',
     },
     {
-      title: 'Total Orders',
-      value: '18,542',
-      change: '+8.5%',
+      title: 'Total installed',
+      value: '4,876',
+      change: '+0.2%',
       trend: 'up',
-      icon: <ShoppingCart sx={{ fontSize: { xs: 32, sm: 40 } }} />,
       color: '#2196F3',
-      bgColor: 'rgba(33, 150, 243, 0.1)',
     },
     {
-      title: 'Total Companies',
-      value: '1,234',
-      change: '+5.2%',
-      trend: 'up',
-      icon: <Business sx={{ fontSize: { xs: 32, sm: 40 } }} />,
-      color: '#FF9800',
-      bgColor: 'rgba(255, 152, 0, 0.1)',
+      title: 'Total downloads',
+      value: '678',
+      change: '-0.1%',
+      trend: 'down',
+      color: '#FF5722',
     },
     {
       title: 'Total Earnings',
       value: '$287,450',
       change: '+15.3%',
       trend: 'up',
-      icon: <AttachMoney sx={{ fontSize: { xs: 32, sm: 40 } }} />,
       color: '#4CAF50',
-      bgColor: 'rgba(76, 175, 80, 0.1)',
     },
   ];
+
+
+  const MiniChartNew = ({ color, trend }) => {
+  const bars = [0.3, 0.2, 0.5, 0.7, 0.4, 0.8, 0.6, 0.9, 0.5, 0.7];
+  
+  return (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        alignItems: 'end', 
+        height: 40, 
+        gap: 0.5,
+        ml: 2
+      }}
+    >
+      {bars.map((height, index) => (
+        <Box
+          key={index}
+          sx={{
+            width: 3,
+            height: height * 40,
+            backgroundColor: color,
+            borderRadius: 0.5,
+            opacity: 0.8
+          }}
+        />
+      ))}
+    </Box>
+  );
+};
+
+const StatCardNew = ({ stat }) => {
+  const theme = useTheme();
+  
+  return (
+    <Card 
+      sx={{ 
+        height: '100%',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        border: '1px solid',
+        borderColor: 'rgba(0,0,0,0.06)',
+        borderRadius: 2,
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          transform: 'translateY(-2px)'
+        }
+      }}
+    >
+      <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 1,
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }}
+            >
+              {stat.title}
+            </Typography>
+            
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 700,
+                color: 'text.primary',
+                mb: 1,
+                fontSize: { xs: '1.75rem', sm: '2rem' }
+              }}
+            >
+              {stat.value}
+            </Typography>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {stat.trend === 'up' ? (
+                <TrendingUp sx={{ fontSize: 16, color: '#4CAF50' }} />
+              ) : (
+                <TrendingDown sx={{ fontSize: 16, color: '#f44336' }} />
+              )}
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: stat.trend === 'up' ? '#4CAF50' : '#f44336',
+                  fontWeight: 600,
+                  fontSize: '0.75rem'
+                }}
+              >
+                {stat.change} last 7 days
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <MiniChartNew color={stat.color} trend={stat.trend} />
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
 
   const todayStats = [
     {
@@ -669,21 +764,23 @@ const FoodDeliveryDashboard = () => {
         </Box>
 
         {/* Main Stats */}
-        <Typography
-          variant={isMobile ? "body1" : "h6"}
-          fontWeight="600"
-          color="text.primary"
-          mb={2}
-        >
-          📊 Overview Statistics
-        </Typography>
-        <Grid container spacing={{ xs: 2, sm: 3 }} mb={{ xs: 3, sm: 5 }}>
-          {mainStats.map((stat, index) => (
-            <Grid item xs={6} sm={6} md={3} key={index}>
-              <StatCard stat={stat} />
-            </Grid>
-          ))}
-        </Grid>
+       <Typography
+        variant={isMobile ? "body1" : "h6"}
+        fontWeight="600"
+        color="text.primary"
+        mb={2}
+        sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+      >
+        📊 Overview Statistics
+      </Typography>
+      
+      <Grid container spacing={{ xs: 2, sm: 3 }} mb={{ xs: 3, sm: 5 }}>
+        {mainStats.map((stat, index) => (
+          <Grid item xs={6} sm={6} md={3} key={index}>
+            <StatCardNew stat={stat} />
+          </Grid>
+        ))}
+      </Grid>
 
         {/* Today's Stats */}
         <Typography

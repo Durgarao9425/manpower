@@ -15,8 +15,10 @@ import {
   Avatar,
   Box,
   FormHelperText,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
-import { CloudUpload } from "@mui/icons-material";
+import { CloudUpload, Visibility, VisibilityOff } from "@mui/icons-material";
 import type { SelectChangeEvent } from "@mui/material/Select";
 
 interface User {
@@ -68,7 +70,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
     username: "",
     password: "",
     email: "",
-    user_type: "",
+    user_type: "admin",
     full_name: "",
     phone: "",
     address: "",
@@ -78,6 +80,97 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isEditMode, setIsEditMode] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Single unified handle change function
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    const fieldName = name as keyof UserFormData;
+
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+
+    // Clear error for this field when user starts typing
+    if (errors[fieldName]) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: undefined,
+      }));
+    }
+
+    // Clear submit status
+    if (submitStatus.message) {
+      setSubmitStatus({ type: '', message: '' });
+    }
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent<string>) => {
+    const { name, value } = e.target;
+    const fieldName = name as keyof UserFormData;
+
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+
+    // Clear error for this field when user makes selection
+    if (errors[fieldName]) {
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: undefined,
+      }));
+    }
+  };
+
+  // Generate username from full_name
+  const generateUsername = () => {
+    // Use the current state value directly
+    setFormData((prev) => {
+      const fullName = prev.full_name.trim();
+      if (!fullName) return prev;
+
+      const baseName = fullName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') // Remove special characters and spaces
+        .substring(0, 8);
+      
+      const timestamp = Date.now().toString().slice(-4);
+      const username = baseName ? `${baseName}_${timestamp}` : `user_${timestamp}`;
+      
+      return {
+        ...prev,
+        username: username
+      };
+    });
+
+    // Clear username error if any
+    if (errors.username) {
+      setErrors(prev => ({ ...prev, username: '' }));
+    }
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      password: password
+    }));
+
+    // Clear password error if any
+    if (errors.password) {
+      setErrors(prev => ({ ...prev, password: '' }));
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -86,7 +179,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
         username: user.username ?? "",
         password: "", // Password is never prefilled for security reasons
         email: user.email ?? "",
-        user_type: user.user_type ?? "",
+        user_type: user.user_type ?? "admin",
         full_name: user.full_name ?? "",
         phone: user.phone ?? "",
         address: user.address ?? "",
@@ -100,7 +193,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
         username: "",
         password: "",
         email: "",
-        user_type: "",
+        user_type: "admin",
         full_name: "",
         phone: "",
         address: "",
@@ -111,6 +204,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
     }
     // Clear errors when user changes
     setErrors({});
+    setSubmitStatus({ type: '', message: '' });
   }, [user]);
 
   const validateField = (
@@ -174,44 +268,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
     setErrors(newErrors);
     return isValid;
-  };
-
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    const fieldName = name as keyof UserFormData;
-
-    setFormData((prev) => ({
-      ...prev,
-      [fieldName]: value,
-    }));
-
-    // Clear error for this field when user starts typing
-    if (errors[fieldName]) {
-      setErrors((prev) => ({
-        ...prev,
-        [fieldName]: undefined,
-      }));
-    }
-  };
-
-  const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    const fieldName = name as keyof UserFormData;
-
-    setFormData((prev) => ({
-      ...prev,
-      [fieldName]: value,
-    }));
-
-    // Clear error for this field when user makes selection
-    if (errors[fieldName]) {
-      setErrors((prev) => ({
-        ...prev,
-        [fieldName]: undefined,
-      }));
-    }
   };
 
   const handleSubmit = () => {
@@ -285,18 +341,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    required
-                    error={!!errors.username}
-                    helperText={errors.username}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
                     label="Full Name"
                     name="full_name"
                     value={formData.full_name}
@@ -306,6 +350,17 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                     helperText={errors.full_name}
                   />
                 </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                  />
+                </Grid>
+
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
@@ -319,31 +374,6 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                     helperText={errors.email}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </Grid>
-
-                {!isEditMode && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      error={!!errors.password}
-                      helperText={errors.password}
-                    />
-                  </Grid>
-                )}
 
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth required error={!!errors.user_type}>
@@ -355,15 +385,97 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
                       label="User Type"
                     >
                       <MenuItem value="admin">Admin</MenuItem>
-                      <MenuItem value="company">Company</MenuItem>
-                      <MenuItem value="rider">Rider</MenuItem>
-                      <MenuItem value="store_manager">Store Manager</MenuItem>
+                      <MenuItem value="user">User</MenuItem>
+                      <MenuItem value="manager">Manager</MenuItem>
                     </Select>
                     {errors.user_type && (
                       <FormHelperText>{errors.user_type}</FormHelperText>
                     )}
                   </FormControl>
                 </Grid>
+
+                {/* Username Generation Row */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <TextField
+                      fullWidth
+                      label="Username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      required
+                      variant="outlined"
+                      error={!!errors.username}
+                      helperText={errors.username}
+                      placeholder="Enter username or generate from full name"
+                      sx={{ flex: 1 }}
+                    />
+                    
+                    <Button
+                      variant="contained"
+                      onClick={generateUsername}
+                      disabled={!formData.full_name.trim()}
+                      sx={{
+                        bgcolor: '#0891b2',
+                        '&:hover': { bgcolor: '#0e7490' },
+                        minWidth: 120,
+                        whiteSpace: 'nowrap',
+                        mt: 0.5,
+                        height: 56
+                      }}
+                    >
+                      Generate
+                    </Button>
+                  </Box>
+                </Grid>
+
+                {/* Password Generation Row - Only show in create mode */}
+                {!isEditMode && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                      <TextField
+                        fullWidth
+                        label="Password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        variant="outlined"
+                        error={!!errors.password}
+                        helperText={errors.password}
+                        placeholder="Enter password or generate"
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                onClick={() => setShowPassword(!showPassword)}
+                                edge="end"
+                              >
+                                {showPassword ? <VisibilityOff /> : <Visibility />}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{ flex: 1 }}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={generatePassword}
+                        sx={{
+                          bgcolor: '#0891b2',
+                          '&:hover': { bgcolor: '#0e7490' },
+                          minWidth: 120,
+                          whiteSpace: 'nowrap',
+                          mt: 0.5,
+                          height: 56
+                        }}
+                      >
+                        Generate
+                      </Button>
+                    </Box>
+                  </Grid>
+                )}
 
                 <Grid item xs={12} sm={6}>
                   <TextField

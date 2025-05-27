@@ -22,66 +22,51 @@ import {
   CssBaseline,
   Collapse,
   Menu,
-  MenuItem,
   ListItemAvatar,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
   Switch,
-  FormControlLabel,
   Card,
-  CardContent,
   Grid,
   Chip,
-  Stack,
+  Tooltip,
+  Slider,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
   Home as HomeIcon,
   Person as AgentIcon,
-  Group as CallingGroupIcon,
   Assessment as ReportsIcon,
-  GetApp as DownloadsIcon,
-  Contacts as ContactListIcon,
-  VolumeUp as SoundsIcon,
   Settings as SettingsIcon,
   ExpandLess,
   ExpandMore,
-  List as ListIcon,
-  PersonAdd as AddPersonIcon,
-  History as HistoryIcon,
-  ExitToApp as ExitIcon,
   Notifications as NotificationsIcon,
   Dashboard as DashboardIcon,
-  People as RidersIcon,
-  LocalShipping as OrdersIcon,
-  Payments as PaymentsIcon,
   Person as PersonIcon,
-  LocalGasStation as FuelIcon,
-  BusinessCenter as CompaniesIcon,
-  Store as StoresIcon,
-  Schedule as AttendanceIcon,
-  AttachMoney as EarningsIcon,
-  CreditScore as AdvanceIcon,
-  AccountBalance as SettlementIcon,
-  Receipt as InvoiceIcon,
-  Security as SecurityIcon,
-  FileUpload as FileUploadIcon,
   LocalShipping as LocalShippingIcon,
   Work as WorkIcon,
-  Subscriptions as SubscriptionsIcon,
   Logout as LogoutIcon,
   Close as CloseIcon,
   DarkMode as DarkModeIcon,
   Contrast as ContrastIcon,
-  CompareArrows as RTLIcon,
   ViewCompact as CompactIcon,
-  Palette as PaletteIcon
 } from "@mui/icons-material";
 import durgarao from '../../../Images/durgarao.jpeg'
+import PeopleIcon from "@mui/icons-material/People";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import BusinessIcon from "@mui/icons-material/Business";
+import StoreIcon from "@mui/icons-material/Store";
+import PaymentIcon from "@mui/icons-material/Payment";
+import PaidIcon from "@mui/icons-material/Paid";
+import SavingsIcon from "@mui/icons-material/Savings";
+import GavelIcon from "@mui/icons-material/Gavel";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import DownloadIcon from "@mui/icons-material/Download";
+import ReceiptIcon from "@mui/icons-material/Receipt";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import ReplayIcon from '@mui/icons-material/Replay';
 
-// Theme colors matching the design
+
 const themeColors = {
   primary: "#4F46E5",
   secondary: "#6B7280",
@@ -98,50 +83,58 @@ const themeColors = {
   hoverBg: "#F3F4F6",
 };
 
+const presets = [
+  { color: '#10B981', name: 'Green' },
+  { color: '#3B82F6', name: 'Blue' },
+  { color: '#8B5CF6', name: 'Purple' },
+  { color: '#60A5FA', name: 'Light Blue' },
+  { color: '#F59E0B', name: 'Orange' },
+  { color: '#EF4444', name: 'Red' },
+];
 // Drawer width
 const drawerWidth = 240;
 
 // Navigation items
+
 const navigationItems = [
   {
     id: "home",
     text: "Home",
-    icon: <HomeIcon />,
+    icon: <DashboardIcon />,
     path: "/dashboard",
     hasSubmenu: false
   },
   {
     id: "riders",
     text: "Riders",
-    icon: <RidersIcon />,
+    icon: <PeopleIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "riders", text: "Riders", icon: <AttendanceIcon />, path: "/riders" },
-      { id: "attendance", text: "Rider Attendance", icon: <AttendanceIcon />, path: "/rider-attendance" },
-      { id: "Orders", text: "Orders", icon: <OrdersIcon />, path: "/orders" },
+      { id: "riders-list", text: "Riders", icon: <PeopleIcon />, path: "/riders" },
+      { id: "rider-attendance", text: "Rider Attendance", icon: <AccessTimeIcon />, path: "/rider-attendance" },
+      { id: "orders", text: "Orders", icon: <LocalShippingIcon />, path: "/orders" },
     ]
   },
   {
     id: "companies",
     text: "Companies",
-    icon: <CompaniesIcon />,
+    icon: <BusinessIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "companies", text: "Companies", icon: <StoresIcon />, path: "/companies" },
-      { id: "stores", text: "Stores", icon: <StoresIcon />, path: "/stores" },
+      { id: "companies-list", text: "Companies", icon: <BusinessIcon />, path: "/companies" },
+      { id: "stores", text: "Stores", icon: <StoreIcon />, path: "/stores" },
     ]
   },
   {
     id: "payments",
     text: "Payments",
-    icon: <PaymentsIcon />,
-    path: "/payments",
+    icon: <PaymentIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "payments", text: "Payments", icon: <EarningsIcon />, path: "/payments" },
-      { id: "earnings", text: "Earnings", icon: <EarningsIcon />, path: "/earnings" },
-      { id: "advance", text: "Advance", icon: <EarningsIcon />, path: "/advance" },
-      { id: "settlement", text: "Settlement", icon: <SettlementIcon />, path: "/settlement" },
+      { id: "payments-list", text: "Payments", icon: <PaidIcon />, path: "/payments" },
+      { id: "earnings", text: "Earnings", icon: <SavingsIcon />, path: "/earnings" },
+      { id: "advance", text: "Advance", icon: <PaymentIcon />, path: "/advance" },
+      { id: "settlement", text: "Settlement", icon: <GavelIcon />, path: "/settlement" },
     ]
   },
   {
@@ -154,44 +147,43 @@ const navigationItems = [
   {
     id: "reports",
     text: "Reports",
-    icon: <ReportsIcon />,
+    icon: <BarChartIcon />,
     path: "/reports",
     hasSubmenu: false
   },
   {
     id: "downloads",
     text: "Downloads",
-    icon: <DownloadsIcon />,
+    icon: <DownloadIcon />,
     path: "/downloads",
     hasSubmenu: false
   },
   {
     id: "invoice",
     text: "Invoice",
-    icon: <InvoiceIcon />,
+    icon: <ReceiptIcon />,
     path: "/invoice",
-    hasSubmenu: false
-  },
-  {
-    id: "sounds",
-    text: "Sounds",
-    icon: <SoundsIcon />,
-    path: "/sounds",
     hasSubmenu: false
   },
   {
     id: "settings",
     text: "Settings",
     icon: <SettingsIcon />,
-    path: "/settings",
     hasSubmenu: true,
     submenu: [
-      { id: "role_permissions", text: "Role Permissions", icon: <SecurityIcon />, path: "/role-permissions" },
-      { id: "data_import", text: "Data Import", icon: <FileUploadIcon />, path: "/data-import" },
+      { id: "role-permissions", text: "Role Permissions", icon: <AdminPanelSettingsIcon />, path: "/role-permissions" },
+      { id: "data-import", text: "Data Import", icon: <UploadFileIcon />, path: "/data-import" },
     ]
   },
 ];
 
+
+const fonts = [
+  { label: 'Public Sans', value: 'Public Sans' },
+  { label: 'DM Sans', value: 'DM Sans' },
+  { label: 'Inter', value: 'Inter' },
+  { label: 'Nunito Sans', value: 'Nunito Sans' }
+];
 // Mobile bottom navigation items
 const bottomNavItems = [
   { label: "Home", icon: <HomeIcon />, path: "/dashboard" },
@@ -212,6 +204,9 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<{ [key: string]: boolean }>({});
+
+   const [selectedFont, setSelectedFont] = useState('Inter');
+  const [fontSize, setFontSize] = useState(15);
 
   // AppBar related states
   const [notificationAnchor, setNotificationAnchor] = useState(null);
@@ -236,7 +231,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
     avatar: durgarao
   };
 
-    const handleLogout = () => {
+  const handleLogout = () => {
     // Optional: clear user data here
     navigate('/login');
   };
@@ -699,50 +694,55 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
           </ListItem>
         </List>
 
-       <Box sx={{ p: 3 }}>
-      <Button
-        fullWidth
-        variant="contained"
-        startIcon={<LogoutIcon />}
-        onClick={handleLogout}
-        sx={{
-          bgcolor: '#ffebee',
-          color: '#d32f2f',
-          borderRadius: 3,
-          py: 1.5,
-          '&:hover': { bgcolor: '#ffcdd2' },
-          boxShadow: 'none'
-        }}
-      >
-        Logout
-      </Button>
-    </Box>
+        <Box sx={{ p: 3 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+            sx={{
+              bgcolor: '#ffebee',
+              color: '#d32f2f',
+              borderRadius: 3,
+              py: 1.5,
+              '&:hover': { bgcolor: '#ffcdd2' },
+              boxShadow: 'none'
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
       </Box>
     </Drawer>
   );
 
   const renderSettingsDrawer = () => (
-    <Drawer
-      anchor="right"
-      open={settingsOpen}
-      onClose={handleCloseSettings}
-      sx={{
-        '& .MuiDrawer-paper': {
-          width: 320,
-          bgcolor: '#f8f9fa',
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.1)'
-        }
-      }}
-    >
-      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{
-          p: 3,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid #e0e0e0',
-          bgcolor: '#f8f9fa',
-        }}>
+   
+<Drawer
+  anchor="right"
+  open={settingsOpen}
+  onClose={handleCloseSettings}
+  sx={{
+    '& .MuiDrawer-paper': {
+      width: 390,
+      bgcolor: '#f8f9fa',
+      boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
+      boxSizing: 'border-box', // important
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+    }
+  }}
+>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <Box sx={{
+      p: 3,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottom: '1px solid #e0e0e0',
+      bgcolor: '#f8f9fa',
+    }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Settings
           </Typography>
@@ -759,50 +759,31 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
           </Box>
         </Box>
 
-        <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-          {/* Presets Section */}
+    <Box sx={{ flex: 1, overflowY: 'auto', p: 3, boxSizing: 'border-box' }}>
+
+
+
           <Box sx={{ mb: 4 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                bgcolor: '#343a40',
-                color: 'white',
-                px: 2,
-                py: 1,
-                borderRadius: 2,
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                display: 'inline-block',
-                mb: 2
-              }}
-            >
+            <Typography variant="subtitle2" fontWeight={600} mb={2}>
               Presets
             </Typography>
 
-            <Grid container spacing={2}>
-              {[
-                { color: '#10B981', name: 'Green' },
-                { color: '#3B82F6', name: 'Blue' },
-                { color: '#8B5CF6', name: 'Purple' },
-                { color: '#3B82F6', name: 'Light Blue' },
-                { color: '#F59E0B', name: 'Orange' },
-                { color: '#EF4444', name: 'Red' }
-              ].map((preset, index) => (
+            <Grid container spacing={1}>
+              {presets.map((preset, index) => (
                 <Grid item xs={4} key={index}>
                   <Box
                     sx={{
-                      bgcolor: '#f0f0f0',
-                      borderRadius: 3,
-                      p: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      borderRadius: 2,
+                      p: 1,
+                      bgcolor: 'background.paper',
+                      border: '1px solid #e0e0e0',
+                      textAlign: 'center',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      transition: '0.2s',
                       '&:hover': {
-                        bgcolor: '#e0e0e0',
-                        transform: 'scale(1.05)'
-                      }
+                        boxShadow: 2,
+                        transform: 'translateY(-2px)',
+                      },
                     }}
                   >
                     <Box
@@ -811,23 +792,130 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                         height: 24,
                         bgcolor: preset.color,
                         borderRadius: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px'
+                        mx: 'auto',
                       }}
-                    >
-                      ☰
-                    </Box>
+                    />
+                    <Typography variant="caption" mt={1} display="block">
+                      {preset.name}
+                    </Typography>
                   </Box>
                 </Grid>
               ))}
             </Grid>
           </Box>
 
+         <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          borderRadius: 4,
+          width: '100%',  // Changed from fixed 320px to 100%
+          background: 'linear-gradient(145deg, #f0f4f8, #ffffff)',
+          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxSizing: 'border-box',
+        }}
+      >
+      <Box display="flex" alignItems="center" mb={2}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 700,
+            bgcolor: '#000',
+            color: '#fff',
+            borderRadius: 2,
+            px: 1.5,
+            py: 0.5,
+            fontSize: '0.75rem'
+          }}
+        >
+          Font
+        </Typography>
+      </Box>
+
+      <Box display="flex" alignItems="center" gap={1} mb={1}>
+        <ReplayIcon fontSize="small" />
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+          Family
+        </Typography>
+      </Box>
+
+      <Grid container spacing={2} mb={2}>
+        {fonts.map((font) => (
+          <Grid item xs={6} key={font.value}>
+            <Paper
+              onClick={() => setSelectedFont(font.value)}
+              elevation={0}
+              sx={{
+                p: 2,
+                textAlign: 'center',
+                borderRadius: 3,
+                cursor: 'pointer',
+                border: selectedFont === font.value ? '2px solid #10B981' : '1px solid #ccc',
+                backgroundColor: selectedFont === font.value ? '#f0fdf4' : 'transparent',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: font.value,
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  color: selectedFont === font.value ? '#10B981' : '#aaa'
+                }}
+              >
+                Aa
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: selectedFont === font.value ? '#000' : '#aaa',
+                  fontWeight: 600
+                }}
+              >
+                {font.label}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Box display="flex" alignItems="center" gap={1} mb={1}>
+        <ReplayIcon fontSize="small" />
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+          Size
+        </Typography>
+      </Box>
+
+      <Box px={1}>
+        <Tooltip title={`${fontSize}px`} arrow placement="top">
+          <Slider
+            value={fontSize}
+            onChange={(e, newValue) => setFontSize(newValue)}
+            min={12}
+            max={20}
+            step={1}
+            valueLabelDisplay="off"
+            sx={{
+              color: '#10B981',
+              height: 8,
+              '& .MuiSlider-thumb': {
+                width: 20,
+                height: 20
+              },
+              '& .MuiSlider-track': {
+                border: 'none'
+              }
+            }}
+          />
+        </Tooltip>
+      </Box>
+    </Paper>
+
+
           {/* Mode Settings */}
-          <Grid container spacing={2} sx={{ mb: 4 }}>
+          {/* <Grid container spacing={2} sx={{ mb: 4 }}>
             <Grid item xs={6}>
               <Card sx={{ p: 2, bgcolor: darkMode ? '#2B2D31' : 'white', borderRadius: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -887,10 +975,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                 </Typography>
               </Card>
             </Grid>
-          </Grid>
+          </Grid> */}
 
           {/* Font Section */}
-          <Box sx={{ mb: 4 }}>
+          {/* <Box sx={{ mb: 4 }}>
             <Typography
               variant="subtitle1"
               sx={{
@@ -988,7 +1076,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                 </Card>
               </Grid>
             </Grid>
-          </Box>
+          </Box> */}
         </Box>
       </Box>
     </Drawer>
@@ -1126,10 +1214,20 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
 
             <IconButton
               onClick={handleSettingsClick}
-              sx={{ color: '#666', mr: 1 }}
+              sx={{
+                color: '#666',
+                mr: 1,
+                animation: 'spin 10s linear infinite', // ⏳ Slow spin (10 seconds per rotation)
+                '@keyframes spin': {
+                  from: { transform: 'rotate(0deg)' },
+                  to: { transform: 'rotate(360deg)' }
+                }
+              }}
             >
               <SettingsIcon />
             </IconButton>
+
+
 
             <IconButton
               onClick={handleProfileClick}
