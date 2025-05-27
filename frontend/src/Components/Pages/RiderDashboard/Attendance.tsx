@@ -41,6 +41,23 @@ export const Attendance = () => {
     const riderName = 'Rider Name'; // TODO: Replace with real rider name from auth context
 
     // API helpers
+    const fetchAttendanceRecords = async (month = null, year = null) => {
+        try {
+            let url = `http://localhost:4003/api/attendance?rider_id=${riderId}`;
+            if (month !== null && year !== null) {
+                url += `&month=${month + 1}&year=${year}`;
+            } else if (year !== null) {
+                url += `&year=${year}`;
+            }
+            const response = await fetch(url);
+            if (!response.ok) throw new Error((await response.json()).error || 'Failed to fetch attendance records');
+            return await response.json();
+        } catch (err) {
+            showToastMessage(err.message);
+            return [];
+        }
+    };
+
     const punchIn = async () => {
         try {
             const res = await fetch('http://localhost:4003/api/attendance/punch-in', {
@@ -300,6 +317,26 @@ export const Attendance = () => {
     ];
 
     const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
+    // Fetch attendance records on mount and when filters change
+    useEffect(() => {
+        const loadRecords = async () => {
+            const records = await fetchAttendanceRecords(filterMonth, filterYear);
+            setAttendanceRecords(records.map(record => ({
+                ...record,
+                date: new Date(record.attendance_date),
+                punchIn: record.check_in_time ? new Date(record.check_in_time) : null,
+                punchOut: record.check_out_time ? new Date(record.check_out_time) : null,
+                totalHours: record.status === 'present' && record.check_in_time && record.check_out_time
+                    ? calculateWorkHours(new Date(record.check_in_time), new Date(record.check_out_time))
+                    : '0h 0m',
+                status: record.status === 'present' ? 'Present' : 'Absent',
+                reason: record.remarks
+            })));
+        };
+        loadRecords();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterMonth, filterYear]);
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
