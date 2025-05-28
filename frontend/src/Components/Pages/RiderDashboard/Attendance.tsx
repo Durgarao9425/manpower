@@ -74,11 +74,30 @@ const Attendance: React.FC = () => {
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
 
   // Mock rider data - In real app, get from auth context
-  const riderData: RiderData = {
-    id: 38,
+  const [riderData, setRiderData] = useState<RiderData>({
+    id: 54,
     name: 'Rider Name',
     company_id: 21,
-    store_id: 29
+    store_id: 28
+  });
+
+  // Fetch rider assignment data
+  const fetchRiderAssignment = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/rider-assignments/by-rider/${riderData.id}`);
+      if (response.ok) {
+        const assignment = await response.json();
+        setRiderData(prevData => ({
+          ...prevData,
+          company_id: assignment.company_id,
+          store_id: assignment.store_id
+        }));
+      } else {
+        console.error('Failed to fetch rider assignment');
+      }
+    } catch (error) {
+      console.error('Error fetching rider assignment:', error);
+    }
   };
 
   const theme = useTheme();
@@ -223,6 +242,9 @@ const Attendance: React.FC = () => {
       
       const payload = {
         rider_id: riderData.id,
+        company_id: riderData.company_id,
+        store_id: riderData.store_id,
+        attendance_date: getTodayDateForAPI(),
         marked_by: riderData.id,
         check_out_time: formatDateForAPI(now),
         check_out_latitude: location.latitude,
@@ -414,8 +436,14 @@ const Attendance: React.FC = () => {
   }, [isDragging, dragX]);
 
   useEffect(() => {
-    fetchTodayAttendance();
+    // First fetch the rider assignment
+    fetchRiderAssignment();
   }, []);
+
+  useEffect(() => {
+    // Then fetch attendance after rider data is updated
+    fetchTodayAttendance();
+  }, [riderData.company_id, riderData.store_id]);
 
   const progressPercentage = (dragX / maxDragDistance) * 100;
 
