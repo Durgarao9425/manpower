@@ -14,7 +14,7 @@ import {
     AccessTime,
     FilterList
 } from '@mui/icons-material';
-import { Attendance } from './Attendance';
+import Attendance from './Attendance';
 
 
 // Types

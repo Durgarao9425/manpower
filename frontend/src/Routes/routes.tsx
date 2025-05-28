@@ -28,6 +28,8 @@ import LoginPage from "../Components/Pages/Dashboard/Login/login";
 import ReusableListingPage from "../Components/Pages/RiderAttendace/AttendanceListingPage";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
 import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
+import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
+import DeliveryLoaderDemo from "../Components/Common/Loaders";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -86,6 +88,8 @@ const AppRoutes = () => {
           <Route path="/rider-attendance" element={<RiderAttendanceApp />} />
           <Route path="/dynami-dashboard" element={<RiderDashboard />} />
           <Route path="/upload-orders" element={<OrdersListingPage />} />
+          <Route path="/payments" element={<PaymentListingPage />} />
+          <Route path="/loader-demo" element={<DeliveryLoaderDemo />} />
 
 
         </Route>
