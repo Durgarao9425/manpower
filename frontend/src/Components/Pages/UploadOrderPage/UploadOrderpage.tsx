@@ -23,7 +23,8 @@ import {
   Grid,
   Container,
   Toolbar,
-  AppBar
+  AppBar,
+  TablePagination
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -44,6 +45,8 @@ const OrdersListingPage = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Mock data - replace with actual API call
   const mockData = [
@@ -179,6 +182,18 @@ const OrdersListingPage = () => {
     }
   };
 
+  // Pagination logic
+  const paginatedOrders = filteredOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* Header Cards */}
@@ -303,7 +318,7 @@ const OrdersListingPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredOrders.map((order) => (
+                paginatedOrders.map((order) => (
                   <TableRow key={order.id} hover>
                     <TableCell padding="checkbox">
                       <Checkbox
@@ -345,6 +360,21 @@ const OrdersListingPage = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        {/* Pagination at bottom right */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', p: 2 }}>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 20, 50, 100]}
+            component="div"
+            count={filteredOrders.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Rows per page:"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       </Paper>
     </Container>
   );

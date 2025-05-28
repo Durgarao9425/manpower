@@ -21,7 +21,7 @@ async function getAssignment(rider_id) {
 // Punch In
 router.post('/punch-in', async (req, res) => {
     try {
-        const rider_id = getRiderId(req);
+        const rider_id = '44'
         if (!rider_id) return res.status(401).json({ error: 'Unauthorized' });
         const { company_id, store_id } = await getAssignment(rider_id);
         if (!company_id || !store_id) return res.status(400).json({ error: 'Assignment not found' });
@@ -33,34 +33,7 @@ router.post('/punch-in', async (req, res) => {
         );
         if (existing.length > 0) return res.status(409).json({ error: 'Already punched in today' });
         const now = new Date();
-        const marked_by = req.body.marked_by || 'Rider';
-        await db.query(
-            `INSERT INTO rider_attendance (rider_id, company_id, store_id, attendance_date, status, marked_by, remarks, created_at, updated_at, check_in_time)
-             VALUES (?, ?, ?, ?, 'present', ?, NULL, ?, ?, ?)` ,
-            [rider_id, company_id, store_id, today, marked_by, now, now, now]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// GET endpoint for punch-in (for testing/demo only)
-router.get('/punch-in', async (req, res) => {
-    try {
-        const rider_id = req.query.rider_id;
-        const marked_by = req.query.marked_by || 'Rider';
-        if (!rider_id) return res.status(401).json({ error: 'Unauthorized' });
-        const { company_id, store_id } = await getAssignment(rider_id);
-        if (!company_id || !store_id) return res.status(400).json({ error: 'Assignment not found' });
-        const today = new Date().toISOString().slice(0, 10);
-        // Prevent duplicate check-in
-        const [existing] = await db.query(
-            'SELECT id FROM rider_attendance WHERE rider_id = ? AND attendance_date = ? AND status = ? LIMIT 1',
-            [rider_id, today, 'present']
-        );
-        if (existing.length > 0) return res.status(409).json({ error: 'Already punched in today' });
-        const now = new Date();
+        const marked_by = req.body.marked_by || 'User';
         await db.query(
             `INSERT INTO rider_attendance (rider_id, company_id, store_id, attendance_date, status, marked_by, remarks, created_at, updated_at, check_in_time)
              VALUES (?, ?, ?, ?, 'present', ?, NULL, ?, ?, ?)` ,
