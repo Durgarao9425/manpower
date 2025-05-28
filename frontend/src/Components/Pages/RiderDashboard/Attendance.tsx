@@ -87,7 +87,7 @@
 
 //   const theme = useTheme();
 //   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
 //   const buttonRef = useRef<HTMLDivElement>(null);
 //   const startXRef = useRef(0);
 //   const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -163,11 +163,11 @@
 //       const today = new Date().toISOString().split('T')[0];
 //       const response = await api.get(`/attendance?rider_id=${riderData.id}&date=${today}`);
 //       const records = response.data;
-      
+
 //       if (records.length > 0) {
 //         const record = records[0];
 //         setTodayRecord(record);
-        
+
 //         if (record.check_in_time && !record.check_out_time) {
 //           setAttendanceState('punch-out');
 //           setPunchInTime(new Date(record.check_in_time));
@@ -192,7 +192,7 @@
 //         check_in_longitude: location.longitude,
 //         check_in_accuracy: location.accuracy
 //       });
-      
+
 //       return response.data;
 //     } catch (error: any) {
 //       const errorMessage = error.response?.data?.error || 'Punch In failed';
@@ -212,7 +212,7 @@
 //         check_out_longitude: location.longitude,
 //         check_out_accuracy: location.accuracy
 //       });
-      
+
 //       return response.data;
 //     } catch (error: any) {
 //       const errorMessage = error.response?.data?.error || 'Punch Out failed';
@@ -272,7 +272,7 @@
 
 //     if (dragX > maxDragDistance * 0.85) {
 //       setDragX(maxDragDistance);
-      
+
 //       try {
 //         // Get current location
 //         const location = await getCurrentLocation();
@@ -287,7 +287,7 @@
 //         }
 
 //         const now = new Date();
-        
+
 //         if (attendanceState === 'punch-in') {
 //           await punchIn(location);
 //           setPunchInTime(now);
@@ -298,17 +298,17 @@
 //           await punchOut(location);
 //           setPunchOutTime(now);
 //           setAttendanceState('completed');
-          
+
 //           if (workingTimerRef.current) {
 //             clearInterval(workingTimerRef.current);
 //             workingTimerRef.current = null;
 //           }
-          
+
 //           const totalSeconds = punchInTime ? Math.floor((now.getTime() - punchInTime.getTime()) / 1000) : 0;
 //           const totalHours = formatDuration(totalSeconds);
 //           showToastMessage(`Attendance completed! Total hours: ${totalHours}`);
 //         }
-        
+
 //         setDragX(0);
 //       } catch (error: any) {
 //         showToastMessage(error.message, 'error');
@@ -608,7 +608,7 @@
 //               >
 //                 Start New Day
 //               </Button>
-              
+
 //               {punchInTime && punchOutTime && (
 //                 <Box mt={2}>
 //                   <Paper
@@ -773,15 +773,15 @@ const Attendance: React.FC = () => {
 
   // Mock rider data - In real app, get from auth context
   const riderData: RiderData = {
-    id: 65,
+    id: 44,
     name: 'durgarao_9425',
     company_id: 21,
-    store_id: 28
+    store_id: 29
   };
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   const buttonRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
   const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -845,17 +845,17 @@ const Attendance: React.FC = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const response = await fetch(`${API_BASE}/attendance?rider_id=${riderData.id}&date=${today}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch attendance');
       }
-      
+
       const records = await response.json();
-      
+
       if (records.length > 0) {
         const record = records[0];
         setTodayRecord(record);
-        
+
         if (record.check_in_time && !record.check_out_time) {
           setAttendanceState('punch-out');
           setPunchInTime(new Date(record.check_in_time));
@@ -874,22 +874,26 @@ const Attendance: React.FC = () => {
     try {
       setLoading(true);
       const now = new Date();
-      
+
       const payload = {
         rider_id: riderData.id,
-        company_id: 21,
+        company_id: riderData?.company_id,
         store_id: riderData.store_id,
         attendance_date: getTodayDateForAPI(),
         status: 'present',
         marked_by: riderData.id,
         remarks: '',
         check_in_time: formatDateForAPI(now),
-        check_in_latitude: location.latitude,
-        check_in_longitude: location.longitude,
-        check_in_accuracy: location.accuracy
+        check_out_time: null,
+        check_in_latitude: null,
+        check_in_longitude: null,
+        check_in_accuracy: null,
+        check_out_latitude: null,
+        check_out_longitude: null,
+        check_out_accuracy: null
       };
 
-      console.log('Punch In Payload:', payload);
+      console.log('Punch In Payload>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>:', payload);
 
       const response = await fetch(`${API_BASE}/attendance/punch-in`, {
         method: 'POST',
@@ -918,7 +922,7 @@ const Attendance: React.FC = () => {
     try {
       setLoading(true);
       const now = new Date();
-      
+
       const payload = {
         rider_id: riderData.id,
         marked_by: riderData.id,
@@ -1003,19 +1007,19 @@ const Attendance: React.FC = () => {
 
     if (dragX > maxDragDistance * 0.85) {
       setDragX(maxDragDistance);
-      
+
       try {
         // Get current location (or use mock location)
         const location = await getCurrentLocation();
         const now = new Date();
-        
+
         if (attendanceState === 'punch-in') {
           const result = await punchIn(location);
           setPunchInTime(now);
           setAttendanceState('punch-out');
           setWorkingTime(0);
           showToastMessage('Punched in successfully!');
-          
+
           // Update today's record with the response
           if (result) {
             setTodayRecord(result);
@@ -1024,22 +1028,22 @@ const Attendance: React.FC = () => {
           const result = await punchOut(location);
           setPunchOutTime(now);
           setAttendanceState('completed');
-          
+
           if (workingTimerRef.current) {
             clearInterval(workingTimerRef.current);
             workingTimerRef.current = null;
           }
-          
+
           const totalSeconds = punchInTime ? Math.floor((now.getTime() - punchInTime.getTime()) / 1000) : 0;
           const totalHours = formatDuration(totalSeconds);
           showToastMessage(`Attendance completed! Total hours: ${totalHours}`);
-          
+
           // Update today's record with the response
           if (result) {
             setTodayRecord(result);
           }
         }
-        
+
         setDragX(0);
       } catch (error: any) {
         showToastMessage(error.message, 'error');
@@ -1131,9 +1135,9 @@ const Attendance: React.FC = () => {
   };
 
   return (
-    <Container 
-      maxWidth="sm" 
-      sx={{ 
+    <Container
+      maxWidth="sm"
+      sx={{
         py: { xs: 2, sm: 4 },
         px: { xs: 1, sm: 2 },
         minHeight: '100vh',
@@ -1177,36 +1181,36 @@ const Attendance: React.FC = () => {
       )}
 
       {/* Main Attendance Card */}
-      <Card 
-        elevation={0} 
-        sx={{ 
-          borderRadius: { xs: 2, sm: 3 }, 
-          mb: 2, 
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: { xs: 2, sm: 3 },
+          mb: 2,
           bgcolor: '#f8f9fa',
           overflow: 'visible'
         }}
       >
         <CardContent sx={{ p: { xs: 2, sm: 4 }, textAlign: 'center' }}>
           {/* Header */}
-          <Typography 
-            variant="body2" 
-            color="text.secondary" 
+          <Typography
+            variant="body2"
+            color="text.secondary"
             gutterBottom
             sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
           >
             READY TO START
           </Typography>
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             gutterBottom
             sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
           >
             Today, {formatDate(currentTime)}
           </Typography>
-          <Typography 
-            variant="h3" 
-            color="primary.main" 
-            fontWeight="bold" 
+          <Typography
+            variant="h3"
+            color="primary.main"
+            fontWeight="bold"
             mb={3}
             sx={{ fontSize: { xs: '2rem', sm: '3rem' } }}
           >
@@ -1228,9 +1232,9 @@ const Attendance: React.FC = () => {
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                   Working Time
                 </Typography>
-                <Typography 
-                  variant="h4" 
-                  color="primary.main" 
+                <Typography
+                  variant="h4"
+                  color="primary.main"
                   fontWeight="bold"
                   sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}
                 >
@@ -1284,7 +1288,7 @@ const Attendance: React.FC = () => {
                     <Typography
                       variant="body1"
                       fontWeight="bold"
-                      sx={{ 
+                      sx={{
                         color: 'white',
                         fontSize: { xs: '0.875rem', sm: '1rem' }
                       }}
@@ -1339,8 +1343,8 @@ const Attendance: React.FC = () => {
                 label="Day Completed"
                 color="success"
                 size="large"
-                sx={{ 
-                  fontWeight: 'bold', 
+                sx={{
+                  fontWeight: 'bold',
                   mb: 2,
                   fontSize: { xs: '0.875rem', sm: '1rem' }
                 }}
@@ -1349,7 +1353,7 @@ const Attendance: React.FC = () => {
               <Button
                 variant="outlined"
                 onClick={resetAttendance}
-                sx={{ 
+                sx={{
                   textTransform: 'none',
                   borderRadius: 2,
                   px: 3
@@ -1357,7 +1361,7 @@ const Attendance: React.FC = () => {
               >
                 Start New Day
               </Button>
-              
+
               {punchInTime && punchOutTime && (
                 <Box mt={2}>
                   <Paper
