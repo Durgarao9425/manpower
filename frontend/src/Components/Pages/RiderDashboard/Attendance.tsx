@@ -303,6 +303,9 @@ const Attendance: React.FC = () => {
   const handleEnd = async () => {
     if (!isDragging || attendanceState === 'completed' || loading) return;
     setIsDragging(false);
+  const handleEnd = async () => {
+    if (!isDragging || attendanceState === 'completed' || loading) return;
+    setIsDragging(false);
 
     if (dragX > maxDragDistance * 0.85) {
       setDragX(maxDragDistance);
@@ -399,7 +402,13 @@ const Attendance: React.FC = () => {
         handleMove(e.touches[0].clientX);
       };
       const handleTouchEnd = () => handleEnd();
+      };
+      const handleTouchEnd = () => handleEnd();
 
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -417,9 +426,34 @@ const Attendance: React.FC = () => {
   useEffect(() => {
     fetchTodayAttendance();
   }, []);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isDragging, dragX]);
+
+  useEffect(() => {
+    fetchTodayAttendance();
+  }, []);
 
   const progressPercentage = (dragX / maxDragDistance) * 100;
+  const progressPercentage = (dragX / maxDragDistance) * 100;
 
+  const resetAttendance = () => {
+    setAttendanceState('punch-in');
+    setPunchInTime(null);
+    setPunchOutTime(null);
+    setWorkingTime(0);
+    setDragX(0);
+    setTodayRecord(null);
+    if (workingTimerRef.current) {
+      clearInterval(workingTimerRef.current);
+      workingTimerRef.current = null;
+    }
+  };
   const resetAttendance = () => {
     setAttendanceState('punch-in');
     setPunchInTime(null);
@@ -571,6 +605,34 @@ const Attendance: React.FC = () => {
                     transition: isDragging ? 'none' : 'width 0.3s ease-out'
                   }}
                 />
+          {/* Swipe Button */}
+          {attendanceState !== 'completed' && (
+            <Box mb={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  position: 'relative',
+                  height: { xs: 56, sm: 64 },
+                  bgcolor: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
+                  borderRadius: { xs: 6, sm: 8 },
+                  overflow: 'hidden',
+                  cursor: loading ? 'default' : 'pointer',
+                  userSelect: 'none',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {/* Progress Background */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    height: '100%',
+                    width: `${progressPercentage}%`,
+                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                    transition: isDragging ? 'none' : 'width 0.3s ease-out'
+                  }}
+                />
 
                 {/* Center Text */}
                 <Box
@@ -597,6 +659,42 @@ const Attendance: React.FC = () => {
                   )}
                 </Box>
 
+                {/* Draggable Slider Circle */}
+                <Box
+                  ref={buttonRef}
+                  sx={{
+                    position: 'absolute',
+                    left: 4,
+                    top: 4,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
+                    bgcolor: 'white',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: loading ? 'default' : (isDragging ? 'grabbing' : 'grab'),
+                    transform: `translateX(${dragX}px) ${isDragging ? 'scale(1.1)' : 'scale(1)'}`,
+                    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    zIndex: 2,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    '&:hover': {
+                      transform: `translateX(${dragX}px) scale(1.05)`
+                    }
+                  }}
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleTouchStart}
+                >
+                  <ArrowForward
+                    sx={{
+                      color: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
+                      fontSize: { xs: 20, sm: 24 }
+                    }}
+                  />
+                </Box>
+              </Paper>
+            </Box>
+          )}
                 {/* Draggable Slider Circle */}
                 <Box
                   ref={buttonRef}
@@ -679,6 +777,19 @@ const Attendance: React.FC = () => {
                       {formatDuration(Math.floor((punchOutTime.getTime() - punchInTime.getTime()) / 1000))}
                     </Typography>
                   </Paper>
+                      p: 2,
+                      bgcolor: 'rgba(76, 175, 80, 0.1)',
+                      border: '1px solid rgba(76, 175, 80, 0.3)',
+                      borderRadius: 2
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      Total Working Time
+                    </Typography>
+                    <Typography variant="h5" color="success.main" fontWeight="bold">
+                      {formatDuration(Math.floor((punchOutTime.getTime() - punchInTime.getTime()) / 1000))}
+                    </Typography>
+                  </Paper>
                 </Box>
               )}
             </Box>
@@ -695,6 +806,23 @@ const Attendance: React.FC = () => {
       </Card>
     </Container>
   );
+              )}
+            </Box>
+          )}
+
+          {/* Location indicator */}
+          <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
+            <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">
+              KS Executive Mens Hostel, KPHB Phase II
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    </Container>
+  );
 };
+
+export default Attendance;
 
 export default Attendance;
