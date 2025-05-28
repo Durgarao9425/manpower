@@ -75,10 +75,11 @@ const Attendance: React.FC = () => {
 
   // Mock rider data - In real app, get from auth context
   const riderData: RiderData = {
-    id: 38,
+    id: 44,
     name: 'Rider Name',
     company_id: 21,
-    store_id: 29
+    store_id: 29,
+    marked_by:89
   };
 
   const theme = useTheme();
@@ -223,7 +224,7 @@ const Attendance: React.FC = () => {
       
       const payload = {
         rider_id: riderData.id,
-        marked_by: riderData.id,
+        marked_by: riderData.marked_by,
         check_out_time: formatDateForAPI(now),
         check_out_latitude: location.latitude,
         check_out_longitude: location.longitude,
@@ -299,6 +300,9 @@ const Attendance: React.FC = () => {
     setDragX(clampedX);
   };
 
+  const handleEnd = async () => {
+    if (!isDragging || attendanceState === 'completed' || loading) return;
+    setIsDragging(false);
   const handleEnd = async () => {
     if (!isDragging || attendanceState === 'completed' || loading) return;
     setIsDragging(false);
@@ -404,6 +408,18 @@ const Attendance: React.FC = () => {
       document.addEventListener('touchmove', handleTouchMove, { passive: false });
       document.addEventListener('touchend', handleTouchEnd);
 
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isDragging, dragX]);
+
+  useEffect(() => {
+    fetchTodayAttendance();
+  }, []);
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
