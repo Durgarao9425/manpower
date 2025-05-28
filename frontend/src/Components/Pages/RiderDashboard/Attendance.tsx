@@ -2,17 +2,28 @@ import { ArrowForward, Close, FilterList, Person } from "@mui/icons-material";
 import { Alert, Box, Button, Card, CardContent, Chip, Container, FormControl, IconButton, InputLabel, MenuItem, Modal, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 
+// Attendance record type
+interface AttendanceRecord {
+    id: number;
+    date: Date;
+    punchIn: Date | null;
+    punchOut: Date | null;
+    totalHours: string;
+    status: string;
+    reason: string | null;
+}
+
 export const Attendance = () => {
     const [dragX, setDragX] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [attendanceState, setAttendanceState] = useState('punch-in');
-    const [punchInTime, setPunchInTime] = useState(null);
-    const [punchOutTime, setPunchOutTime] = useState(null);
+    const [punchInTime, setPunchInTime] = useState<Date | null>(null);
+    const [punchOutTime, setPunchOutTime] = useState<Date | null>(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [workingTime, setWorkingTime] = useState(0);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
-    const [attendanceRecords, setAttendanceRecords] = useState([]);
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
     // Modal states
     const [showAbsentModal, setShowAbsentModal] = useState(false);
@@ -24,7 +35,7 @@ export const Attendance = () => {
 
     const buttonRef = useRef(null);
     const startXRef = useRef(0);
-    const workingTimerRef = useRef(null);
+    const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
     const maxDragDistance = 280;
 
     const absentReasons = [
@@ -41,7 +52,7 @@ export const Attendance = () => {
     const riderName = 'Rider Name'; // TODO: Replace with real rider name from auth context
 
     // API helpers
-    const fetchAttendanceRecords = async (month = null, year = null) => {
+    const fetchAttendanceRecords = async (month: number | null = null, year: number | null = null): Promise<AttendanceRecord[]> => {
         try {
             let url = `http://localhost:4003/api/attendance?rider_id=${riderId}`;
             if (month !== null && year !== null) {
@@ -51,15 +62,26 @@ export const Attendance = () => {
             }
             const response = await fetch(url);
             if (!response.ok) throw new Error((await response.json()).error || 'Failed to fetch attendance records');
-            return await response.json();
-        } catch (err) {
+            return (await response.json()).map((record: any) => ({
+                id: record.id,
+                date: new Date(record.attendance_date),
+                punchIn: record.check_in_time ? new Date(record.check_in_time) : null,
+                punchOut: record.check_out_time ? new Date(record.check_out_time) : null,
+                totalHours: record.status === 'present' && record.check_in_time && record.check_out_time
+                    ? calculateWorkHours(new Date(record.check_in_time), new Date(record.check_out_time))
+                    : '0h 0m',
+                status: record.status === 'present' ? 'Present' : 'Absent',
+                reason: record.remarks
+            }));
+        } catch (err: any) {
             showToastMessage(err.message);
             return [];
         }
     };
 
-    const punchIn = async () => {
+    const punchIn = async (): Promise<boolean> => {
         try {
+            if (!riderId || !riderName) throw new Error('Missing rider ID or name');
             const res = await fetch('http://localhost:4003/api/attendance/punch-in', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -67,14 +89,15 @@ export const Attendance = () => {
             });
             if (!res.ok) throw new Error((await res.json()).error || 'Punch In failed');
             return true;
-        } catch (err) {
+        } catch (err: any) {
             showToastMessage(err.message);
             return false;
         }
     };
 
-    const punchOut = async () => {
+    const punchOut = async (): Promise<boolean> => {
         try {
+            if (!riderId || !riderName) throw new Error('Missing rider ID or name');
             const res = await fetch('http://localhost:4003/api/attendance/punch-out', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -82,14 +105,15 @@ export const Attendance = () => {
             });
             if (!res.ok) throw new Error((await res.json()).error || 'Punch Out failed');
             return true;
-        } catch (err) {
+        } catch (err: any) {
             showToastMessage(err.message);
             return false;
         }
     };
 
-    const markAbsent = async (reason) => {
+    const markAbsent = async (reason: string): Promise<boolean> => {
         try {
+            if (!riderId || !riderName) throw new Error('Missing rider ID or name');
             const res = await fetch('http://localhost:4003/api/attendance/absent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -97,7 +121,7 @@ export const Attendance = () => {
             });
             if (!res.ok) throw new Error((await res.json()).error || 'Mark Absent failed');
             return true;
-        } catch (err) {
+        } catch (err: any) {
             showToastMessage(err.message);
             return false;
         }
@@ -131,7 +155,7 @@ export const Attendance = () => {
         };
     }, [attendanceState, punchInTime]);
 
-    const formatTime = (date) => {
+    const formatTime = (date: Date) => {
         return date.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
@@ -139,7 +163,7 @@ export const Attendance = () => {
         });
     };
 
-    const formatDate = (date) => {
+    const formatDate = (date: Date) => {
         return date.toLocaleDateString('en-US', {
             weekday: 'short',
             day: 'numeric',
@@ -148,13 +172,13 @@ export const Attendance = () => {
         });
     };
 
-    const formatDuration = (seconds) => {
+    const formatDuration = (seconds: number) => {
         const hours = Math.floor(seconds / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         return `${hours}h ${minutes}m`;
     };
 
-    const calculateWorkHours = (startTime, endTime) => {
+    const calculateWorkHours = (startTime: Date | null, endTime: Date | null) => {
         if (startTime && endTime) {
             const diff = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
             return formatDuration(diff);
@@ -162,18 +186,18 @@ export const Attendance = () => {
         return '0h 0m';
     };
 
-    const showToastMessage = (message) => {
+    const showToastMessage = (message: string) => {
         setToastMessage(message);
         setShowToast(true);
     };
 
-    const handleStart = (clientX) => {
+    const handleStart = (clientX: number) => {
         if (attendanceState === 'completed') return;
         setIsDragging(true);
         startXRef.current = clientX - dragX;
     };
 
-    const handleMove = (clientX) => {
+    const handleMove = (clientX: number) => {
         if (!isDragging || attendanceState === 'completed') return;
 
         const newX = clientX - startXRef.current;
@@ -230,12 +254,12 @@ export const Attendance = () => {
         }
     };
 
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
         handleStart(e.clientX);
     };
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
         handleMove(e.clientX);
     };
 
@@ -243,11 +267,11 @@ export const Attendance = () => {
         handleEnd();
     };
 
-    const handleTouchStart = (e) => {
+    const handleTouchStart = (e: React.TouchEvent) => {
         handleStart(e.touches[0].clientX);
     };
 
-    const handleTouchMove = (e) => {
+    const handleTouchMove = (e: React.TouchEvent) => {
         e.preventDefault();
         handleMove(e.touches[0].clientX);
     };
