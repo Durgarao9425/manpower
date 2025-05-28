@@ -1,691 +1,828 @@
-import { ArrowForward, Close, FilterList, Person } from "@mui/icons-material";
-import { Alert, Box, Button, Card, CardContent, Chip, Container, FormControl, IconButton, InputLabel, MenuItem, Modal, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  Container,
+  Alert,
+  Snackbar,
+  CircularProgress,
+  Paper,
+  Chip,
+  IconButton,
+  useTheme,
+  useMediaQuery
+} from '@mui/material';
+import {
+  ArrowForward,
+  LocationOn,
+  Close,
+  AccessTime,
+  CheckCircle
+} from '@mui/icons-material';
 
-// Attendance record type
+// Types
 interface AttendanceRecord {
-    id: number;
-    date: Date;
-    punchIn: Date | null;
-    punchOut: Date | null;
-    totalHours: string;
-    status: string;
-    reason: string | null;
+  id: number;
+  rider_id: number;
+  company_id: number;
+  store_id: number | null;
+  attendance_date: string;
+  status: 'present' | 'absent';
+  marked_by: number;
+  remarks: string;
+  created_at: string;
+  updated_at: string;
+  check_in_time?: string;
+  check_out_time?: string;
+  check_in_latitude?: number;
+  check_in_longitude?: number;
+  check_in_accuracy?: number;
+  check_out_latitude?: number;
+  check_out_longitude?: number;
+  check_out_accuracy?: number;
 }
 
-export const Attendance = () => {
-    const [dragX, setDragX] = useState(0);
-    const [isDragging, setIsDragging] = useState(false);
-    const [attendanceState, setAttendanceState] = useState('punch-in');
-    const [punchInTime, setPunchInTime] = useState<Date | null>(null);
-    const [punchOutTime, setPunchOutTime] = useState<Date | null>(null);
-    const [currentTime, setCurrentTime] = useState(new Date());
-    const [workingTime, setWorkingTime] = useState(0);
-    const [showToast, setShowToast] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
-    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+}
 
-    // Modal states
-    const [showAbsentModal, setShowAbsentModal] = useState(false);
-    const [absentReason, setAbsentReason] = useState('');
+interface RiderData {
+  id: number;
+  name: string;
+  company_id: number;
+  store_id: number;
+}
 
-    // Filter states
-    const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
-    const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+const Attendance: React.FC = () => {
+  // States
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [attendanceState, setAttendanceState] = useState<'punch-in' | 'punch-out' | 'completed'>('punch-in');
+  const [punchInTime, setPunchInTime] = useState<Date | null>(null);
+  const [punchOutTime, setPunchOutTime] = useState<Date | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [workingTime, setWorkingTime] = useState(0);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'error' | 'warning'>('success');
+  const [loading, setLoading] = useState(false);
+  const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
 
-    const buttonRef = useRef(null);
-    const startXRef = useRef(0);
-    const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const maxDragDistance = 280;
+  // Mock rider data - In real app, get from auth context
+  const riderData: RiderData = {
+    id: 44,
+    name: 'Rider Name',
+    company_id: 21,
+    store_id: 29,
+    marked_by:89
+  };
 
-    const absentReasons = [
-        'Sick Leave',
-        'Personal Leave',
-        'Emergency',
-        'Medical Appointment',
-        'Family Emergency',
-        'Other'
-    ];
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef(0);
+  const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const maxDragDistance = isMobile ? 240 : 280;
 
-    // Replace with actual authentication/user context
-    const riderId = 1; // TODO: Replace with real rider ID from auth context
-    const riderName = 'Rider Name'; // TODO: Replace with real rider name from auth context
+  // API Base URL
+  const API_BASE = 'http://localhost:4003/api';
 
-    // API helpers
-    const fetchAttendanceRecords = async (month: number | null = null, year: number | null = null): Promise<AttendanceRecord[]> => {
-        try {
-            let url = `http://localhost:4003/api/attendance?rider_id=${riderId}`;
-            if (month !== null && year !== null) {
-                url += `&month=${month + 1}&year=${year}`;
-            } else if (year !== null) {
-                url += `&year=${year}`;
-            }
-            const response = await fetch(url);
-            if (!response.ok) throw new Error((await response.json()).error || 'Failed to fetch attendance records');
-            return (await response.json()).map((record: any) => ({
-                id: record.id,
-                date: new Date(record.attendance_date),
-                punchIn: record.check_in_time ? new Date(record.check_in_time) : null,
-                punchOut: record.check_out_time ? new Date(record.check_out_time) : null,
-                totalHours: record.status === 'present' && record.check_in_time && record.check_out_time
-                    ? calculateWorkHours(new Date(record.check_in_time), new Date(record.check_out_time))
-                    : '0h 0m',
-                status: record.status === 'present' ? 'Present' : 'Absent',
-                reason: record.remarks
-            }));
-        } catch (err: any) {
-            showToastMessage(err.message);
-            return [];
-        }
-    };
-
-    const punchIn = async (): Promise<boolean> => {
-        try {
-            if (!riderId || !riderName) throw new Error('Missing rider ID or name');
-            const res = await fetch('http://localhost:4003/api/attendance/punch-in', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rider_id: riderId, marked_by: riderName })
-            });
-            if (!res.ok) throw new Error((await res.json()).error || 'Punch In failed');
-            return true;
-        } catch (err: any) {
-            showToastMessage(err.message);
-            return false;
-        }
-    };
-
-    const punchOut = async (): Promise<boolean> => {
-        try {
-            if (!riderId || !riderName) throw new Error('Missing rider ID or name');
-            const res = await fetch('http://localhost:4003/api/attendance/punch-out', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rider_id: riderId, marked_by: riderName })
-            });
-            if (!res.ok) throw new Error((await res.json()).error || 'Punch Out failed');
-            return true;
-        } catch (err: any) {
-            showToastMessage(err.message);
-            return false;
-        }
-    };
-
-    const markAbsent = async (reason: string): Promise<boolean> => {
-        try {
-            if (!riderId || !riderName) throw new Error('Missing rider ID or name');
-            const res = await fetch('http://localhost:4003/api/attendance/absent', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rider_id: riderId, marked_by: riderName, remarks: reason })
-            });
-            if (!res.ok) throw new Error((await res.json()).error || 'Mark Absent failed');
-            return true;
-        } catch (err: any) {
-            showToastMessage(err.message);
-            return false;
-        }
-    };
-
-    // Update current time every second
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    // Working time timer
-    useEffect(() => {
-        if (attendanceState === 'punch-out' && punchInTime) {
-            workingTimerRef.current = setInterval(() => {
-                setWorkingTime(Math.floor((new Date().getTime() - punchInTime.getTime()) / 1000));
-            }, 1000);
-        } else {
-            if (workingTimerRef.current) {
-                clearInterval(workingTimerRef.current);
-                workingTimerRef.current = null;
-            }
-        }
-
-        return () => {
-            if (workingTimerRef.current) {
-                clearInterval(workingTimerRef.current);
-            }
-        };
-    }, [attendanceState, punchInTime]);
-
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
+  const getCurrentLocation = (): Promise<LocationData> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        // If geolocation is not supported, return mock location
+        resolve({
+          latitude: 17.4837225,
+          longitude: 78.3968131,
+          accuracy: 10
         });
-    };
+        return;
+      }
 
-    const formatDate = (date: Date) => {
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
-    };
-
-    const formatDuration = (seconds: number) => {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        return `${hours}h ${minutes}m`;
-    };
-
-    const calculateWorkHours = (startTime: Date | null, endTime: Date | null) => {
-        if (startTime && endTime) {
-            const diff = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-            return formatDuration(diff);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+        },
+        (error) => {
+          // If location fails, return mock location
+          resolve({
+            latitude: 17.4837225,
+            longitude: 78.3968131,
+            accuracy: 10
+          });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
         }
-        return '0h 0m';
-    };
+      );
+    });
+  };
 
-    const showToastMessage = (message: string) => {
-        setToastMessage(message);
-        setShowToast(true);
-    };
+  // Helper function to format date for API
+  const formatDateForAPI = (date: Date): string => {
+    return date.toISOString();
+  };
 
-    const handleStart = (clientX: number) => {
-        if (attendanceState === 'completed') return;
-        setIsDragging(true);
-        startXRef.current = clientX - dragX;
-    };
+  // Helper function to get today's date for attendance_date
+  const getTodayDateForAPI = (): string => {
+    const today = new Date();
+    // Set to 18:30 (6:30 PM) as per your sample data
+    today.setHours(18, 30, 0, 0);
+    return today.toISOString();
+  };
 
-    const handleMove = (clientX: number) => {
-        if (!isDragging || attendanceState === 'completed') return;
-
-        const newX = clientX - startXRef.current;
-        const clampedX = Math.max(0, Math.min(newX, maxDragDistance));
-        setDragX(clampedX);
-    };
-
-    const handleEnd = async () => {
-        if (!isDragging || attendanceState === 'completed') return;
-        setIsDragging(false);
-
-        if (dragX > maxDragDistance * 0.85) {
-            setDragX(maxDragDistance);
-
-            setTimeout(async () => {
-                const now = new Date();
-                if (attendanceState === 'punch-in') {
-                    const success = await punchIn();
-                    if (!success) { setDragX(0); return; }
-                    setPunchInTime(now);
-                    setAttendanceState('punch-out');
-                    setWorkingTime(0);
-                    showToastMessage('Punched in successfully!');
-                } else if (attendanceState === 'punch-out') {
-                    const success = await punchOut();
-                    if (!success) { setDragX(0); return; }
-                    setPunchOutTime(now);
-                    setAttendanceState('completed');
-
-                    if (workingTimerRef.current) {
-                        clearInterval(workingTimerRef.current);
-                        workingTimerRef.current = null;
-                    }
-
-                    const totalHours = calculateWorkHours(punchInTime, now);
-
-                    const newRecord = {
-                        id: Date.now(),
-                        date: now,
-                        punchIn: punchInTime,
-                        punchOut: now,
-                        totalHours,
-                        status: 'Present',
-                        reason: null
-                    };
-                    setAttendanceRecords(prev => [newRecord, ...prev]);
-
-                    showToastMessage(`Attendance completed! Total hours: ${totalHours}`);
-                }
-                setDragX(0);
-            }, 300);
-        } else {
-            setDragX(0);
+  // API calls with correct payload structure
+  const fetchTodayAttendance = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`${API_BASE}/attendance?rider_id=${riderData.id}&date=${today}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch attendance');
+      }
+      
+      const records = await response.json();
+      
+      if (records.length > 0) {
+        const record = records[0];
+        setTodayRecord(record);
+        
+        if (record.check_in_time && !record.check_out_time) {
+          setAttendanceState('punch-out');
+          setPunchInTime(new Date(record.check_in_time));
+        } else if (record.check_in_time && record.check_out_time) {
+          setAttendanceState('completed');
+          setPunchInTime(new Date(record.check_in_time));
+          setPunchOutTime(new Date(record.check_out_time));
         }
-    };
+      }
+    } catch (error) {
+      console.error('Error fetching today attendance:', error);
+    }
+  };
 
-    const handleMouseDown = (e: React.MouseEvent) => {
-        e.preventDefault();
-        handleStart(e.clientX);
-    };
+  const punchIn = async (location: LocationData) => {
+    try {
+      setLoading(true);
+      const now = new Date();
+      
+      const payload = {
+        rider_id: riderData.id,
+        company_id: riderData.company_id,
+        store_id: riderData.store_id,
+        attendance_date: getTodayDateForAPI(),
+        status: 'present',
+        marked_by: riderData.id,
+        remarks: '',
+        check_in_time: formatDateForAPI(now),
+        check_in_latitude: location.latitude,
+        check_in_longitude: location.longitude,
+        check_in_accuracy: location.accuracy
+      };
 
-    const handleMouseMove = (e: MouseEvent) => {
-        handleMove(e.clientX);
-    };
+      console.log('Punch In Payload:', payload);
 
-    const handleMouseUp = () => {
-        handleEnd();
-    };
+      const response = await fetch(`${API_BASE}/attendance/punch-in`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        handleStart(e.touches[0].clientX);
-    };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Punch In failed');
+      }
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-        e.preventDefault();
-        handleMove(e.touches[0].clientX);
-    };
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Punch In failed';
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleTouchEnd = () => {
-        handleEnd();
-    };
+  const punchOut = async (location: LocationData) => {
+    try {
+      setLoading(true);
+      const now = new Date();
+      
+      const payload = {
+        rider_id: riderData.id,
+        marked_by: riderData.marked_by,
+        check_out_time: formatDateForAPI(now),
+        check_out_latitude: location.latitude,
+        check_out_longitude: location.longitude,
+        check_out_accuracy: location.accuracy
+      };
 
-    useEffect(() => {
-        if (isDragging) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            document.addEventListener('touchmove', handleTouchMove, { passive: false });
-            document.addEventListener('touchend', handleTouchEnd);
+      console.log('Punch Out Payload:', payload);
 
-            return () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-                document.removeEventListener('touchmove', handleTouchMove);
-                document.removeEventListener('touchend', handleTouchEnd);
-            };
-        }
-    }, [isDragging, dragX]);
+      const response = await fetch(`${API_BASE}/attendance/punch-out`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
 
-    const progressPercentage = (dragX / maxDragDistance) * 100;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Punch Out failed');
+      }
 
-    const resetAttendance = () => {
-        setAttendanceState('punch-in');
-        setPunchInTime(null);
-        setPunchOutTime(null);
-        setWorkingTime(0);
-        setDragX(0);
-        if (workingTimerRef.current) {
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      const errorMessage = error.message || 'Punch Out failed';
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Time formatting utilities
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
+  const showToastMessage = (message: string, severity: 'success' | 'error' | 'warning' = 'success') => {
+    setToastMessage(message);
+    setToastSeverity(severity);
+    setShowToast(true);
+  };
+
+  // Drag handlers
+  const handleStart = (clientX: number) => {
+    if (attendanceState === 'completed' || loading) return;
+    setIsDragging(true);
+    startXRef.current = clientX - dragX;
+  };
+
+  const handleMove = (clientX: number) => {
+    if (!isDragging || attendanceState === 'completed' || loading) return;
+    const newX = clientX - startXRef.current;
+    const clampedX = Math.max(0, Math.min(newX, maxDragDistance));
+    setDragX(clampedX);
+  };
+
+  const handleEnd = async () => {
+    if (!isDragging || attendanceState === 'completed' || loading) return;
+    setIsDragging(false);
+  const handleEnd = async () => {
+    if (!isDragging || attendanceState === 'completed' || loading) return;
+    setIsDragging(false);
+
+    if (dragX > maxDragDistance * 0.85) {
+      setDragX(maxDragDistance);
+      
+      try {
+        // Get current location (or use mock location)
+        const location = await getCurrentLocation();
+        const now = new Date();
+        
+        if (attendanceState === 'punch-in') {
+          const result = await punchIn(location);
+          setPunchInTime(now);
+          setAttendanceState('punch-out');
+          setWorkingTime(0);
+          showToastMessage('Punched in successfully!');
+          
+          // Update today's record with the response
+          if (result) {
+            setTodayRecord(result);
+          }
+        } else if (attendanceState === 'punch-out') {
+          const result = await punchOut(location);
+          setPunchOutTime(now);
+          setAttendanceState('completed');
+          
+          if (workingTimerRef.current) {
             clearInterval(workingTimerRef.current);
             workingTimerRef.current = null;
+          }
+          
+          const totalSeconds = punchInTime ? Math.floor((now.getTime() - punchInTime.getTime()) / 1000) : 0;
+          const totalHours = formatDuration(totalSeconds);
+          showToastMessage(`Attendance completed! Total hours: ${totalHours}`);
+          
+          // Update today's record with the response
+          if (result) {
+            setTodayRecord(result);
+          }
         }
+        
+        setDragX(0);
+      } catch (error: any) {
+        showToastMessage(error.message, 'error');
+        setDragX(0);
+      }
+    } else {
+      setDragX(0);
+    }
+  };
+
+  // Mouse and touch event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleStart(e.clientX);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleStart(e.touches[0].clientX);
+  };
+
+  // Effects
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (attendanceState === 'punch-out' && punchInTime) {
+      workingTimerRef.current = setInterval(() => {
+        setWorkingTime(Math.floor((new Date().getTime() - punchInTime.getTime()) / 1000));
+      }, 1000);
+    } else {
+      if (workingTimerRef.current) {
+        clearInterval(workingTimerRef.current);
+        workingTimerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (workingTimerRef.current) {
+        clearInterval(workingTimerRef.current);
+      }
     };
+  }, [attendanceState, punchInTime]);
 
-    const handleMarkAsAbsent = async () => {
-        if (!absentReason) return;
-        const success = await markAbsent(absentReason);
-        if (!success) return;
-        const now = new Date();
-        const newRecord = {
-            id: Date.now(),
-            date: now,
-            punchIn: null,
-            punchOut: null,
-            totalHours: '0h 0m',
-            status: 'Absent',
-            reason: absentReason
-        };
-        setAttendanceRecords(prev => [newRecord, ...prev]);
-        setShowAbsentModal(false);
-        setAbsentReason('');
-        showToastMessage('Marked as absent successfully!');
-    };
+  useEffect(() => {
+    if (isDragging) {
+      const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+      const handleMouseUp = () => handleEnd();
+      const handleTouchMove = (e: TouchEvent) => {
+        e.preventDefault();
+        handleMove(e.touches[0].clientX);
+      };
+      const handleTouchEnd = () => handleEnd();
+      };
+      const handleTouchEnd = () => handleEnd();
 
-    const filteredRecords = attendanceRecords.filter(record => {
-        const recordDate = new Date(record.date);
-        return recordDate.getMonth() === filterMonth && recordDate.getFullYear() === filterYear;
-    });
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
 
-    const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-    ];
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isDragging, dragX]);
 
-    const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+  useEffect(() => {
+    fetchTodayAttendance();
+  }, []);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isDragging, dragX]);
 
-    // Fetch attendance records on mount and when filters change
-    useEffect(() => {
-        const loadRecords = async () => {
-            const records = await fetchAttendanceRecords(filterMonth, filterYear);
-            setAttendanceRecords(records.map(record => ({
-                ...record,
-                date: new Date(record.attendance_date),
-                punchIn: record.check_in_time ? new Date(record.check_in_time) : null,
-                punchOut: record.check_out_time ? new Date(record.check_out_time) : null,
-                totalHours: record.status === 'present' && record.check_in_time && record.check_out_time
-                    ? calculateWorkHours(new Date(record.check_in_time), new Date(record.check_out_time))
-                    : '0h 0m',
-                status: record.status === 'present' ? 'Present' : 'Absent',
-                reason: record.remarks
-            })));
-        };
-        loadRecords();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filterMonth, filterYear]);
+  useEffect(() => {
+    fetchTodayAttendance();
+  }, []);
 
-    return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            {/* Toast Notification */}
-            <Snackbar
-                open={showToast}
-                autoHideDuration={4000}
-                onClose={() => setShowToast(false)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-                <Alert
-                    onClose={() => setShowToast(false)}
-                    severity="success"
-                    sx={{ width: '100%' }}
+  const progressPercentage = (dragX / maxDragDistance) * 100;
+  const progressPercentage = (dragX / maxDragDistance) * 100;
+
+  const resetAttendance = () => {
+    setAttendanceState('punch-in');
+    setPunchInTime(null);
+    setPunchOutTime(null);
+    setWorkingTime(0);
+    setDragX(0);
+    setTodayRecord(null);
+    if (workingTimerRef.current) {
+      clearInterval(workingTimerRef.current);
+      workingTimerRef.current = null;
+    }
+  };
+  const resetAttendance = () => {
+    setAttendanceState('punch-in');
+    setPunchInTime(null);
+    setPunchOutTime(null);
+    setWorkingTime(0);
+    setDragX(0);
+    setTodayRecord(null);
+    if (workingTimerRef.current) {
+      clearInterval(workingTimerRef.current);
+      workingTimerRef.current = null;
+    }
+  };
+
+  return (
+    <Container 
+      maxWidth="sm" 
+      sx={{ 
+        py: { xs: 2, sm: 4 },
+        px: { xs: 1, sm: 2 },
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
+      }}
+    >
+      {/* Toast Notification */}
+      <Snackbar
+        open={showToast}
+        autoHideDuration={4000}
+        onClose={() => setShowToast(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setShowToast(false)}
+          severity={toastSeverity}
+          sx={{ width: '100%' }}
+        >
+          {toastMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Debug Info */}
+      {todayRecord && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.100' }}>
+          <Typography variant="caption" display="block">
+            Debug - Today's Record:
+          </Typography>
+          <Typography variant="caption" display="block">
+            Check In: {todayRecord.check_in_time ? new Date(todayRecord.check_in_time).toLocaleString() : 'Not set'}
+          </Typography>
+          <Typography variant="caption" display="block">
+            Check Out: {todayRecord.check_out_time ? new Date(todayRecord.check_out_time).toLocaleString() : 'Not set'}
+          </Typography>
+          <Typography variant="caption" display="block">
+            Status: {todayRecord.status}
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Main Attendance Card */}
+      <Card 
+        elevation={0} 
+        sx={{ 
+          borderRadius: { xs: 2, sm: 3 }, 
+          mb: 2, 
+          bgcolor: '#f8f9fa',
+          overflow: 'visible'
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2, sm: 4 }, textAlign: 'center' }}>
+          {/* Header */}
+          <Typography 
+            variant="body2" 
+            color="text.secondary" 
+            gutterBottom
+            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+          >
+            READY TO START
+          </Typography>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+          >
+            Today, {formatDate(currentTime)}
+          </Typography>
+          <Typography 
+            variant="h3" 
+            color="primary.main" 
+            fontWeight="bold" 
+            mb={3}
+            sx={{ fontSize: { xs: '2rem', sm: '3rem' } }}
+          >
+            {formatTime(currentTime)}
+          </Typography>
+
+          {/* Working Timer */}
+          {attendanceState === 'punch-out' && (
+            <Box mb={3}>
+              <Paper
+                elevation={1}
+                sx={{
+                  p: { xs: 1.5, sm: 2 },
+                  bgcolor: 'rgba(25, 118, 210, 0.1)',
+                  border: '1px solid rgba(25, 118, 210, 0.3)',
+                  borderRadius: 2
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Working Time
+                </Typography>
+                <Typography 
+                  variant="h4" 
+                  color="primary.main" 
+                  fontWeight="bold"
+                  sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}
                 >
-                    {toastMessage}
-                </Alert>
-            </Snackbar>
+                  {formatDuration(workingTime)}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
 
-            {/* Main Attendance Card */}
-            <Card elevation={0} sx={{ borderRadius: 3, mb: 4, bgcolor: '#f8f9fa' }}>
-                <CardContent sx={{ p: 4, textAlign: 'center' }}>
-                    {/* Header */}
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                        READY TO START
-                    </Typography>
-                    <Typography variant="h6" gutterBottom>
-                        Today, {formatDate(currentTime)}
-                    </Typography>
-                    <Typography variant="h3" color="primary.main" fontWeight="bold" mb={4}>
-                        {formatTime(currentTime)}
-                    </Typography>
-
-                    {/* Working Timer */}
-                    {attendanceState === 'punch-out' && (
-                        <Box mb={3}>
-                            <Paper
-                                elevation={1}
-                                sx={{
-                                    p: 2,
-                                    bgcolor: 'rgba(25, 118, 210, 0.1)',
-                                    border: '1px solid rgba(25, 118, 210, 0.3)',
-                                    borderRadius: 2
-                                }}
-                            >
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                    Working Time
-                                </Typography>
-                                <Typography variant="h4" color="primary.main" fontWeight="bold">
-                                    {formatDuration(workingTime)}
-                                </Typography>
-                            </Paper>
-                        </Box>
-                    )}
-
-                    {/* Swipe Button */}
-                    {attendanceState !== 'completed' && (
-                        <Box mb={3}>
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    position: 'relative',
-                                    height: 64,
-                                    bgcolor: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
-                                    borderRadius: 8,
-                                    overflow: 'hidden',
-                                    cursor: attendanceState === 'completed' ? 'default' : 'pointer',
-                                    userSelect: 'none'
-                                }}
-                            >
-                                {/* Progress Background */}
-                                <Box
-                                    sx={{
-                                        position: 'absolute',
-                                        left: 0,
-                                        top: 0,
-                                        height: '100%',
-                                        width: `${progressPercentage}%`,
-                                        bgcolor: 'rgba(255, 255, 255, 0.2)',
-                                        transition: isDragging ? 'none' : 'width 0.3s ease-out'
-                                    }}
-                                />
-
-                                {/* Center Text */}
-                                <Box
-                                    display="flex"
-                                    alignItems="center"
-                                    justifyContent="center"
-                                    height="100%"
-                                    position="relative"
-                                    zIndex={1}
-                                >
-                                    <Typography
-                                        variant="body1"
-                                        fontWeight="bold"
-                                        sx={{ color: 'white' }}
-                                    >
-                                        Swipe to {attendanceState === 'punch-in' ? 'Punch In' : 'Punch Out'}
-                                    </Typography>
-                                </Box>
-
-                                {/* Draggable Slider Circle */}
-                                <Box
-                                    sx={{
-                                        position: 'absolute',
-                                        left: 4,
-                                        top: 4,
-                                        width: 56,
-                                        height: 56,
-                                        bgcolor: 'white',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: isDragging ? 'grabbing' : 'grab',
-                                        transform: `translateX(${dragX}px) ${isDragging ? 'scale(1.1)' : 'scale(1)'}`,
-                                        transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                        zIndex: 2,
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                        '&:hover': {
-                                            transform: `translateX(${dragX}px) scale(1.05)`
-                                        }
-                                    }}
-                                    onMouseDown={handleMouseDown}
-                                    onTouchStart={handleTouchStart}
-                                >
-                                    <ArrowForward
-                                        sx={{
-                                            color: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
-                                            fontSize: 24
-                                        }}
-                                    />
-                                </Box>
-                            </Paper>
-                        </Box>
-                    )}
-
-                    {/* Mark as Absent Button */}
-                    {attendanceState === 'punch-in' && (
-                        <Button
-                            variant="outlined"
-                            startIcon={<Person />}
-                            onClick={() => setShowAbsentModal(true)}
-                            sx={{
-                                borderRadius: 3,
-                                textTransform: 'none',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            MARK AS ABSENT
-                        </Button>
-                    )}
-
-                    {/* Completed State */}
-                    {attendanceState === 'completed' && (
-                        <Box>
-                            <Chip
-                                label="Day Completed"
-                                color="success"
-                                size="large"
-                                sx={{ fontWeight: 'bold', mb: 2 }}
-                            />
-                            <br />
-                            <Button
-                                variant="outlined"
-                                onClick={resetAttendance}
-                                sx={{ textTransform: 'none' }}
-                            >
-                                Start New Day
-                            </Button>
-                        </Box>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Monthly Log Section */}
-            <Card elevation={0} sx={{ borderRadius: 3, bgcolor: '#f8f9fa' }}>
-                <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" fontWeight="bold" mb={3}>
-                        Monthly Log
-                    </Typography>
-
-                    {/* Filters */}
-                    <Box display="flex" gap={2} mb={3} alignItems="center">
-                        <FilterList color="action" />
-                        <FormControl size="small" sx={{ minWidth: 120 }}>
-                            <InputLabel>Month</InputLabel>
-                            <Select
-                                value={filterMonth}
-                                label="Month"
-                                onChange={(e) => setFilterMonth(e.target.value)}
-                            >
-                                {months.map((month, index) => (
-                                    <MenuItem key={index} value={index}>
-                                        {month}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <FormControl size="small" sx={{ minWidth: 100 }}>
-                            <InputLabel>Year</InputLabel>
-                            <Select
-                                value={filterYear}
-                                label="Year"
-                                onChange={(e) => setFilterYear(e.target.value)}
-                            >
-                                {years.map((year) => (
-                                    <MenuItem key={year} value={year}>
-                                        {year}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Box>
-
-                    {/* Records Table */}
-                    {filteredRecords.length === 0 ? (
-                        <Box textAlign="center" py={4}>
-                            <Typography variant="body1" color="text.secondary">
-                                No attendance records found for {months[filterMonth]} {filterYear}.
-                            </Typography>
-                        </Box>
-                    ) : (
-                        <TableContainer component={Paper} elevation={1}>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                        <TableCell><strong>Date</strong></TableCell>
-                                        <TableCell><strong>Status</strong></TableCell>
-                                        <TableCell><strong>Punch In</strong></TableCell>
-                                        <TableCell><strong>Punch Out</strong></TableCell>
-                                        <TableCell><strong>Total Hours</strong></TableCell>
-                                        <TableCell><strong>Reason</strong></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {filteredRecords.map((record) => (
-                                        <TableRow key={record.id}>
-                                            <TableCell>{formatDate(record.date)}</TableCell>
-                                            <TableCell>
-                                                <Chip
-                                                    label={record.status}
-                                                    color={record.status === 'Present' ? 'success' : 'error'}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                {record.punchIn ? formatTime(record.punchIn) : '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {record.punchOut ? formatTime(record.punchOut) : '-'}
-                                            </TableCell>
-                                            <TableCell>{record.totalHours}</TableCell>
-                                            <TableCell>{record.reason || '-'}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Absent Modal */}
-            <Modal
-                open={showAbsentModal}
-                onClose={() => setShowAbsentModal(false)}
-                aria-labelledby="absent-modal-title"
-            >
+          {/* Swipe Button */}
+          {attendanceState !== 'completed' && (
+            <Box mb={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  position: 'relative',
+                  height: { xs: 56, sm: 64 },
+                  bgcolor: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
+                  borderRadius: { xs: 6, sm: 8 },
+                  overflow: 'hidden',
+                  cursor: loading ? 'default' : 'pointer',
+                  userSelect: 'none',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {/* Progress Background */}
                 <Box
-                    sx={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: 400,
-                        bgcolor: 'background.paper',
-                        borderRadius: 3,
-                        boxShadow: 24,
-                        p: 4,
-                    }}
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    height: '100%',
+                    width: `${progressPercentage}%`,
+                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                    transition: isDragging ? 'none' : 'width 0.3s ease-out'
+                  }}
+                />
+          {/* Swipe Button */}
+          {attendanceState !== 'completed' && (
+            <Box mb={3}>
+              <Paper
+                elevation={0}
+                sx={{
+                  position: 'relative',
+                  height: { xs: 56, sm: 64 },
+                  bgcolor: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
+                  borderRadius: { xs: 6, sm: 8 },
+                  overflow: 'hidden',
+                  cursor: loading ? 'default' : 'pointer',
+                  userSelect: 'none',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {/* Progress Background */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    height: '100%',
+                    width: `${progressPercentage}%`,
+                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                    transition: isDragging ? 'none' : 'width 0.3s ease-out'
+                  }}
+                />
+
+                {/* Center Text */}
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  height="100%"
+                  position="relative"
+                  zIndex={1}
                 >
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                        <Typography variant="h6" fontWeight="bold">
-                            Mark as Absent
-                        </Typography>
-                        <IconButton onClick={() => setShowAbsentModal(false)}>
-                            <Close />
-                        </IconButton>
-                    </Box>
-
-                    <FormControl fullWidth sx={{ mb: 3 }}>
-                        <InputLabel>Reason for Absence</InputLabel>
-                        <Select
-                            value={absentReason}
-                            label="Reason for Absence"
-                            onChange={(e) => setAbsentReason(e.target.value)}
-                        >
-                            {absentReasons.map((reason) => (
-                                <MenuItem key={reason} value={reason}>
-                                    {reason}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <Box display="flex" gap={2} justifyContent="flex-end">
-                        <Button
-                            variant="outlined"
-                            onClick={() => setShowAbsentModal(false)}
-                            sx={{ textTransform: 'none' }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="contained"
-                            onClick={handleMarkAsAbsent}
-                            disabled={!absentReason}
-                            sx={{ textTransform: 'none' }}
-                        >
-                            Submit
-                        </Button>
-                    </Box>
+                  {loading ? (
+                    <CircularProgress size={24} sx={{ color: 'white' }} />
+                  ) : (
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      sx={{ 
+                        color: 'white',
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }}
+                    >
+                      Swipe to {attendanceState === 'punch-in' ? 'Punch In' : 'Punch Out'}
+                    </Typography>
+                  )}
                 </Box>
-            </Modal>
-        </Container>
-    );
+
+                {/* Draggable Slider Circle */}
+                <Box
+                  ref={buttonRef}
+                  sx={{
+                    position: 'absolute',
+                    left: 4,
+                    top: 4,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
+                    bgcolor: 'white',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: loading ? 'default' : (isDragging ? 'grabbing' : 'grab'),
+                    transform: `translateX(${dragX}px) ${isDragging ? 'scale(1.1)' : 'scale(1)'}`,
+                    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    zIndex: 2,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    '&:hover': {
+                      transform: `translateX(${dragX}px) scale(1.05)`
+                    }
+                  }}
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleTouchStart}
+                >
+                  <ArrowForward
+                    sx={{
+                      color: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
+                      fontSize: { xs: 20, sm: 24 }
+                    }}
+                  />
+                </Box>
+              </Paper>
+            </Box>
+          )}
+                {/* Draggable Slider Circle */}
+                <Box
+                  ref={buttonRef}
+                  sx={{
+                    position: 'absolute',
+                    left: 4,
+                    top: 4,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
+                    bgcolor: 'white',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: loading ? 'default' : (isDragging ? 'grabbing' : 'grab'),
+                    transform: `translateX(${dragX}px) ${isDragging ? 'scale(1.1)' : 'scale(1)'}`,
+                    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    zIndex: 2,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    '&:hover': {
+                      transform: `translateX(${dragX}px) scale(1.05)`
+                    }
+                  }}
+                  onMouseDown={handleMouseDown}
+                  onTouchStart={handleTouchStart}
+                >
+                  <ArrowForward
+                    sx={{
+                      color: attendanceState === 'punch-in' ? '#4caf50' : '#f44336',
+                      fontSize: { xs: 20, sm: 24 }
+                    }}
+                  />
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Completed State */}
+          {attendanceState === 'completed' && (
+            <Box>
+              <Chip
+                icon={<CheckCircle />}
+                label="Day Completed"
+                color="success"
+                size="large"
+                sx={{ 
+                  fontWeight: 'bold', 
+                  mb: 2,
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }}
+              />
+              <br />
+              <Button
+                variant="outlined"
+                onClick={resetAttendance}
+                sx={{ 
+                  textTransform: 'none',
+                  borderRadius: 2,
+                  px: 3
+                }}
+              >
+                Start New Day
+              </Button>
+              
+              {punchInTime && punchOutTime && (
+                <Box mt={2}>
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      p: 2,
+                      bgcolor: 'rgba(76, 175, 80, 0.1)',
+                      border: '1px solid rgba(76, 175, 80, 0.3)',
+                      borderRadius: 2
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      Total Working Time
+                    </Typography>
+                    <Typography variant="h5" color="success.main" fontWeight="bold">
+                      {formatDuration(Math.floor((punchOutTime.getTime() - punchInTime.getTime()) / 1000))}
+                    </Typography>
+                  </Paper>
+                      p: 2,
+                      bgcolor: 'rgba(76, 175, 80, 0.1)',
+                      border: '1px solid rgba(76, 175, 80, 0.3)',
+                      borderRadius: 2
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      Total Working Time
+                    </Typography>
+                    <Typography variant="h5" color="success.main" fontWeight="bold">
+                      {formatDuration(Math.floor((punchOutTime.getTime() - punchInTime.getTime()) / 1000))}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Location indicator */}
+          <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
+            <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">
+              KS Executive Mens Hostel, KPHB Phase II
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    </Container>
+  );
+              )}
+            </Box>
+          )}
+
+          {/* Location indicator */}
+          <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
+            <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">
+              KS Executive Mens Hostel, KPHB Phase II
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    </Container>
+  );
 };
+
+export default Attendance;
+
+export default Attendance;

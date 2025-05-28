@@ -28,6 +28,9 @@ import LoginPage from "../Components/Pages/Dashboard/Login/login";
 import ReusableListingPage from "../Components/Pages/RiderAttendace/AttendanceListingPage";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
 import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
+import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
+import LoginPageNew from "../Components/Pages/Dashboard/Login/loginNew";
+import { OrdersListingPageNew } from "../Components/Common/ReusableList";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -65,7 +68,8 @@ const AppRoutes = () => {
     <RouterRoutes>
       {/* Public Routes */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={<LoginPageNew />} />
+      {/* <Route path="/login" element={<LoginPage />} /> */}
       <Route path="/logout" element={<Logout />} />
 
       {/* Admin Protected Routes */}
@@ -86,6 +90,8 @@ const AppRoutes = () => {
           <Route path="/rider-attendance" element={<RiderAttendanceApp />} />
           <Route path="/dynami-dashboard" element={<RiderDashboard />} />
           <Route path="/upload-orders" element={<OrdersListingPage />} />
+          <Route path="/payments" element={<PaymentListingPage />} />
+          <Route path="/order-page-news" element={<OrdersListingPageNew />} />
 
 
         </Route>
