@@ -31,7 +31,6 @@ const storesRouter = require('./src/routes/stores');
 const loginRoute = require('./src/routes/login');
 const riderDocumentsRouter = require('./src/routes/rider_documents');
 const riderAssignmentsRouter = require('./src/routes/rider_assignments');
-const ordersRoutes = require('./src/routes/orders');
 const attendanceRouter = require('./src/routes/attendance');
 
 app.use('/api/users', usersRouter);
@@ -41,10 +40,8 @@ app.use('/api/stores', storesRouter);
 app.use('/api/login', loginRoute);
 app.use('/api/rider-documents', riderDocumentsRouter);
 app.use('/api/rider-assignments', riderAssignmentsRouter);
-app.use('/api', ordersRoutes);
 app.use('/api/attendance', attendanceRouter);
-app.use('/api', riderRoutes);
-router.get('/rider/:userId', ridersRouter.getRiderByUserId);
+// app.use('/api', ordersRoutes); // Commented out because ordersRoutes is not a valid router
 
 // Log registered routes
 app._router.stack.forEach((middleware) => {

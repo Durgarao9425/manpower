@@ -2,10 +2,18 @@ const express = require('express');
 const db = require('../config/database');
 const router = express.Router();
 
-// Get all riders
+// Get all riders or filter by user_id
 router.get('/', async (req, res) => {
+  const { user_id } = req.query;
   try {
-    const [rows] = await db.query('SELECT id, rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number FROM riders');
+    let rows;
+    if (user_id) {
+      // Filter by user_id if provided
+      [rows] = await db.query('SELECT id, rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number FROM riders WHERE user_id = ?', [user_id]);
+    } else {
+      // Return all riders
+      [rows] = await db.query('SELECT id, rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number FROM riders');
+    }
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -87,5 +95,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Add the getRiderByUserId function to the router
+router.get('/by-user/:userId', getRiderByUserId);
+
 module.exports = router;
-module.exports = { getRiderByUserId };
