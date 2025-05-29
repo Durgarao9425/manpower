@@ -22,6 +22,7 @@ import {
   AccessTime,
   CheckCircle
 } from '@mui/icons-material';
+import useUserData from '../../Common/loginInformation';
 
 // Types
 interface AttendanceRecord {
@@ -81,7 +82,10 @@ const Attendance: React.FC = () => {
     store_id: 28
   });
 
+   const { userData} = useUserData();
+      console.log(userData,"userData-------------------")
   // Fetch rider assignment data
+  const [assignmentLoaded, setAssignmentLoaded] = useState(false);
   const fetchRiderAssignment = async () => {
     try {
       const response = await fetch(`${API_BASE}/rider-assignments/by-rider/${riderData.id}`);
@@ -92,11 +96,14 @@ const Attendance: React.FC = () => {
           company_id: assignment.company_id,
           store_id: assignment.store_id
         }));
+        setAssignmentLoaded(true);
       } else {
         console.error('Failed to fetch rider assignment');
+        setAssignmentLoaded(true); // Still allow attendance fetch to proceed
       }
     } catch (error) {
       console.error('Error fetching rider assignment:', error);
+      setAssignmentLoaded(true);
     }
   };
 
@@ -435,15 +442,19 @@ const Attendance: React.FC = () => {
     }
   }, [isDragging, dragX]);
 
+  // Fetch assignment only once on mount
   useEffect(() => {
-    // First fetch the rider assignment
     fetchRiderAssignment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fetch attendance only after assignment is loaded
   useEffect(() => {
-    // Then fetch attendance after rider data is updated
-    fetchTodayAttendance();
-  }, [riderData.company_id, riderData.store_id]);
+    if (assignmentLoaded) {
+      fetchTodayAttendance();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentLoaded]);
 
   const progressPercentage = (dragX / maxDragDistance) * 100;
 

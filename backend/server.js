@@ -43,6 +43,8 @@ app.use('/api/rider-documents', riderDocumentsRouter);
 app.use('/api/rider-assignments', riderAssignmentsRouter);
 app.use('/api', ordersRoutes);
 app.use('/api/attendance', attendanceRouter);
+app.use('/api', riderRoutes);
+router.get('/rider/:userId', ridersRouter.getRiderByUserId);
 
 // Log registered routes
 app._router.stack.forEach((middleware) => {

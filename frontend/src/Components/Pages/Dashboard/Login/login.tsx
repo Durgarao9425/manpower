@@ -125,60 +125,74 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     console.log(formData,"formDataformData")
+try {
+  // Send login credentials to backend for authentication
+  const response = await fetch("http://localhost:4003/api/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username: formData.username,
+      password: formData.password,
+    }),
+  });
 
-    try {
-      // Send login credentials to backend for authentication
-      const response = await fetch("http://localhost:4003/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-        }),
-      });
+  const data = await response.json();
 
-      const data = await response.json();
+  if (!response.ok) {
+    setLoginError(data.message || "Invalid username or password");
+    return;
+  }
 
-      if (!response.ok) {
-        setLoginError(data.message || "Invalid username or password");
-        return;
-      }
-console.log(data,"data------------------------")
-      // If login successful, store user data
-      if (data.user) {
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", data.user.user_type);
-        localStorage.setItem("userId", data.user.id.toString());
-        localStorage.setItem("userName", data.user.full_name);
-        localStorage.setItem("userEmail", data.user.email);
-        
-        if (formData.rememberMe) {
-          localStorage.setItem("rememberedUser", formData.username);
-        } else {
-          localStorage.removeItem("rememberedUser");
-        }
+  // If login successful, store user data
+  if (data.user) {
+    const userId = data.user.id;
 
-        // Navigate based on user type
-        if (data.user.user_type === "admin") {
-          navigate("/dashboard");
-        } else if (data.user.user_type === "rider") {
-          navigate("/rider-dashboard");
-        } else {
-          setLoginError("Access denied. Invalid user type.");
-        }
-      } else {
-        setLoginError("Invalid response from server");
-      }
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("userRole", data.user.user_type);
+    localStorage.setItem("userId", userId.toString());
+    localStorage.setItem("userName", data.user.full_name);
+    localStorage.setItem("userEmail", data.user.email);
 
-    } catch (error) {
-      console.error("Login error:", error);
-      setLoginError("Unable to connect to server. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    if (formData.rememberMe) {
+      localStorage.setItem("rememberedUser", formData.username);
+    } else {
+      localStorage.removeItem("rememberedUser");
     }
+
+    // Additional APIs after successful login
+    const [userRes, notificationsRes, tasksRes] = await Promise.all([
+      fetch(`http://localhost:4003/api/users/${userId}`),
+      fetch(`http://localhost:4003/api/notifications/${userId}`),
+      fetch(`http://localhost:4003/api/tasks/${userId}`),
+    ]);
+
+    const userDetails = await userRes.json();
+    const notifications = await notificationsRes.json();
+    const tasks = await tasksRes.json();
+
+    console.log("User Details:", userDetails);
+    console.log("Notifications:", notifications);
+    console.log("Tasks:", tasks);
+
+    // Navigate based on user type
+    if (data.user.user_type === "admin") {
+      navigate("/dashboard");
+    } else if (data.user.user_type === "rider") {
+      navigate("/rider-dashboard");
+    } else {
+      setLoginError("Access denied. Invalid user type.");
+    }
+  } else {
+    setLoginError("Invalid response from server");
+  }
+} catch (error) {
+  console.error("Login error:", error);
+  setLoginError("Unable to connect to server. Please try again.");
+}
   };
+  
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);

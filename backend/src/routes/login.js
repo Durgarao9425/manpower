@@ -1,52 +1,33 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+require('dotenv').config();
+
 const router = express.Router();
 
-// Login user
 router.post('/', async (req, res) => {
   const { username, password } = req.body;
   
   if (!username || !password) {
-    return res.status(400).json({ 
-      error: 'Username and password are required' 
-    });
+    return res.status(400).json({ error: 'Username and password are required' });
   }
   
   try {
     const [results] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
     
     if (results.length === 0) {
-      console.log('Login attempt failed: User not found -', username);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
-    
+
     const user = results[0];
-    console.log('Login attempt for user:', {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      user_type: user.user_type,
-      full_name: user.full_name,
-      status: user.status
-    });
-    
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
     if (!isPasswordValid) {
-      console.log('Login attempt failed: Invalid password for user -', username);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
-    
-    console.log('Login successful for user:', {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      user_type: user.user_type,
-      full_name: user.full_name,
-      status: user.status
-    });
-    
+
+    // Prepare user data
     const userData = {
       id: user.id,
       company_id: user.company_id,
@@ -61,13 +42,21 @@ router.post('/', async (req, res) => {
       created_at: user.created_at,
       updated_at: user.updated_at
     };
-    
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE }
+    );
+
     res.json({
       success: true,
       message: 'Login successful',
+      token, // send the JWT token
       user: userData
     });
-    
+
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Internal server error' });

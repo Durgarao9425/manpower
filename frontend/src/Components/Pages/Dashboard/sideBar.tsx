@@ -65,6 +65,7 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ReplayIcon from '@mui/icons-material/Replay';
+import useUserData from "../../Common/loginInformation";
 
 
 const themeColors = {
@@ -99,6 +100,7 @@ const presets = [
   { color: '#F59E0B', name: 'Orange' },
   { color: '#EF4444', name: 'Red' },
 ];
+
 // Drawer width
 const drawerWidth = 240;
 
@@ -243,11 +245,13 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
   const handleProfileClick = () => setProfileOpen(true);
 
   // User data
-  const userData = {
-    name: "Durgarao",
-    email: "durgarao@minimals.cc",
-    avatar: durgarao
-  };
+  // const userData = {
+  //   name: "Durgarao",
+  //   email: "durgarao@minimals.cc",
+  //   avatar: durgarao
+  // };
+    const { userData, loading, error } = useUserData();
+    console.log(userData,"userData-------------------")
 
   const handleLogout = () => {
     // Optional: clear user data here
@@ -679,7 +683,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
 
         <Box sx={{ px: 3, pb: 3, textAlign: 'center' }}>
           <Avatar
-            src={userData.avatar}
+            src={durgarao}
             sx={{
               width: 80,
               height: 80,
@@ -689,10 +693,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
             }}
           />
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-            {userData.name}
+            {userData?.user?.username}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {userData.email}
+            {userData?.user?.email}
           </Typography>
         </Box>
 
@@ -1252,7 +1256,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
               sx={{ p: 0.5 }}
             >
               <Avatar
-                src={userData.avatar}
+                src={durgarao}
                 sx={{ width: 32, height: 32 }}
               />
             </IconButton>
