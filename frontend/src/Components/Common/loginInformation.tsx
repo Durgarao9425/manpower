@@ -8,17 +8,13 @@ function useUserData() {
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    console.log(userId,"userIduserIduserId")
+    console.log(userId,"userIduserIduserId----------------")
 
     if (!userId) {
       setError("User ID not found. Please login.");
       setLoading(false);
       return;
     }
-
-
-    const data  = axios.get(`http://localhost:4003/api/riders/${userId}`)
-    console.log(data,"data+++++++++++++++++")
     fetch(`http://localhost:4003/api/users/${userId}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch user data");
