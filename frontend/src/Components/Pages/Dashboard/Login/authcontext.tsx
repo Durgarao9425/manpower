@@ -102,9 +102,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user is authenticated
   const checkAuth = useCallback(async (): Promise<boolean> => {
     try {
-      // Check if token is valid
-      if (authService.isAuthenticated()) {
-        // Get current user data
+      // Always try to get a valid access token (refresh if needed)
+      const token = await authService.getAccessToken();
+      if (token) {
         const user = authService.getCurrentUser();
         if (user) {
           setCurrentUser(user);

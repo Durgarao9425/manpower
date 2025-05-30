@@ -220,7 +220,7 @@ const StoreManagement = () => {
           ...formData,
           company_id: Number(formData.company_id),
         });
-        setStores(prev => [...prev, response.data]);
+        setStores(prev => [...prev, data]);
       }
       setShowForm(false);
       setEditingStore(null);
