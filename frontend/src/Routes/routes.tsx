@@ -30,6 +30,7 @@ import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
 import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
 import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
 import LoginPageNew from "../Components/Pages/Dashboard/Login/loginNew";
+import SliderManagementPage from "../Components/Pages/SliderPage/SliderPage";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -90,6 +91,7 @@ const AppRoutes = () => {
           <Route path="/dynami-dashboard" element={<RiderDashboard />} />
           <Route path="/upload-orders" element={<OrdersListingPage />} />
           <Route path="/payments" element={<PaymentListingPage />} />
+          <Route path="/slider-page" element={<SliderManagementPage />} />
 
 
         </Route>
