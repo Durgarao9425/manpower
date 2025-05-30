@@ -8,20 +8,20 @@ function useUserData() {
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    console.log(userId, "userIduserIduserId----------------");
+    const token = localStorage.getItem("accessToken");
 
-    if (!userId) {
-      setError("User ID not found. Please login.");
+    if (!userId || !token) {
+      setError("User ID or token not found. Please login.");
       setLoading(false);
       return;
     }
-    const token = localStorage.getItem("accessToken");
+
     axios
       .get(`http://localhost:4003/api/users/${userId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        setUser(res.data); // API returns user object
+        setUser({ ...res.data, token }); // Include token in userData
       })
       .catch((err) => setError(err.response?.data?.message || err.message))
       .finally(() => setLoading(false));

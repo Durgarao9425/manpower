@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Box,
   Button,
@@ -42,6 +41,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import StoreForm from './storeForm';
+import apiService from '../../../services/apiService';
 
 type Store = {
   id: number;
@@ -76,32 +76,32 @@ const StoreCard = ({ store, onEdit, onDelete, companyName }) => {
             </Typography>
           </Box>
         </Box>
-        
+
         <Divider sx={{ my: 2 }} />
-        
+
         <Stack spacing={1}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <LocationIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
             <Typography variant="body2">{store.location}</Typography>
           </Box>
-          
+
           {store.address && (
             <Typography variant="body2" color="text.secondary" sx={{ ml: 3 }}>
               {store.address}
             </Typography>
           )}
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <PersonIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
             <Typography variant="body2">{store.contact_person}</Typography>
           </Box>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <PhoneIcon sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
             <Typography variant="body2">{store.contact_phone}</Typography>
           </Box>
         </Stack>
-        
+
         <Box sx={{ mt: 2 }}>
           <Chip
             label={store.status}
@@ -110,7 +110,7 @@ const StoreCard = ({ store, onEdit, onDelete, companyName }) => {
           />
         </Box>
       </CardContent>
-      
+
       <CardActions>
         <Button size="small" onClick={() => onEdit(store)} startIcon={<EditIcon />}>
           Edit
@@ -142,8 +142,9 @@ const StoreManagement = () => {
     const fetchStores = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/stores');
-        setStores(response.data);
+        const reasponse = await apiService.get('/stores');
+        console.log(reasponse,"reasponse+++++++++++++++++++++++++++")
+        setStores(reasponse);
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch stores');
@@ -157,8 +158,9 @@ const StoreManagement = () => {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await axios.get('/api/companies');
-        setCompanies(response.data);
+        const response = await apiService.get('/companies');
+        console.log(response,"------------------------------------------------------")
+        setCompanies(response);
       } catch (err) {
         // Optionally handle error
       }
@@ -169,15 +171,15 @@ const StoreManagement = () => {
   // Apply filters
   useEffect(() => {
     let filtered = stores;
-    
+
     if (filters.company) {
       filtered = filtered.filter(store => store.company_id === Number(filters.company));
     }
-    
+
     if (filters.status) {
       filtered = filtered.filter(store => store.status === filters.status);
     }
-    
+
     setFilteredStores(filtered);
     setPage(0);
   }, [filters, stores]);
@@ -214,7 +216,7 @@ const StoreManagement = () => {
         setStores(prev => prev.map(store => store.id === editingStore.id ? { ...store, ...formData, updated_at: new Date().toISOString() } : store));
       } else {
         // Add new store to backend
-        const response = await axios.post('/api/stores', {
+        const response = await apiService.post('stores', {
           ...formData,
           company_id: Number(formData.company_id),
         });
@@ -237,7 +239,7 @@ const StoreManagement = () => {
     return company ? company.name : 'Unknown Company';
   };
 
-  const paginatedStores = filteredStores.slice(
+  const paginatedStores = filteredStores?.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
@@ -281,7 +283,7 @@ const StoreManagement = () => {
           <FilterIcon sx={{ mr: 1 }} />
           <Typography variant="h6">Filters</Typography>
         </Box>
-        
+
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth size="small">
@@ -292,7 +294,7 @@ const StoreManagement = () => {
                 label="Company"
               >
                 <MenuItem value="">All Companies</MenuItem>
-                {companies.map((company) => (
+                {companies?.map((company) => (
                   <MenuItem key={company.id} value={company.id}>
                     {company.company_name || company.name}
                   </MenuItem>
@@ -300,7 +302,7 @@ const StoreManagement = () => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth size="small">
               <InputLabel>Status</InputLabel>
@@ -315,13 +317,13 @@ const StoreManagement = () => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} sm={6} md={3}>
             <Button variant="outlined" onClick={clearFilters}>
               Clear Filters
             </Button>
           </Grid>
-          
+
           <Grid item xs={12} sm={6} md={3}>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <IconButton
@@ -343,25 +345,25 @@ const StoreManagement = () => {
 
       {/* Results Summary */}
       <Alert severity="info" sx={{ mb: 3 }}>
-        Showing {filteredStores.length} store(s) {filters.company || filters.status ? 'with applied filters' : 'total'}
+        Showing {filteredStores?.length} store(s) {filters.company || filters.status ? 'with applied filters' : 'total'}
       </Alert>
 
       {/* Content */}
       {viewMode === 'card' ? (
         <Grid container spacing={3}>
-          {paginatedStores.map((store) => (
+          {paginatedStores?.map((store) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={store.id}>
               <StoreCard
                 store={store}
                 onEdit={handleEditStore}
                 onDelete={handleDeleteStore}
-                companyName={getCompanyName(store.company_id)}
+                companyName={getCompanyName(store?.company_id)}
               />
             </Grid>
           ))}
         </Grid>
       ) : (
-        <TableContainer component={Paper} sx={{minWidth:'77vw'}}>
+        <TableContainer component={Paper} sx={{ minWidth: '77vw' }}>
           <Table>
             <TableHead>
               <TableRow>
@@ -375,19 +377,19 @@ const StoreManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedStores.map((store) => (
+              {paginatedStores?.map((store) => (
                 <TableRow key={store.id}>
                   <TableCell>
-                    <Typography variant="subtitle2">{store.store_name}</Typography>
+                    <Typography variant="subtitle2">{store?.store_name}</Typography>
                   </TableCell>
-                  <TableCell>{getCompanyName(store.company_id)}</TableCell>
-                  <TableCell>{store.location}</TableCell>
-                  <TableCell>{store.contact_person}</TableCell>
-                  <TableCell>{store.contact_phone}</TableCell>
+                  <TableCell>{getCompanyName(store?.company_id)}</TableCell>
+                  <TableCell>{store?.location}</TableCell>
+                  <TableCell>{store?.contact_person}</TableCell>
+                  <TableCell>{store?.contact_phone}</TableCell>
                   <TableCell>
                     <Chip
-                      label={store.status}
-                      color={store.status === 'active' ? 'success' : 'default'}
+                      label={store?.status}
+                      color={store?.status === 'active' ? 'success' : 'default'}
                       size="small"
                     />
                   </TableCell>
@@ -409,7 +411,7 @@ const StoreManagement = () => {
       {/* Pagination */}
       <TablePagination
         component="div"
-        count={filteredStores.length}
+        count={filteredStores?.length}
         page={page}
         onPageChange={(_, newPage) => setPage(newPage)}
         rowsPerPage={rowsPerPage}

@@ -23,6 +23,7 @@ import {
   CheckCircle
 } from '@mui/icons-material';
 import useUserData from '../../Common/loginInformation'; // Assuming this path is correct
+import axios from 'axios';
 import apiService from '../../../services/apiService';
 
 // Types
@@ -60,6 +61,13 @@ interface RiderData {
   store_id: number;   // This will be rider_assignments.store_id
 }
 
+interface UserData {
+  user: {
+    id: number;
+  };
+  token: string;
+}
+
 const Attendance: React.FC = () => {
   // States
   const [dragX, setDragX] = useState(0);
@@ -87,22 +95,21 @@ const Attendance: React.FC = () => {
     store_id: 0    // Default store_id
   });
 
-  const { userData: userDataObj } = useUserData(); // Custom hook to get user data
-  const userData = userDataObj as any; // fallback to any for compatibility
+  const { userData } = useUserData() as { userData: UserData };
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const buttonRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
-  const workingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const maxDragDistance = isMobile ? 240 : 280;
 
 
   // Effect to fetch rider's details (id, name) and their assignment (company_id, store_id)
 useEffect(() => {
   const fetchRiderDataAndAssignments = async () => {
-    if (!userData?.id) {
+    if (!userData?.user?.id) {
       setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
       setLoading(false);
       return;
@@ -111,8 +118,20 @@ useEffect(() => {
     setLoading(true);
 
     try {
-      // Step 1: Fetch rider by user_id
-      const riderResponse = await apiService.get(`/riders`, { user_id: userData.id });
+      const token = userData?.token; // Ensure token is available
+      if (!token) {
+        console.warn('Authorization token is missing. Please ensure the user is logged in and the token is set.');
+        showToastMessage('Authorization token is missing. Please log in again.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      const riderResponse = await axios.get<{ id: number; name?: string }[]>
+      (`${API_BASE}/riders?user_id=${userData.user.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       console.log('Rider Data Response::::::::::::::::::::::::::', riderResponse.data);
 
       if (Array.isArray(riderResponse.data) && riderResponse.data.length > 0) {
@@ -128,32 +147,46 @@ useEffect(() => {
 console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         try {
           // Step 2: Fetch rider assignments by rider_id using the by-rider endpoint
-          const assignmentResponse = await apiService.get(`/rider-assignments/by-rider/${fetchedRiderId}`);
+          const assignmentResponse = 
+          await axios.get<{ company_id: number; store_id: number }>
+          (`${API_BASE}/rider-assignments/by-rider/${fetchedRiderId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
           console.log('Rider Assignments Response:**********************************', assignmentResponse.data);
 
-          // The by-rider endpoint returns a single object
-          if (assignmentResponse.data && typeof assignmentResponse.data === 'object') {
-            const activeAssignment = assignmentResponse.data;
-            console.log('Active Assignment:', activeAssignment);
-            
-            // Check if company_id and store_id exist and are not null/undefined
-            if (activeAssignment.company_id !== undefined && activeAssignment.store_id !== undefined) {
-              finalRiderData.company_id = activeAssignment.company_id;
-              finalRiderData.store_id = activeAssignment.store_id;
-              console.log('Updated rider data with assignment:', finalRiderData);
-            } else {
-              console.warn('Assignment found but company_id or store_id is missing:', activeAssignment);
-            }
-          } else {
-            console.warn(`No rider assignment found for rider_id: ${fetchedRiderId}`);
-          }
+  // Replace this section in your fetchRiderDataAndAssignments function:
+
+// The by-rider endpoint returns a single object
+// Replace this section in your fetchRiderDataAndAssignments function:
+
+// FIXED: The by-rider endpoint returns an array, get the first active assignment
+if (assignmentResponse.data && Array.isArray(assignmentResponse.data) && assignmentResponse.data.length > 0) {
+  const activeAssignment = assignmentResponse.data[0]; // Get first assignment
+  console.log('Active Assignment:', activeAssignment);
+  
+  // Check if company_id and store_id exist and are valid numbers
+  if (activeAssignment.company_id != null && activeAssignment.store_id != null && 
+      typeof activeAssignment.company_id === 'number' && typeof activeAssignment.store_id === 'number' &&
+      activeAssignment.company_id > 0 && activeAssignment.store_id > 0) {
+    finalRiderData.company_id = activeAssignment.company_id;
+    finalRiderData.store_id = activeAssignment.store_id;
+    console.log('Updated rider data with assignment:', finalRiderData);
+  } else {
+    console.warn('Assignment found but company_id or store_id is invalid:', activeAssignment);
+    console.warn('company_id:', activeAssignment.company_id, 'store_id:', activeAssignment.store_id);
+  }
+} else {
+  console.warn(`No rider assignment found for rider_id: ${fetchedRiderId}`);
+}
         } catch (assignmentError) {
           console.error('Error fetching rider assignments:', assignmentError);
         }
 
         setRiderData(finalRiderData);
       } else {
-        console.warn(`No rider data found for user_id: ${userData.id}`);
+        console.warn(`No rider data found for user_id: ${userData.user.id}`);
         setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
       }
     } catch (error) {
@@ -165,7 +198,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
   };
 
   fetchRiderDataAndAssignments();
-}, [userData?.id]);
+}, [userData?.user?.id]);
  // Dependencies: userData.user.id and API_BASE (as it's used in effect)
 
   // Fetch today's attendance record if riderData.id is valid (non-zero)
@@ -185,59 +218,82 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
   }, [riderData.id]); // Depends on riderData.id (which includes rider_id)
   
   // Function to fetch rider assignments with company and store names
-  const fetchRiderAssignments = async () => {
-    if (!riderData.id || riderData.id === 0) return;
-    
-    try {
-      // Fetch rider assignments
-      const assignmentsResponse = await apiService.get(`/rider-assignments`, { rider_id: riderData.id });
-      const assignments = assignmentsResponse.data;
-      console.log('Rider Assignments History:', assignments);
-      
-      // Fetch companies for name lookup
-      const companiesResponse = await apiService.get(`/orders/companies`);
-      const companies = companiesResponse.data;
-      
-      // Create a map of company IDs to names for quick lookup
-      const companyMap = companies.reduce((map: {[key: number]: string}, company: {id: number, company_name: string}) => {
-        map[company.id] = company.company_name;
-        return map;
-      }, {});
-      
-      // Fetch stores for each company in the assignments
-      const storePromises = assignments.map(async (assignment: any) => {
-        try {
-          const storesResponse = await apiService.get(`/stores`, { company_id: assignment.company_id });
-          return storesResponse.data;
-        } catch (error) {
-          console.error(`Error fetching stores for company ${assignment.company_id}:`, error);
-          return [];
-        }
-      });
-      
-      const storesResults = await Promise.all(storePromises);
-      
-      // Create a map of store IDs to names for quick lookup
-      const storeMap: {[key: number]: string} = {};
-      storesResults.forEach((stores: any[]) => {
-        stores.forEach((store: {id: number, store_name: string}) => {
-          storeMap[store.id] = store.store_name;
-        });
-      });
-      
-      // Enhance assignments with company and store names
-      const enhancedAssignments = assignments.map((assignment: any) => ({
-        ...assignment,
-        company_name: companyMap[assignment.company_id] || `Company ${assignment.company_id}`,
-        store_name: storeMap[assignment.store_id] || `Store ${assignment.store_id}`
-      }));
-      
-      setRiderAssignments(enhancedAssignments);
-    } catch (error) {
-      console.error('Error fetching rider assignments:', error);
-      showToastMessage('Failed to load rider assignments.', 'error');
+// Replace the fetchRiderAssignments function with this fixed version:
+
+const fetchRiderAssignments = async () => {
+  if (!riderData.id || riderData.id === 0) return;
+  
+  try {
+    const token = userData?.token; // Get the token
+    if (!token) {
+      console.warn('Authorization token is missing for rider assignments.');
+      return;
     }
-  };
+
+    // FIXED: Add Authorization header
+    const assignmentsResponse = await axios.get(`${API_BASE}/rider-assignments?rider_id=${riderData.id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const assignments = assignmentsResponse.data;
+    console.log('Rider Assignments History:', assignments);
+    
+    // FIXED: Add Authorization header for companies
+    const companiesResponse = await axios.get(`${API_BASE}/orders/companies`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const companies = companiesResponse.data;
+    
+    // Create a map of company IDs to names for quick lookup
+    const companyMap = companies.reduce((map: {[key: number]: string}, company: {id: number, company_name: string}) => {
+      map[company.id] = company.company_name;
+      return map;
+    }, {});
+    
+    // Fetch stores for each company in the assignments
+    const storePromises = assignments.map(async (assignment: any) => {
+      console.log(assignment,"assignmentassignmentassignment")
+      try {
+        // FIXED: Add Authorization header for stores
+        const storesResponse = await apiService.get(`/stores?company_id=${assignment.company_id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log(storesResponse,"storesResponse+++++++++++++++++++++++++++")
+        return storesResponse;
+      } catch (error) {
+        console.error(`Error fetching stores for company ${assignment.company_id}:`, error);
+        return [];
+      }
+    });
+    
+    const storesResults = await Promise.all(storePromises);
+    
+    // Create a map of store IDs to names for quick lookup
+    const storeMap: {[key: number]: string} = {};
+    storesResults.forEach((stores: any[]) => {
+      stores.forEach((store: {id: number, store_name: string}) => {
+        storeMap[store.id] = store.store_name;
+      });
+    });
+    
+    // Enhance assignments with company and store names
+    const enhancedAssignments = assignments.map((assignment: any) => ({
+      ...assignment,
+      company_name: companyMap[assignment.company_id] || `Company ${assignment.company_id}`,
+      store_name: storeMap[assignment.store_id] || `Store ${assignment.store_id}`
+    }));
+    
+    setRiderAssignments(enhancedAssignments);
+  } catch (error) {
+    console.error('Error fetching rider assignments:', error);
+    showToastMessage('Failed to load rider assignments.', 'error');
+  }
+};
 
   const getCurrentLocation = (): Promise<LocationData> => {
     return new Promise((resolve) => { // Removed reject to always resolve with mock on failure/no support
@@ -278,56 +334,64 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
   };
 
   const fetchTodayAttendance = async () => {
-    // This function relies on riderData.id being set from the other useEffect.
     if (!riderData.id || riderData.id === 0) {
-        console.log("fetchTodayAttendance skipped: riderData.id is not set or is 0.");
-        return;
+      console.log("fetchTodayAttendance skipped: riderData.id is not set or is 0.");
+      return;
     }
     setLoading(true);
     try {
+      const token = userData?.token; // Ensure token is available
+      if (!token) {
+        console.warn('Authorization token is missing. Please ensure the user is logged in and the token is set.');
+        showToastMessage('Authorization token is missing. Please log in again.', 'error');
+        setLoading(false);
+        return;
+      }
+
       const todayDateString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format for query
-      const token = localStorage.getItem('accessToken');
-      const response = await apiService.get(`/attendance`, { rider_id: riderData.id, date: todayDateString });
-      const records: AttendanceRecord[] = response;
+      const response = await fetch(`${API_BASE}/attendance?rider_id=${riderData.id}&date=${todayDateString}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})); // Try to parse error, default to empty object
+        throw new Error(errorData.error || `Failed to fetch attendance (status: ${response.status})`);
+      }
+
+      const records: AttendanceRecord[] = await response.json();
+
       if (records.length > 0) {
         const record = records[0];
         setTodayRecord(record);
+
         if (record.check_in_time && !record.check_out_time) {
           setAttendanceState('punch-out');
           setPunchInTime(new Date(record.check_in_time));
-          // Calculate working time based on fetched record
           setWorkingTime(Math.floor((new Date().getTime() - new Date(record.check_in_time).getTime()) / 1000));
         } else if (record.check_in_time && record.check_out_time) {
           setAttendanceState('completed');
           setPunchInTime(new Date(record.check_in_time));
           setPunchOutTime(new Date(record.check_out_time));
-           // Calculate final working time
           setWorkingTime(Math.floor((new Date(record.check_out_time).getTime() - new Date(record.check_in_time).getTime()) / 1000));
         } else {
-            // No check-in yet for today, or incomplete record
-            setAttendanceState('punch-in');
+          setAttendanceState('punch-in');
         }
       } else {
-        // No record for today, ready for punch-in
         setTodayRecord(null);
         setAttendanceState('punch-in');
         setPunchInTime(null);
         setPunchOutTime(null);
         setWorkingTime(0);
       }
-    } catch (error) {
-      let message = 'Could not load today\'s attendance.';
-      if (typeof error === 'object' && error !== null && 'message' in error) {
-        message = (error as any).message || message;
-      }
-      setToastMessage(message);
-      setToastSeverity('error');
-      setShowToast(true);
-      // Reset to default state on error
+    } catch (error: any) {
+      console.error('Error fetching today attendance:', error);
+      showToastMessage(error.message || 'Could not load today\'s attendance.', 'error');
       setTodayRecord(null);
       setAttendanceState('punch-in');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -355,7 +419,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         store_id: riderData.store_id,
         attendance_date: getTodayDateForAPI(), // Or a more specific date logic if needed
         status: 'present' as 'present', // Explicitly type
-        marked_by: userData?.id || 0, // Use the logged-in user's ID
+        marked_by: userData?.user?.id || 0, // Use the logged-in user's ID
         remarks: 'Punched In',
         check_in_time: formatDateForAPI(now),
         check_in_latitude: location.latitude,
@@ -364,8 +428,17 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
       };
 
       console.log('Punch In Payload:', payload);
-      const response = await apiService.post(`/attendance/punch-in`, payload);
-      const result: AttendanceRecord = response;
+      const response = await apiService.get("/attendance/punch-in", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Punch In failed');
+      }
+      const result: AttendanceRecord = await response.json(); // Assuming API returns the created/updated record
       return result;
     } finally {
       setLoading(false);
@@ -390,7 +463,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         // company_id: riderData.company_id, 
         // store_id: riderData.store_id,
         attendance_date: todayRecord.attendance_date, // Use date from existing record
-        marked_by: userData?.id || 0, // Use the logged-in user's ID
+        marked_by: userData?.user?.id || 0, // Use the logged-in user's ID
         remarks: 'Punched Out',
         check_out_time: formatDateForAPI(now),
         check_out_latitude: location.latitude,
@@ -400,8 +473,17 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
 
       console.log('Punch Out Payload:', payload);
       // Ensure the endpoint is correct for punch-out (e.g., might be a PUT to /attendance/{id} or similar)
-      const response = await apiService.post(`/attendance/punch-out`, payload);
-      const result: AttendanceRecord = response;
+      const response = await fetch(`${API_BASE}/attendance/punch-out`, { // Or specific update endpoint
+        method: 'POST', // Or 'PUT' if updating an existing record by ID
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Punch Out failed');
+      }
+      const result: AttendanceRecord = await response.json();
       return result;
     } finally {
       setLoading(false);
@@ -637,7 +719,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
 
           {attendanceState === 'completed' && (
             <Box>
-              <Chip icon={<CheckCircle />} label="Day Completed" color="success" size="medium" sx={{ fontWeight: 'bold', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }} />
+              <Chip icon={<CheckCircle />} label="Day Completed" color="success" size="large" sx={{ fontWeight: 'bold', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }} />
               <br />
               <Button variant="outlined" onClick={resetAttendance} sx={{ textTransform: 'none', borderRadius: 2, px: 3 }}>
                 Start New Day

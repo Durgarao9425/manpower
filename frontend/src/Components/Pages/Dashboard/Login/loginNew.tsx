@@ -168,7 +168,7 @@ const IllustrationSection: React.FC = () => (
       }}
     >
       <img
-        src="https://cdn-icons-png.flaticon.com/512/2452/2452496.png" // Delivery rider illustration
+        src="https://cdn-icons-png.flaticon.com/512/2452/2452496.png" 
         alt="Delivery Rider"
         style={{
           width: "80%",

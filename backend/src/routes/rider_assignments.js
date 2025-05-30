@@ -1,9 +1,13 @@
 const express = require('express');
 const db = require('../config/database');
+const { auth } = require('../middleware/auth');
 const router = express.Router();
 
 // Debug log to confirm route is loaded
 console.log('rider_assignments route loaded');
+
+// Ensure token validation is applied
+router.use(auth);
 
 // Assign a rider to a company and store
 router.post('/', async (req, res) => {
@@ -45,14 +49,15 @@ router.get('/', async (req, res) => {
 // Get assignment by rider id
 router.get('/by-rider/:riderId', async (req, res) => {
   const { riderId } = req.params;
-  // Only return the latest assignment where both company_id and store_id are NOT NULL
   const sql = `SELECT * FROM rider_assignments WHERE rider_id = ? AND company_id IS NOT NULL AND store_id IS NOT NULL ORDER BY assigned_date DESC, id DESC LIMIT 1`;
   try {
     const results = await db.query(sql, [riderId]);
-    if (results.length === 0) return res.status(404).json({ error: 'No valid assignment found' });
-    res.json(results[0]);
+    if (results.length === 0) return res.status(404).json({ success: false, message: 'No valid assignment found' });
+
+    // Include token in the response if required
+    res.json({ success: true, data: results[0], token: req.headers.authorization });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

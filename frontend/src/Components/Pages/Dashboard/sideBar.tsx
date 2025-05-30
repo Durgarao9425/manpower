@@ -251,7 +251,6 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
   //   avatar: durgarao
   // };
     const { userData, loading, error } = useUserData();
-    console.log(userData,"userData-------------------")
 
   const handleLogout = () => {
     // Optional: clear user data here

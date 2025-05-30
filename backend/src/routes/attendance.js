@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const authService = require('../services/authService');
 
 // Middleware to get rider_id from session (placeholder, replace with real auth)
 function getRiderId(req) {
@@ -18,6 +19,25 @@ async function getAssignment(rider_id) {
     console.log('getAssignment for rider_id', rider_id, 'result:', rows);
     return rows[0] || {};
 }
+
+// Middleware to validate token
+function validateToken(req, res, next) {
+    const token = req.headers['x-auth-token'];
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+    }
+
+    try {
+        const decoded = authService.verifyToken(token);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(400).json({ success: false, message: 'Invalid token.' });
+    }
+}
+
+// Apply token validation middleware to all routes
+router.use(validateToken);
 
 // Punch In
 router.post('/punch-in', async (req, res) => {
@@ -58,6 +78,9 @@ router.post('/punch-in', async (req, res) => {
             [rider_id, company_id, store_id, today, marked_by, now, now, now]
         );
         
+        // Generate token for response
+        const token = authService.generateToken({ rider_id, company_id, store_id });
+        
         // Return success with the data used
         res.json({ 
             success: true,
@@ -65,7 +88,8 @@ router.post('/punch-in', async (req, res) => {
             company_id,
             store_id,
             attendance_date: today,
-            check_in_time: now
+            check_in_time: now,
+            token
         });
     } catch (err) {
         console.error('Punch-in error:', err);
@@ -103,6 +127,9 @@ router.post('/punch-out', async (req, res) => {
             ]
         );
         
+        // Generate token for response
+        const token = authService.generateToken({ rider_id, company_id: rows[0].company_id, store_id: rows[0].store_id });
+        
         // Return success with the data used
         res.json({ 
             success: true,
@@ -110,7 +137,8 @@ router.post('/punch-out', async (req, res) => {
             company_id: rows[0].company_id,
             store_id: rows[0].store_id,
             attendance_date: today,
-            check_out_time: now
+            check_out_time: now,
+            token
         });
     } catch (err) {
         console.error('Punch-out error:', err);
@@ -158,6 +186,9 @@ router.post('/absent', async (req, res) => {
             [rider_id, company_id, store_id, today, marked_by, reason, now, now]
         );
         
+        // Generate token for response
+        const token = authService.generateToken({ rider_id, company_id, store_id });
+        
         // Return success with the data used
         res.json({ 
             success: true,
@@ -165,7 +196,8 @@ router.post('/absent', async (req, res) => {
             company_id,
             store_id,
             attendance_date: today,
-            status: 'absent'
+            status: 'absent',
+            token
         });
     } catch (err) {
         console.error('Mark absent error:', err);
