@@ -1,12 +1,12 @@
 import { Alert, alpha, Box, Button, Card, CardContent, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel, List, ListItem, ListItemIcon, ListItemText, MenuItem, Modal, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useTheme } from '@mui/material';
-import React, { useState, useEffect, useRef } from 'react';
+import React, {  useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import durgarao from '../../../Images/durgarao.jpeg';
 import {
     SwipeRight as SwipeRightIcon,
     Close as CloseIcon,
     AccessTime as TimeIcon,
-    Payments,
+    
 } from '@mui/icons-material';
 import Attendance from './Attendance';
 import { Orders } from './RiderOrdersPage';
@@ -14,6 +14,8 @@ import { Profile } from './RiderProfilePage';
 import { Settings } from './RiderSettingsPage';
 import { Certificate } from './RiderCertificatePage';
 import { Dashboard } from './DashboardReusable';
+import { useState } from "react";
+import { InfoCard, TabPanel } from "./TablePannel";
 // Logout Component
 const Logout: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavigate }) => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -317,6 +319,47 @@ const More: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavigat
                     </div>
                 ))}
             </div>
+        </div>
+    );
+};
+
+
+
+
+interface CardData {
+    title: string;
+    value: string | number;
+    subtitle?: string;
+    color?: string;
+    icon?: string;
+}
+const Payments: React.FC = () => {
+    const [activeTab, setActiveTab] = useState(0);
+
+    const paymentCards: CardData[] = [
+        { title: 'Statement Earnings', value: '₹12,500', color: '#4caf50' },
+        { title: 'Weekly Gross Earning', value: '₹8,750', color: '#2196f3' },
+        { title: 'Advance Request', value: '₹2,000', color: '#ff9800' },
+        { title: 'TDS 1.0%', value: '₹125', color: '#f44336' },
+        { title: 'Net Paid Amount', value: '₹11,125', color: '#9c27b0' },
+        { title: 'Payment Status', value: 'Paid', color: '#4caf50' },
+    ];
+
+    return (
+        <div style={{ padding: '16px' }}>
+            <h3 style={{ marginBottom: '16px', fontWeight: 'bold', color: '#333' }}>
+                Payment Details
+            </h3>
+
+            {/* Payment Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                {paymentCards.map((card, index) => (
+                    <InfoCard key={index} {...card} />
+                ))}
+            </div>
+
+            {/* Tabs */}
+            <TabPanel activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
     );
 };

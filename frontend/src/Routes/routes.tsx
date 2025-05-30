@@ -31,6 +31,7 @@ import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpa
 import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
 import LoginPageNew from "../Components/Pages/Dashboard/Login/loginNew";
 import SliderManagementPage from "../Components/Pages/SliderPage/SliderPage";
+import RiderEarningPage from "../Components/Pages/RiderEarnings/MainPage";
 
 // ProtectedRoute Component
 interface ProtectedRouteProps {
@@ -92,6 +93,7 @@ const AppRoutes = () => {
           <Route path="/upload-orders" element={<OrdersListingPage />} />
           <Route path="/payments" element={<PaymentListingPage />} />
           <Route path="/slider-page" element={<SliderManagementPage />} />
+          <Route path="/rider-earnings" element={<RiderEarningPage />} />
 
 
         </Route>
