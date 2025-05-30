@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Typography,
   Chip,
@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import ReusableListingPage from './AttendanceListingPage';
 import AttendanceCard from './AttendanceCard';
+import apiService from '../../../services/apiService';
 
 // Define AttendanceRecord type for attendance data
 interface AttendanceRecord {
@@ -35,15 +36,13 @@ const RiderAttendanceApp = () => {
       setLoading(true);
       setError('');
       try {
-        // Fetch all attendance records from backend
-        const response = await fetch('http://localhost:4003/api/attendance/all');
-        if (!response.ok) throw new Error('Failed to fetch attendance data');
-        const data = await response.json();
+        // Fetch all attendance records from backend using apiService
+        const data = await apiService.get('/attendance/all');
         // Map backend fields to frontend fields if needed
         const mapped: AttendanceRecord[] = data.map((item: any) => ({
           id: item.id,
           date: item.attendance_date,
-          riderName: item.rider_name ? item.rider_name : '-', // Use full name from backend
+          riderName: item.rider_name ? item.rider_name : '-',
           punchIn: item.check_in_time ? new Date(item.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
           punchOut: item.check_out_time ? new Date(item.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
           status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',

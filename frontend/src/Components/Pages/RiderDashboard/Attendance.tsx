@@ -23,7 +23,7 @@ import {
   CheckCircle
 } from '@mui/icons-material';
 import useUserData from '../../Common/loginInformation'; // Assuming this path is correct
-import axios from 'axios';
+import apiService from '../../../services/apiService';
 
 // Types
 interface AttendanceRecord {
@@ -112,7 +112,7 @@ useEffect(() => {
 
     try {
       // Step 1: Fetch rider by user_id
-      const riderResponse = await axios.get<{ id: number; name?: string }[]>(`${API_BASE}/riders?user_id=${userData.id}`);
+      const riderResponse = await apiService.get(`/riders`, { user_id: userData.id });
       console.log('Rider Data Response::::::::::::::::::::::::::', riderResponse.data);
 
       if (Array.isArray(riderResponse.data) && riderResponse.data.length > 0) {
@@ -128,9 +128,7 @@ useEffect(() => {
 console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         try {
           // Step 2: Fetch rider assignments by rider_id using the by-rider endpoint
-          const assignmentResponse = 
-          await axios.get<{ company_id: number; store_id: number }>
-          (`${API_BASE}/rider-assignments/by-rider/${fetchedRiderId}`);
+          const assignmentResponse = await apiService.get(`/rider-assignments/by-rider/${fetchedRiderId}`);
           console.log('Rider Assignments Response:**********************************', assignmentResponse.data);
 
           // The by-rider endpoint returns a single object
@@ -192,12 +190,12 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
     
     try {
       // Fetch rider assignments
-      const assignmentsResponse = await axios.get(`${API_BASE}/rider-assignments?rider_id=${riderData.id}`);
+      const assignmentsResponse = await apiService.get(`/rider-assignments`, { rider_id: riderData.id });
       const assignments = assignmentsResponse.data;
       console.log('Rider Assignments History:', assignments);
       
       // Fetch companies for name lookup
-      const companiesResponse = await axios.get(`${API_BASE}/orders/companies`);
+      const companiesResponse = await apiService.get(`/orders/companies`);
       const companies = companiesResponse.data;
       
       // Create a map of company IDs to names for quick lookup
@@ -209,7 +207,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
       // Fetch stores for each company in the assignments
       const storePromises = assignments.map(async (assignment: any) => {
         try {
-          const storesResponse = await axios.get(`${API_BASE}/stores?company_id=${assignment.company_id}`);
+          const storesResponse = await apiService.get(`/stores`, { company_id: assignment.company_id });
           return storesResponse.data;
         } catch (error) {
           console.error(`Error fetching stores for company ${assignment.company_id}:`, error);
@@ -289,11 +287,8 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
     try {
       const todayDateString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format for query
       const token = localStorage.getItem('accessToken');
-      const response = await axios.get(`${API_BASE}/attendance`, {
-        params: { rider_id: riderData.id, date: todayDateString },
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const records: AttendanceRecord[] = response.data;
+      const response = await apiService.get(`/attendance`, { rider_id: riderData.id, date: todayDateString });
+      const records: AttendanceRecord[] = response;
       if (records.length > 0) {
         const record = records[0];
         setTodayRecord(record);
@@ -369,17 +364,8 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
       };
 
       console.log('Punch In Payload:', payload);
-      const response = await fetch(`${API_BASE}/attendance/punch-in`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Punch In failed');
-      }
-      const result: AttendanceRecord = await response.json(); // Assuming API returns the created/updated record
+      const response = await apiService.post(`/attendance/punch-in`, payload);
+      const result: AttendanceRecord = response;
       return result;
     } finally {
       setLoading(false);
@@ -414,17 +400,8 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
 
       console.log('Punch Out Payload:', payload);
       // Ensure the endpoint is correct for punch-out (e.g., might be a PUT to /attendance/{id} or similar)
-      const response = await fetch(`${API_BASE}/attendance/punch-out`, { // Or specific update endpoint
-        method: 'POST', // Or 'PUT' if updating an existing record by ID
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Punch Out failed');
-      }
-      const result: AttendanceRecord = await response.json();
+      const response = await apiService.post(`/attendance/punch-out`, payload);
+      const result: AttendanceRecord = response;
       return result;
     } finally {
       setLoading(false);

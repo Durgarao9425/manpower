@@ -28,7 +28,7 @@ import {
   Star as StarIcon,
   DirectionsBike as BikeIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { api } from '../../../services/apiService';
 import { useNavigate } from 'react-router-dom';
 import type { CardData } from '../RiderDashboard/types';
 import { ReusableListingPage, type ActionButton, type Column, type FilterField, type RowAction, type TabData } from '../../Common/ReusableList';
@@ -121,7 +121,7 @@ const RiderListingPage: React.FC = () => {
   const fetchRiders = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:4003/api/riders');
+      const response = await api.get('/riders');
       setRiders(response.data);
       calculateStats(response.data);
     } catch (error) {
@@ -134,7 +134,7 @@ const RiderListingPage: React.FC = () => {
 
   const fetchCompanies = async () => {
     try {
-      const response = await axios.get('http://localhost:4003/api/companies');
+      const response = await api.get('/companies');
       setCompanies(response.data);
     } catch (error) {
       console.error('Error fetching companies:', error);
@@ -143,7 +143,7 @@ const RiderListingPage: React.FC = () => {
 
   const fetchStores = async () => {
     try {
-      const response = await axios.get('http://localhost:4003/api/stores');
+      const response = await api.get('/stores');
       setStores(response.data);
     } catch (error) {
       console.error('Error fetching stores:', error);
@@ -152,7 +152,7 @@ const RiderListingPage: React.FC = () => {
 
   const fetchStoresByCompany = async (companyId: string) => {
     try {
-      const response = await axios.get(`http://localhost:4003/api/stores?company_id=${companyId}`);
+      const response = await api.get(`/stores?company_id=${companyId}`);
       setStores(response.data);
     } catch (error) {
       console.error('Error fetching stores:', error);
@@ -182,7 +182,7 @@ const RiderListingPage: React.FC = () => {
   const handleDelete = async (rider: Rider) => {
     if (window.confirm('Are you sure you want to delete this rider?')) {
       try {
-        await axios.delete(`http://localhost:4003/api/riders/${rider.id}`);
+        await api.delete(`/riders/${rider.id}`);
         fetchRiders();
       } catch (error) {
         console.error('Error deleting rider:', error);
@@ -193,7 +193,7 @@ const RiderListingPage: React.FC = () => {
   const handleAssign = async (rider: Rider) => {
     setSelectedRider(rider);
     try {
-      const res = await axios.get(`http://localhost:4003/api/rider-assignments/by-rider/${rider.id}`);
+      const res = await api.get(`/rider-assignments/by-rider/${rider.id}`);
       const assignment = Array.isArray(res.data) ? res.data[0] : res.data;
       if (assignment) {
         setSelectedCompany(assignment.company_id?.toString() || '');
@@ -216,7 +216,7 @@ const RiderListingPage: React.FC = () => {
     if (!selectedRider || !selectedCompany || !selectedStore || !companyRiderId) return;
     
     try {
-      await axios.post('http://localhost:4003/api/rider-assignments', {
+      await api.post('/rider-assignments', {
         rider_id: selectedRider.id,
         company_id: selectedCompany,
         store_id: selectedStore,

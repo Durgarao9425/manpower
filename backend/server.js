@@ -12,14 +12,28 @@ const { auth, adminOnly, riderOnly } = require('./src/middleware/auth');
 const app = express();
 
 // Configure CORS with options
+const allowedOrigins = [
+  'http://localhost:5176',
+  'http://localhost:5178',
+  'http://localhost:5179',
+  'http://localhost:5180',
+  'http://localhost:5181'
+];
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5176',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies to be sent with requests
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-console.log('CORS configured with origin:', process.env.CORS_ORIGIN || 'http://localhost:5176');
+console.log('CORS configured with origins:', allowedOrigins);
 
 // Apply middleware
 app.use(cors(corsOptions));

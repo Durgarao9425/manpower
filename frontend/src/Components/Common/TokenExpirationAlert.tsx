@@ -27,6 +27,7 @@ const TokenExpirationAlert: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [progress, setProgress] = useState<number>(100);
+  const [hasLoggedOut, setHasLoggedOut] = useState(false); // Prevent multiple dialogs
   const { logout } = useAuth();
 
   // Format time remaining in minutes and seconds
@@ -38,9 +39,9 @@ const TokenExpirationAlert: React.FC = () => {
 
   // Check token expiration
   const checkTokenExpiration = useCallback(() => {
+    if (hasLoggedOut) return; // Prevent dialog if already logged out
     const expirationTime = parseInt(localStorage.getItem('tokenExpiration') || '0');
     if (!expirationTime) return;
-
     const now = Date.now();
     const timeRemaining = expirationTime - now;
 
@@ -51,11 +52,12 @@ const TokenExpirationAlert: React.FC = () => {
       setOpen(true);
     } else if (timeRemaining <= 0) {
       // Token has expired, logout
-      logout();
+      setHasLoggedOut(true);
+      setOpen(true); // Show dialog one last time
     } else {
       setOpen(false);
     }
-  }, [logout]);
+  }, [logout, hasLoggedOut]);
 
   // Set up interval to check token expiration
   useEffect(() => {
@@ -101,7 +103,10 @@ const TokenExpirationAlert: React.FC = () => {
 
   // Handle logout
   const handleLogout = () => {
+    setHasLoggedOut(true);
+    setOpen(false);
     logout();
+    window.location.href = '/login';
   };
 
   return (
@@ -112,30 +117,36 @@ const TokenExpirationAlert: React.FC = () => {
       disableEscapeKeyDown
     >
       <DialogTitle id="token-expiration-alert">
-        Session Expiring Soon
+        {hasLoggedOut ? 'Session Expired' : 'Session Expiring Soon'}
       </DialogTitle>
       <DialogContent>
         <DialogContentText>
-          Your session will expire in {formatTimeLeft(timeLeft)}. Would you like to continue?
+          {hasLoggedOut
+            ? 'Your session has expired due to inactivity. Please log in again.'
+            : `Your session will expire in ${formatTimeLeft(timeLeft)}. Would you like to continue?`}
         </DialogContentText>
-        <Box sx={{ width: '100%', mt: 2 }}>
-          <LinearProgress 
-            variant="determinate" 
-            value={progress} 
-            color={progress < 30 ? 'error' : progress < 70 ? 'warning' : 'primary'} 
-          />
-          <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
-            {formatTimeLeft(timeLeft)} remaining
-          </Typography>
-        </Box>
+        {hasLoggedOut ? null : (
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={progress} 
+              color={progress < 30 ? 'error' : progress < 70 ? 'warning' : 'primary'} 
+            />
+            <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+              {formatTimeLeft(timeLeft)} remaining
+            </Typography>
+          </Box>
+        )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleLogout} color="error">
-          Logout
+        <Button onClick={handleLogout} color="primary" variant="contained" autoFocus>
+          OK
         </Button>
-        <Button onClick={handleRefresh} color="primary" variant="contained" autoFocus>
-          Stay Logged In
-        </Button>
+        {!hasLoggedOut && (
+          <Button onClick={handleRefresh} color="primary">
+            Stay Logged In
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

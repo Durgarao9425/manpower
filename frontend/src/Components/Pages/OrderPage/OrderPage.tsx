@@ -53,6 +53,7 @@ import {
 } from '@mui/icons-material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import * as XLSX from 'xlsx';
+import apiService from '../../../services/apiService';
 
 // Types for company and store
 interface Company {
@@ -238,12 +239,15 @@ export default function OrderManagementSystem() {
       formData.append('order_date', orderDate);
       if (store) formData.append('store_id', store);
 
-      const response = await fetch('http://localhost:4003/api/orders/upload-daily', {
-        method: 'POST',
-        body: formData,
+      // Use apiService for file upload (pass FormData and set headers)
+      await apiService.post('/orders/upload-daily', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent: ProgressEvent) => {
+          if (progressEvent.total) {
+            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          }
+        },
       });
-      if (!response.ok) throw new Error('Upload failed');
-      const result = await response.json();
       setUploadProgress(100);
       setIsUploading(false);
       alert('Upload successful!');
@@ -333,45 +337,39 @@ export default function OrderManagementSystem() {
 
   // Fetch companies on mount
   useEffect(() => {
-    console.log('Fetching companies...');
-    fetch('/api/companies')
-      .then(res => res.json())
-      .then((data) => {
-        console.log('API response for companies:', data);
-        // Transform the API response to match our interface
+    (async () => {
+      try {
+        const data = await apiService.get('/companies');
+        if (!Array.isArray(data)) throw new Error('Malformed companies response');
         const transformedData = data.map((company: any) => ({
           id: company.id,
           name: company.company_name
         }));
-        console.log('Transformed companies data:', transformedData);
         setCompanies(transformedData);
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('Error fetching companies:', error);
         setCompanies([]);
-      });
+      }
+    })();
   }, []);
 
   // Fetch stores when company changes
   useEffect(() => {
     if (company) {
-      console.log(`Fetching stores for company_id: ${company}...`);
-      fetch(`/api/stores?company_id=${encodeURIComponent(company)}`)
-        .then(res => res.json())
-        .then((data) => {
-          console.log('API response for stores:', data);
-          // Transform the API response to match our interface
+      (async () => {
+        try {
+          const data = await apiService.get(`/stores`, { company_id: company });
+          if (!Array.isArray(data)) throw new Error('Malformed stores response');
           const transformedData = data.map((store: any) => ({
             id: store.id,
             name: store.store_name
           }));
-          console.log('Transformed stores data:', transformedData);
           setStores(transformedData);
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('Error fetching stores:', error);
           setStores([]);
-        });
+        }
+      })();
     } else {
       setStores([]);
     }

@@ -29,8 +29,7 @@ import UserForm from "./userform";
 import UserView from './userView';
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
-import axios from "axios";
-import type { SelectChangeEvent } from "@mui/material/Select";
+import apiService from '../../../services/apiService';
 
 // User type for TypeScript
 interface User {
@@ -111,7 +110,7 @@ const UserListing = () => {
   const handleDeleteConfirm = async () => {
     if (userToDelete && userToDelete.id) {
       try {
-        await axios.delete(`${API_BASE_URL}/users/${userToDelete.id}`);
+        await apiService.delete(`/users/${userToDelete.id}`);
         setUsers(users.filter((user) => user.id !== userToDelete.id));
         showSnackbar(`${userToDelete.full_name} deleted successfully`);
       } catch (error) {
@@ -136,8 +135,8 @@ const UserListing = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/users`);
-      setUsers(response.data);
+      const response = await apiService.get('/users');
+      setUsers(response);
     } catch (error) {
       console.error("Error fetching users:", error);
       showSnackbar("Failed to fetch users", "error");
@@ -180,21 +179,18 @@ const UserListing = () => {
     try {
       if (currentUser?.id) {
         // Edit mode: update user
-        const response = await axios.put(
-          `${API_BASE_URL}/users/${currentUser?.id}`,
-          userData
-        );
+        const response = await apiService.put(`/users/${currentUser?.id}`, userData);
         setUsers((prev) =>
-          prev.map((u) => (u.id === currentUser?.id ? response.data : u))
+          prev.map((u) => (u.id === currentUser?.id ? response : u))
         );
         showSnackbar("User updated successfully");
       } else {
         // Create mode: add new user
-        const response = await axios.post(`${API_BASE_URL}/users`, userData);
-        const createdUser = response.data;
+        const response = await apiService.post('/users', userData);
+        const createdUser = response;
         // If user_type is rider or company, send a second request to create the minimal record
         if (userData.user_type === 'rider') {
-          await axios.post(`${API_BASE_URL}/riders`, {
+          await apiService.post('/riders', {
             rider_id: userData.full_name,
             user_id: createdUser.id,
             rider_code: userData.username,
@@ -202,7 +198,7 @@ const UserListing = () => {
             status: userData.status || 'Active',
           });
         } else if (userData.user_type === 'company') {
-          await axios.post(`${API_BASE_URL}/companies`, {
+          await apiService.post('/companies', {
             user_id: createdUser.id,
             company_name: userData.full_name,
             company_email: userData.email,

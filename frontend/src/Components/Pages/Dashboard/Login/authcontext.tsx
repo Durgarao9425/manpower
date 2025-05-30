@@ -52,21 +52,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check authentication status on mount
   useEffect(() => {
     const initAuth = async () => {
-      try {
-        console.log('Initializing auth...');
-        const isAuth = await checkAuth();
-        console.log('Auth check result:', isAuth);
-        if (!isAuth && !location.pathname.includes('/login')) {
-          console.log('Not authenticated, redirecting to login');
+      const isAuth = await checkAuth();
+      if (!isAuth) {
+        // Try auto-login if credentials are stored
+        const rememberedUser = localStorage.getItem("rememberedUser");
+        const rememberedPass = localStorage.getItem("rememberedPass"); // Only for dev/demo!
+        if (rememberedUser && rememberedPass) {
+          try {
+            await login(rememberedUser, rememberedPass);
+          } catch {
+            // If auto-login fails, redirect to login page
+            navigate('/login', { replace: true });
+          }
+        } else {
           navigate('/login', { replace: true });
         }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
-
     initAuth();
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -23,6 +23,7 @@ import {
 
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import apiService from "../../../services/apiService";
 
 interface Company {
   id?: number;
@@ -64,7 +65,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           label="Company Name"
           value={form.company_name}
           onChange={(e) =>
-            setForm((f) => ({ ...f, company_name: e.target.value }))
+            setForm((f: Company) => ({ ...f, company_name: e.target.value }))
           }
           sx={{ my: 1 }}
         />
@@ -73,7 +74,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           label="Email"
           value={form.company_email}
           onChange={(e) =>
-            setForm((f) => ({ ...f, company_email: e.target.value }))
+            setForm((f: Company) => ({ ...f, company_email: e.target.value }))
           }
           sx={{ my: 1 }}
         />
@@ -82,7 +83,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           label="Phone"
           value={form.company_phone}
           onChange={(e) =>
-            setForm((f) => ({ ...f, company_phone: e.target.value }))
+            setForm((f: Company) => ({ ...f, company_phone: e.target.value }))
           }
           sx={{ my: 1 }}
         />
@@ -91,7 +92,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           label="GST"
           value={form.company_gst}
           onChange={(e) =>
-            setForm((f) => ({ ...f, company_gst: e.target.value }))
+            setForm((f: Company) => ({ ...f, company_gst: e.target.value }))
           }
           sx={{ my: 1 }}
         />
@@ -100,7 +101,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           label="Address"
           value={form.company_address}
           onChange={(e) =>
-            setForm((f) => ({ ...f, company_address: e.target.value }))
+            setForm((f: Company) => ({ ...f, company_address: e.target.value }))
           }
           sx={{ my: 1 }}
         />
@@ -108,14 +109,14 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           fullWidth
           label="Industry"
           value={form.industry}
-          onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value }))}
+          onChange={(e) => setForm((f: Company) => ({ ...f, industry: e.target.value }))}
           sx={{ my: 1 }}
         />
         <TextField
           fullWidth
           label="Logo URL"
           value={form.logo}
-          onChange={(e) => setForm((f) => ({ ...f, logo: e.target.value }))}
+          onChange={(e) => setForm((f: Company) => ({ ...f, logo: e.target.value }))}
           sx={{ my: 1 }}
         />
         <TextField
@@ -124,7 +125,7 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
           type="number"
           value={form.payment_terms}
           onChange={(e) =>
-            setForm((f) => ({ ...f, payment_terms: Number(e.target.value) }))
+            setForm((f: Company) => ({ ...f, payment_terms: Number(e.target.value) }))
           }
           sx={{ my: 1 }}
         />
@@ -141,7 +142,6 @@ const CompanyForm = ({ open, onClose, onSave, company }: any) => {
 
 const CompanyPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
   const [openForm, setOpenForm] = useState(false);
   const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [snackbar, setSnackbar] = useState<{
@@ -151,11 +151,12 @@ const CompanyPage = () => {
   }>({ open: false, msg: "", type: "success" });
 
   const fetchCompanies = async () => {
-    setLoading(true);
-    const res = await fetch("http://localhost:4003/api/companies");
-    const data = await res.json();
-    setCompanies(data);
-    setLoading(false);
+    try {
+      const data = await apiService.get("/companies");
+      setCompanies(data);
+    } catch (err) {
+      setCompanies([]);
+    }
   };
   useEffect(() => {
     fetchCompanies();
@@ -168,46 +169,37 @@ const CompanyPage = () => {
       created_by: 1, // Set to 1 or current user id
       payment_terms: company.payment_terms || 7,
     };
-    if (company.id) {
-      // Edit
-      const res = await fetch(
-        `http://localhost:4003/api/companies/${company.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-      if (res.ok) {
+    try {
+      if (company.id) {
+        // Edit
+        await apiService.put(`/companies/${company.id}`, payload);
         setSnackbar({ open: true, msg: "Company updated", type: "success" });
         fetchCompanies();
-      } else
-        setSnackbar({ open: true, msg: "Failed to update", type: "error" });
-    } else {
-      // Create
-      const res = await fetch("http://localhost:4003/api/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
+      } else {
+        // Create
+        await apiService.post("/companies", payload);
         setSnackbar({ open: true, msg: "Company created", type: "success" });
         fetchCompanies();
-      } else
-        setSnackbar({ open: true, msg: "Failed to create", type: "error" });
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        msg: company.id ? "Failed to update" : "Failed to create",
+        type: "error",
+      });
     }
     setOpenForm(false);
     setEditCompany(null);
   };
 
   const handleDelete = async (id: number) => {
-    const res = await fetch(`http://localhost:4003/api/companies/${id}`, {
-      method: "DELETE",
-    });
-    if (res.ok) {
+    try {
+      await apiService.delete(`/companies/${id}`);
       setSnackbar({ open: true, msg: "Company deleted", type: "success" });
       fetchCompanies();
-    } else setSnackbar({ open: true, msg: "Failed to delete", type: "error" });
+    } catch (err) {
+      setSnackbar({ open: true, msg: "Failed to delete", type: "error" });
+    }
   };
 
   return (
@@ -303,7 +295,7 @@ const CompanyPage = () => {
             </TableHead>
 
             <TableBody>
-              {companies.map((company) => (
+              {companies.map((company: Company) => (
                 <TableRow
                   key={company.id}
                   hover
@@ -409,7 +401,7 @@ const CompanyPage = () => {
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton
-                        onClick={() => handleDelete(company.id)}
+                        onClick={() => company.id !== undefined && handleDelete(company.id)}
                         size="small"
                         sx={{
                           color: "error.main",
@@ -441,7 +433,7 @@ const CompanyPage = () => {
         <Snackbar
           open={snackbar.open}
           autoHideDuration={3000}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          onClose={() => setSnackbar((s: any) => ({ ...s, open: false }))}
           anchorOrigin={{ vertical: "top", horizontal: "right" }}
         >
           <Alert severity={snackbar.type}>{snackbar.msg}</Alert>

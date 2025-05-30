@@ -34,6 +34,7 @@ import {
   VisibilityOff,
   Warning
 } from '@mui/icons-material';
+import apiService from '../../../services/apiService';
 
 const RiderRegistrationForm = () => {
   const [formData, setFormData] = useState({
@@ -203,35 +204,16 @@ const RiderRegistrationForm = () => {
   }
 
   console.log('Creating user:', userData);
-  
-  const userResponse = await fetch('http://localhost:4003/api/users', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  });
-
-  if (!userResponse.ok) {
-    const userError = await userResponse.json();
+  const userResponse = await apiService.post('/users', userData);
+  if (!userResponse || !userResponse.id) {
     setSubmitStatus({
       type: 'error',
-      message: userError.error || 'Failed to create user',
+      message: userResponse?.error || 'Failed to create user',
     });
     setIsSubmitting(false);
     return;
   }
-
-  const userResult = await userResponse.json();
-  const userId = userResult.id;
-  if (!userId) {
-    setSubmitStatus({
-      type: 'error',
-      message: 'User creation failed: No user ID returned.',
-    });
-    setIsSubmitting(false);
-    return;
-  }
+  const userId = userResponse.id;
 
   let documentsValue = formData.documents;
   if (!documentsValue || documentsValue.trim() === '') {
@@ -278,19 +260,9 @@ const RiderRegistrationForm = () => {
   };
 
   console.log('Creating rider:', riderData);
-  
-  const riderResponse = await fetch('http://localhost:4003/api/riders', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(riderData),
-  });
-
-  const riderResult = await riderResponse.json();
-  const riderPrimaryId = riderResult.id || riderResult.rider_id; // Use numeric id for documents
-
-  if (riderResponse.ok) {
+  const riderResponse = await apiService.post('/riders', riderData);
+  const riderPrimaryId = riderResponse.id || riderResponse.rider_id;
+  if (riderResponse && riderResponse.id) {
     setSubmitStatus({
       type: 'success',
       message: `Rider registered successfully! User ID: ${userId}, Rider ID: ${riderPrimaryId}`
@@ -298,7 +270,6 @@ const RiderRegistrationForm = () => {
     // Save rider_documents after rider is created
     if (formData.rider_documents && formData.rider_documents.length > 0) {
       for (const doc of formData.rider_documents) {
-        // Prepare FormData for file upload if needed
         let payload;
         if (doc.document_file instanceof File) {
           payload = new FormData();
@@ -311,6 +282,7 @@ const RiderRegistrationForm = () => {
           payload.append('verified_by', doc.verified_by);
           payload.append('verification_date', doc.verification_date);
           payload.append('document_file', doc.document_file);
+          await apiService.post('/rider-documents', payload, { headers: { 'Content-Type': 'multipart/form-data' } });
         } else {
           payload = {
             rider_id: riderPrimaryId,
@@ -323,17 +295,13 @@ const RiderRegistrationForm = () => {
             verified_by: doc.verified_by,
             verification_date: doc.verification_date
           };
+          await apiService.post('/rider-documents', payload);
         }
-        await fetch('http://localhost:4003/api/rider-documents', {
-          method: 'POST',
-          headers: payload instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
-          body: payload instanceof FormData ? payload : JSON.stringify(payload)
-        });
       }
     }
     // ... rest of success handling
   } else {
-    throw new Error(riderResult.error || 'Failed to create rider');
+    throw new Error(riderResponse?.error || 'Failed to create rider');
   }
 } catch (error) {
       console.error('Error:', error);
