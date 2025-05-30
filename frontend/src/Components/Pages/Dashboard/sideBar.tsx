@@ -172,10 +172,10 @@ const navigationItems = [
     hasSubmenu: false
   },
   {
-    id: "downloads",
-    text: "Downloads",
+    id: "slider-page",
+    text: "Slider Page",
     icon: <DownloadIcon />,
-    path: "/downloads",
+    path: "/slider-page",
     hasSubmenu: false
   },
   {
