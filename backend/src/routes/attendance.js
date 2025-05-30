@@ -195,4 +195,22 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get all attendance records (for admin/overview)
+router.get('/all', async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        ra.*, 
+        u.full_name AS rider_name
+      FROM rider_attendance ra
+      JOIN riders r ON ra.rider_id = r.id
+      JOIN users u ON r.user_id = u.id
+      ORDER BY ra.attendance_date DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

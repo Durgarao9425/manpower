@@ -43,14 +43,27 @@ import {
   CalendarToday
 } from '@mui/icons-material';
 
+interface AttendanceListingPageProps {
+  data: any[];
+  columns: any[];
+  CardComponent: React.ComponentType<any>;
+  searchFields?: string[];
+  filters?: Record<string, any>;
+  title?: string;
+  description?: string;
+  emptyMessage?: string;
+}
+
 const ReusableListingPage = ({
   data,
   columns,
   CardComponent,
   searchFields = [],
   filters = {},
-  title = "Data Listing"
-}) => {
+  title = "Data Listing",
+  description,
+  emptyMessage
+}: AttendanceListingPageProps) => {
   const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('list');

@@ -15,240 +15,131 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
-  AppBar,
-  Toolbar,
-  Badge,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   useTheme,
   useMediaQuery,
-  Drawer,
-  Hidden,
   Stack,
+  Fade,
+  Grow,
 } from '@mui/material';
 import {
   TrendingUp,
   TrendingDown,
   Restaurant,
   DeliveryDining,
-  Business,
   AttachMoney,
   Today,
   AccountBalanceWallet,
   DirectionsBike,
   Pending,
-  Notifications,
-  Search,
-  Menu,
-  Dashboard,
   ShoppingCart,
-  People,
   Analytics,
-  Settings,
   CheckCircle,
   Cancel,
   Schedule,
-  Close,
+  AutoAwesome,
+  Brightness4,
+  FlashOn,
+  Timeline,
 } from '@mui/icons-material';
 
 const FoodDeliveryDashboard = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   const [timeOfDay, setTimeOfDay] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setTimeOfDay('Morning');
     else if (hour < 18) setTimeOfDay('Afternoon');
     else setTimeOfDay('Evening');
+    
+    setMounted(true);
   }, []);
 
-  // Mock data
- const mainStats = [
+  // Enhanced mock data with gradients
+  const mainStats = [
     {
-      title: 'Total active users',
+      title: 'Total Active Users',
       value: '18,765',
       change: '+2.6%',
       trend: 'up',
-      color: '#4CAF50',
+      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      icon: <Timeline />,
     },
     {
-      title: 'Total installed',
+      title: 'Total Installed',
       value: '4,876',
       change: '+0.2%',
       trend: 'up',
-      color: '#2196F3',
+      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      icon: <FlashOn />,
     },
     {
-      title: 'Total downloads',
+      title: 'Total Downloads',
       value: '678',
       change: '-0.1%',
       trend: 'down',
-      color: '#FF5722',
+      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      icon: <Brightness4 />,
     },
     {
       title: 'Total Earnings',
       value: '$287,450',
       change: '+15.3%',
       trend: 'up',
-      color: '#4CAF50',
+      gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      icon: <AttachMoney />,
     },
   ];
 
-
-  const MiniChartNew = ({ color, trend }) => {
-  const bars = [0.3, 0.2, 0.5, 0.7, 0.4, 0.8, 0.6, 0.9, 0.5, 0.7];
-  
-  return (
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        alignItems: 'end', 
-        height: 40, 
-        gap: 0.5,
-        ml: 2
-      }}
-    >
-      {bars.map((height, index) => (
-        <Box
-          key={index}
-          sx={{
-            width: 3,
-            height: height * 40,
-            backgroundColor: color,
-            borderRadius: 0.5,
-            opacity: 0.8
-          }}
-        />
-      ))}
-    </Box>
-  );
-};
-
-const StatCardNew = ({ stat }) => {
-  const theme = useTheme();
-  
-  return (
-    <Card 
-      sx={{ 
-        height: '100%',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        border: '1px solid',
-        borderColor: 'rgba(0,0,0,0.06)',
-        borderRadius: 2,
-        transition: 'all 0.2s ease-in-out',
-        '&:hover': {
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-          transform: 'translateY(-2px)'
-        }
-      }}
-    >
-      <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography 
-              variant="body2" 
-              color="text.secondary" 
-              sx={{ 
-                mb: 1,
-                fontSize: '0.875rem',
-                fontWeight: 500
-              }}
-            >
-              {stat.title}
-            </Typography>
-            
-            <Typography 
-              variant="h4" 
-              sx={{ 
-                fontWeight: 700,
-                color: 'text.primary',
-                mb: 1,
-                fontSize: { xs: '1.75rem', sm: '2rem' }
-              }}
-            >
-              {stat.value}
-            </Typography>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              {stat.trend === 'up' ? (
-                <TrendingUp sx={{ fontSize: 16, color: '#4CAF50' }} />
-              ) : (
-                <TrendingDown sx={{ fontSize: 16, color: '#f44336' }} />
-              )}
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  color: stat.trend === 'up' ? '#4CAF50' : '#f44336',
-                  fontWeight: 600,
-                  fontSize: '0.75rem'
-                }}
-              >
-                {stat.change} last 7 days
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <MiniChartNew color={stat.color} trend={stat.trend} />
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
-
   const todayStats = [
     {
-      title: 'Today Orders',
+      title: "Today's Orders",
       value: '1,247',
       change: '+18%',
       trend: 'up',
-      icon: <Today sx={{ fontSize: { xs: 32, sm: 40 } }} />,
-      color: '#9C27B0',
-      bgColor: 'rgba(156, 39, 176, 0.1)',
+      icon: <Today sx={{ fontSize: { xs: 28, sm: 36 } }} />,
+      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+      shadowColor: 'rgba(168, 237, 234, 0.4)',
     },
     {
-      title: 'Today Earnings',
+      title: "Today's Earnings",
       value: '$12,580',
       change: '+22%',
       trend: 'up',
-      icon: <AccountBalanceWallet sx={{ fontSize: { xs: 32, sm: 40 } }} />,
-      color: '#00BCD4',
-      bgColor: 'rgba(0, 188, 212, 0.1)',
+      icon: <AccountBalanceWallet sx={{ fontSize: { xs: 28, sm: 36 } }} />,
+      gradient: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
+      shadowColor: 'rgba(210, 153, 194, 0.4)',
     },
     {
       title: 'Active Riders',
       value: '847',
       change: '-3%',
       trend: 'down',
-      icon: <DirectionsBike sx={{ fontSize: { xs: 32, sm: 40 } }} />,
-      color: '#4CAF50',
-      bgColor: 'rgba(76, 175, 80, 0.1)',
+      icon: <DirectionsBike sx={{ fontSize: { xs: 28, sm: 36 } }} />,
+      gradient: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)',
+      shadowColor: 'rgba(137, 247, 254, 0.4)',
     },
     {
       title: 'Pending Payments',
       value: '$5,420',
       change: '-8%',
       trend: 'down',
-      icon: <Pending sx={{ fontSize: { xs: 32, sm: 40 } }} />,
-      color: '#F44336',
-      bgColor: 'rgba(244, 67, 54, 0.1)',
+      icon: <Pending sx={{ fontSize: { xs: 28, sm: 36 } }} />,
+      gradient: 'linear-gradient(135deg, #fdbb2d 0%, #22c1c3 100%)',
+      shadowColor: 'rgba(253, 187, 45, 0.4)',
     },
   ];
 
   const recentOrders = [
     { id: '#12847', restaurant: 'Pizza Palace', customer: 'John Doe', status: 'Delivered', amount: '$28.50', time: '2 min ago' },
     { id: '#12846', restaurant: 'Burger King', customer: 'Jane Smith', status: 'In Transit', amount: '$15.75', time: '5 min ago' },
-    { id: '#12845', restaurant: 'Sushi House', customer: 'Mike Johnson', status: 'Preparing', amount: '$42.30', time: '8 min ago' },
     { id: '#12844', restaurant: 'Taco Bell', customer: 'Sarah Wilson', status: 'Cancelled', amount: '$12.20', time: '12 min ago' },
-    { id: '#12843', restaurant: 'Chinese Garden', customer: 'Tom Brown', status: 'Delivered', amount: '$35.80', time: '15 min ago' },
   ];
 
   const topRestaurants = [
@@ -259,304 +150,502 @@ const StatCardNew = ({ stat }) => {
     { name: 'Italian Corner', orders: 132, revenue: '$4,100', rating: 4.7, growth: '+10%' },
   ];
 
-  const StatCard = ({ stat }) => (
-    <Card
-      elevation={0}
-      sx={{
-        height: '100%',
-        background: 'linear-gradient(135deg, #fff 0%, #f8f9ff 100%)',
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: { xs: 2, sm: 3 },
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.1)',
-        }
-      }}
-    >
-      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+  // Advanced animated chart component
+  const AnimatedChart = ({ gradient, trend }) => {
+    const bars = [0.3, 0.2, 0.6, 0.8, 0.4, 0.9, 0.7, 1.0, 0.5, 0.8];
+    
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'end', 
+          height: 50, 
+          gap: 1,
+          ml: 2,
+          position: 'relative',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: gradient,
+            opacity: 0.1,
+            borderRadius: 2,
+            transform: 'scale(0.9)',
+          }
+        }}
+      >
+        {bars.map((height, index) => (
           <Box
+            key={index}
             sx={{
-              width: { xs: 50, sm: 60 },
-              height: { xs: 50, sm: 60 },
+              width: 4,
+              height: 0,
+              background: gradient,
               borderRadius: 2,
-              backgroundColor: stat.bgColor,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: stat.color,
+              position: 'relative',
+              overflow: 'hidden',
+              animation: `barGrow 2s ease-out ${index * 0.1}s forwards`,
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%)',
+              },
+              '@keyframes barGrow': {
+                to: {
+                  height: height * 50,
+                }
+              }
             }}
-          >
-            {stat.icon}
-          </Box>
-          <Box display="flex" alignItems="center">
-            {stat.trend === 'up' ? (
-              <TrendingUp sx={{ color: '#4CAF50', mr: 0.5, fontSize: { xs: 18, sm: 24 } }} />
-            ) : (
-              <TrendingDown sx={{ color: '#F44336', mr: 0.5, fontSize: { xs: 18, sm: 24 } }} />
-            )}
-            <Typography
-              variant="body2"
-              sx={{
-                color: stat.trend === 'up' ? '#4CAF50' : '#F44336',
-                fontWeight: 600,
-                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+          />
+        ))}
+      </Box>
+    );
+  };
+
+  // Premium stat card with advanced effects
+  const PremiumStatCard = ({ stat, index }) => {
+    return (
+      <Grow in={mounted} timeout={1000 + index * 200}>
+        <Card 
+          sx={{ 
+            height: '100%',
+            background: stat.gradient,
+            borderRadius: 4,
+            position: 'relative',
+            overflow: 'hidden',
+            cursor: 'pointer',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+              transition: 'opacity 0.3s ease',
+            },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              top: -50,
+              right: -50,
+              width: 100,
+              height: 100,
+              background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)',
+              borderRadius: '50%',
+              transition: 'transform 0.6s ease',
+              transform: 'scale(0)',
+            },
+            '&:hover': {
+              transform: 'translateY(-8px) scale(1.02)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 8px 25px rgba(0,0,0,0.1)',
+              '&::before': {
+                opacity: 0.8,
+              },
+              '&::after': {
+                transform: 'scale(1)',
+              }
+            }
+          }}
+        >
+          <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+              <Box sx={{ 
+                p: 1.5, 
+                borderRadius: 3, 
+                background: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                transition: 'all 0.3s ease',
+              }}>
+                {React.cloneElement(stat.icon, {
+                  sx: { 
+                    fontSize: 24, 
+                    color: 'white',
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                  }
+                })}
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                {stat.trend === 'up' ? (
+                  <TrendingUp sx={{ color: 'rgba(255,255,255,0.9)', fontSize: 20 }} />
+                ) : (
+                  <TrendingDown sx={{ color: 'rgba(255,255,255,0.9)', fontSize: 20 }} />
+                )}
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: 'rgba(255,255,255,0.9)',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  {stat.change}
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 800,
+                color: 'white',
+                mb: 1,
+                textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                fontSize: { xs: '1.5rem', sm: '2rem' }
               }}
             >
-              {stat.change}
+              {stat.value}
             </Typography>
+            
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: 'rgba(255,255,255,0.8)',
+                fontWeight: 500,
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                fontSize: '0.875rem'
+              }}
+            >
+              {stat.title}
+            </Typography>
+            
+            <Box sx={{ mt: 2, opacity: 0.8 }}>
+              <AnimatedChart gradient="rgba(255,255,255,0.3)" trend={stat.trend} />
+            </Box>
+          </CardContent>
+        </Card>
+      </Grow>
+    );
+  };
+
+  // Glass morphism today stat card
+  const GlassStatCard = ({ stat, index }) => (
+    <Fade in={mounted} timeout={1500 + index * 300}>
+      <Card
+        sx={{
+          height: '100%',
+          background: stat.gradient,
+          borderRadius: 4,
+          position: 'relative',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+          },
+          '&:hover': {
+            transform: 'translateY(-12px) rotateX(5deg)',
+            boxShadow: `0 25px 80px ${stat.shadowColor}, 0 12px 30px rgba(0,0,0,0.1)`,
+            '&::before': {
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
+            }
+          }
+        }}
+      >
+        <CardContent sx={{ p: 3, position: 'relative', zIndex: 1 }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: 3,
+                background: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(10px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid rgba(255,255,255,0.2)',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              {React.cloneElement(stat.icon, {
+                sx: { color: 'white', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }
+              })}
+            </Box>
+            <Box display="flex" alignItems="center" gap={1}>
+              {stat.trend === 'up' ? (
+                <TrendingUp sx={{ color: 'rgba(255,255,255,0.9)', fontSize: 24 }} />
+              ) : (
+                <TrendingDown sx={{ color: 'rgba(255,255,255,0.9)', fontSize: 24 }} />
+              )}
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'rgba(255,255,255,0.9)',
+                  fontWeight: 700,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                }}
+              >
+                {stat.change}
+              </Typography>
+            </Box>
           </Box>
-        </Box>
-        <Typography
-          variant={isMobile ? "h5" : "h4"}
-          fontWeight="700"
-          color="text.primary"
-          mb={1}
-          sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
-        >
-          {stat.value}
-        </Typography>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          fontWeight="500"
-          sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-        >
-          {stat.title}
-        </Typography>
-      </CardContent>
-    </Card>
+          <Typography
+            variant="h3"
+            fontWeight="800"
+            color="white"
+            mb={1}
+            sx={{ 
+              textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              fontSize: { xs: '1.75rem', sm: '2.5rem' }
+            }}
+          >
+            {stat.value}
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              color: 'rgba(255,255,255,0.8)',
+              fontWeight: 600,
+              textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+            }}
+          >
+            {stat.title}
+          </Typography>
+        </CardContent>
+      </Card>
+    </Fade>
   );
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Delivered': return '#4CAF50';
-      case 'In Transit': return '#2196F3';
-      case 'Preparing': return '#FF9800';
-      case 'Cancelled': return '#F44336';
-      default: return '#757575';
+      case 'Delivered': return '#10b981';
+      case 'In Transit': return '#3b82f6';
+      case 'Preparing': return '#f59e0b';
+      case 'Cancelled': return '#ef4444';
+      default: return '#6b7280';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'Delivered': return <CheckCircle sx={{ fontSize: { xs: 16, sm: 20 } }} />;
-      case 'In Transit': return <DirectionsBike sx={{ fontSize: { xs: 16, sm: 20 } }} />;
-      case 'Preparing': return <Restaurant sx={{ fontSize: { xs: 16, sm: 20 } }} />;
-      case 'Cancelled': return <Cancel sx={{ fontSize: { xs: 16, sm: 20 } }} />;
-      default: return <Schedule sx={{ fontSize: { xs: 16, sm: 20 } }} />;
+      case 'Delivered': return <CheckCircle sx={{ fontSize: 18 }} />;
+      case 'In Transit': return <DirectionsBike sx={{ fontSize: 18 }} />;
+      case 'Preparing': return <Restaurant sx={{ fontSize: 18 }} />;
+      case 'Cancelled': return <Cancel sx={{ fontSize: 18 }} />;
+      default: return <Schedule sx={{ fontSize: 18 }} />;
     }
   };
 
-  // Mobile Order Card Component
-  const MobileOrderCard = ({ order }) => (
-    <Card
-      elevation={0}
-      sx={{
-        mb: 2,
-        border: '1px solid rgba(0,0,0,0.05)',
-        borderRadius: 2,
-        '&:hover': { bgcolor: '#f8f9ff' }
-      }}
-    >
-      <CardContent sx={{ p: 2 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-          <Typography variant="body2" fontWeight="600" color="primary">
-            {order.id}
-          </Typography>
-          <Chip
-            icon={getStatusIcon(order.status)}
-            label={order.status}
-            size="small"
-            sx={{
-              bgcolor: `${getStatusColor(order.status)}15`,
-              color: getStatusColor(order.status),
-              fontWeight: 600,
-              fontSize: '0.75rem',
-            }}
-          />
-        </Box>
-        <Typography variant="body2" fontWeight="600" mb={1}>
-          {order.restaurant}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={1}>
-          Customer: {order.customer}
-        </Typography>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" fontWeight="600" color="success.main">
-            {order.amount}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {order.time}
-          </Typography>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <Box sx={{bgcolor: 'white', minHeight: '100vh',width: '100%',marginTop:'0px'}}>
-      <Container >
-        <Box mb={{ xs: 3, sm: 4 }}>
-          <Typography
-            variant={isMobile ? "h5" : "h4"}
-            fontWeight="700"
-            color="text.primary"
-            gutterBottom
-          >
-            Good {timeOfDay}, Admin! 👋
-          </Typography>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-          >
-            Here's what's happening with your food delivery platform today
-          </Typography>
-        </Box>
-
-        {/* Main Stats */}
-       <Typography
-        variant={isMobile ? "body1" : "h6"}
-        fontWeight="600"
-        color="text.primary"
-        mb={2}
-        sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-      >
-        📊 Overview Statistics
-      </Typography>
-      
-      <Grid container spacing={{ xs: 2, sm: 3 }} mb={{ xs: 3, sm: 5 }}>
-        {mainStats.map((stat, index) => (
-          <Grid item xs={6} sm={6} md={3} key={index}>
-            <StatCardNew stat={stat} />
-          </Grid>
-        ))}
-      </Grid>
-
-        {/* Today's Stats */}
-        <Typography
-          variant={isMobile ? "body1" : "h6"}
-          fontWeight="600"
-          color="text.primary"
-          mb={2}
-        >
-          📈 Today's Performance
-        </Typography>
-        <Grid container spacing={{ xs: 2, sm: 3 }} mb={{ xs: 3, sm: 5 }}>
-          {todayStats.map((stat, index) => (
-            <Grid item xs={6} sm={6} md={3} key={index}>
-              <StatCard stat={stat} />
-            </Grid>
-          ))}
-        </Grid>
-
-        <Grid container spacing={{ xs: 3, sm: 4 }}>
-          {/* Recent Orders */}
-          <Grid item xs={12} lg={7}>
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: { xs: 2, sm: 3 },
-                border: '1px solid rgba(0,0,0,0.05)',
-                overflow: 'hidden'
-              }}
-            >
+    <Box sx={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      position: 'relative',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+        backdropFilter: 'blur(100px)',
+      }
+    }}>
+      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
+        {/* Header Section */}
+        <Fade in={mounted} timeout={800}>
+          <Box mb={5}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Box sx={{
-                p: { xs: 2, sm: 3 },
-                bgcolor: '#fafbff',
-                borderBottom: '1px solid rgba(0,0,0,0.05)'
+                width: 60,
+                height: 60,
+                borderRadius: 3,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}>
+                <AutoAwesome sx={{ color: 'white', fontSize: 28 }} />
+              </Box>
+              <Box>
                 <Typography
-                  variant={isMobile ? "body1" : "h6"}
-                  fontWeight="600"
-                  color="text.primary"
+                  variant={isMobile ? "h4" : "h3"}
+                  fontWeight="800"
+                  sx={{
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                  gutterBottom
                 >
-                  🛵 Recent Orders
+                  Good {timeOfDay}, Admin! ✨
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: 'rgba(255,255,255,0.8)',
+                    fontWeight: 500,
+                  }}
+                >
+                  Welcome to your enhanced food delivery command center
                 </Typography>
               </Box>
+            </Box>
+          </Box>
+        </Fade>
 
-              {/* Mobile View - Cards */}
-              {isMobile ? (
-                <Box sx={{ p: 2 }}>
-                  {recentOrders.map((order, index) => (
-                    <MobileOrderCard key={index} order={order} />
-                  ))}
+        {/* Main Stats with Premium Cards */}
+        <Box mb={6}>
+          <Typography
+            variant="h5"
+            fontWeight="700"
+            sx={{ 
+              color: 'white', 
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}
+          >
+            📊 Performance Overview
+          </Typography>
+          <Grid container spacing={3}>
+            {mainStats.map((stat, index) => (
+              <Grid item xs={6} sm={6} md={3} key={index}>
+                <PremiumStatCard stat={stat} index={index} />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        {/* Today's Stats with Glass Effect */}
+        <Box mb={6}>
+          <Typography
+            variant="h5"
+            fontWeight="700"
+            sx={{ 
+              color: 'white', 
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}
+          >
+            🚀 Today's Highlights
+          </Typography>
+          <Grid container spacing={3}>
+            {todayStats.map((stat, index) => (
+              <Grid item xs={6} sm={6} md={3} key={index}>
+                <GlassStatCard stat={stat} index={index} />
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        <Grid container spacing={4}>
+          {/* Recent Orders with Glass Effect */}
+          <Grid item xs={12} lg={7}>
+            <Fade in={mounted} timeout={2000}>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 4,
+                  background: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  overflow: 'hidden',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    background: 'rgba(255,255,255,0.15)',
+                  }
+                }}
+              >
+                <Box sx={{
+                  p: 3,
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                  borderBottom: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  <Typography
+                    variant="h6"
+                    fontWeight="700"
+                    sx={{ color: 'white' }}
+                  >
+                    🛵 Recent Orders
+                  </Typography>
                 </Box>
-              ) : (
-                /* Desktop/Tablet View - Table */
+
                 <TableContainer>
                   <Table>
                     <TableHead>
-                      <TableRow sx={{ bgcolor: '#f8f9fa' }}>
-                        <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          Order ID
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          Restaurant
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          Customer
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          Status
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          Amount
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                          Time
-                        </TableCell>
+                      <TableRow sx={{ 
+                        background: 'rgba(255,255,255,0.05)',
+                        '& .MuiTableCell-root': {
+                          color: 'rgba(255,255,255,0.8)',
+                          fontWeight: 600,
+                          border: 'none'
+                        }
+                      }}>
+                        <TableCell>Order ID</TableCell>
+                        <TableCell>Company</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Amount</TableCell>
+                        <TableCell>Time</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {recentOrders.map((order, index) => (
-                        <TableRow key={index} sx={{ '&:hover': { bgcolor: '#f8f9ff' } }}>
+                        <TableRow 
+                          key={index} 
+                          sx={{ 
+                            '&:hover': { 
+                              background: 'rgba(255,255,255,0.1)',
+                            },
+                            '& .MuiTableCell-root': {
+                              color: 'white',
+                              border: 'none'
+                            }
+                          }}
+                        >
                           <TableCell>
-                            <Typography
-                              variant="body2"
-                              fontWeight="600"
-                              color="primary"
-                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                            >
+                            <Typography variant="body2" fontWeight="600" color="primary">
                               {order.id}
                             </Typography>
                           </TableCell>
-                          <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                            {order.restaurant}
-                          </TableCell>
-                          <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                            {order.customer}
-                          </TableCell>
+                          <TableCell>{order.restaurant}</TableCell>
                           <TableCell>
                             <Chip
                               icon={getStatusIcon(order.status)}
                               label={order.status}
                               size="small"
                               sx={{
-                                bgcolor: `${getStatusColor(order.status)}15`,
+                                background: `${getStatusColor(order.status)}20`,
                                 color: getStatusColor(order.status),
                                 fontWeight: 600,
-                                fontSize: { xs: '0.6rem', sm: '0.75rem' },
+                                border: `1px solid ${getStatusColor(order.status)}40`,
                               }}
                             />
                           </TableCell>
                           <TableCell>
-                            <Typography
-                              fontWeight="600"
-                              color="success.main"
-                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                            >
+                            <Typography fontWeight="600" color="#10b981">
                               {order.amount}
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                            >
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
                               {order.time}
                             </Typography>
                           </TableCell>
@@ -565,182 +654,298 @@ const StatCardNew = ({ stat }) => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              )}
-            </Paper>
+              </Paper>
+            </Fade>
           </Grid>
 
           {/* Top Restaurants */}
           <Grid item xs={12} lg={5}>
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: { xs: 2, sm: 3 },
-                border: '1px solid rgba(0,0,0,0.05)',
-                height: 'fit-content'
-              }}
-            >
-              <Box sx={{
-                p: { xs: 2, sm: 3 },
-                bgcolor: '#fafbff',
-                borderBottom: '1px solid rgba(0,0,0,0.05)'
-              }}>
-                <Typography
-                  variant={isMobile ? "body1" : "h6"}
-                  fontWeight="600"
-                  color="text.primary"
-                >
-                  🏆 Top Performing Restaurants
-                </Typography>
-              </Box>
-              <List sx={{ p: 0 }}>
-                {topRestaurants.map((restaurant, index) => (
-                  <ListItem
-                    key={index}
-                    sx={{
-                      py: { xs: 2, sm: 2.5 },
-                      px: { xs: 2, sm: 3 },
-                      borderBottom: index < topRestaurants.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-                      '&:hover': { bgcolor: '#f8f9ff' }
-                    }}
+            <Fade in={mounted} timeout={2200}>
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: 4,
+                  background: 'rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  height: 'fit-content',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    background: 'rgba(255,255,255,0.15)',
+                  }
+                }}
+              >
+                <Box sx={{
+                  p: 3,
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                  borderBottom: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  <Typography
+                    variant="h6"
+                    fontWeight="700"
+                    sx={{ color: 'white' }}
                   >
-                    <ListItemIcon>
-                      <Avatar
-                        sx={{
-                          bgcolor: `hsl(${index * 60}, 70%, 50%)`,
-                          width: { xs: 32, sm: 40 },
-                          height: { xs: 32, sm: 40 },
-                          fontWeight: 600,
-                          fontSize: { xs: '0.875rem', sm: '1rem' }
-                        }}
-                      >
-                        {index + 1}
-                      </Avatar>
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-                          <Typography
-                            fontWeight="600"
-                            color="text.primary"
-                            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                          >
-                            {restaurant.name}
-                          </Typography>
-                          <Chip
-                            label={restaurant.growth}
-                            size="small"
-                            sx={{
-                              bgcolor: '#e8f5e8',
-                              color: '#4CAF50',
-                              fontWeight: 600,
-                              fontSize: { xs: '0.6rem', sm: '0.75rem' }
-                            }}
-                          />
-                        </Box>
-                      }
-                      secondary={
-                        <Stack
-                          direction={{ xs: 'column', sm: 'row' }}
-                          justifyContent="space-between"
-                          alignItems={{ xs: 'flex-start', sm: 'center' }}
-                          spacing={1}
-                          sx={{ mt: 1 }}
+                    🏆 Top Performing Restaurants
+                  </Typography>
+                </Box>
+                <List sx={{ p: 0 }}>
+                  {topRestaurants.map((restaurant, index) => (
+                    <ListItem
+                      key={index}
+                      sx={{
+                        py: 3,
+                        px: 3,
+                        borderBottom: index < topRestaurants.length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                        transition: 'all 0.3s ease',
+                        '&:hover': { 
+                          background: 'rgba(255,255,255,0.1)',
+                          transform: 'translateX(8px)'
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Avatar
+                          sx={{
+                            background: `linear-gradient(135deg, hsl(${index * 60}, 70%, 60%) 0%, hsl(${index * 60 + 30}, 70%, 50%) 100%)`,
+                            width: 48,
+                            height: 48,
+                            fontWeight: 700,
+                            fontSize: '1.1rem',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+                          }}
                         >
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                          {index + 1}
+                        </Avatar>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                            <Typography fontWeight="700" sx={{ color: 'white' }}>
+                              {restaurant.name}
+                            </Typography>
+                            <Chip
+                              label={restaurant.growth}
+                              size="small"
+                              sx={{
+                                background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+                                color: 'white',
+                                fontWeight: 600,
+                              }}
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            spacing={2}
                           >
-                            {restaurant.orders} orders • ⭐ {restaurant.rating}
-                          </Typography>
-                          <Typography
-                            variant="body2"
-                            fontWeight="600"
-                            color="success.main"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                          >
-                            {restaurant.revenue}
-                          </Typography>
-                        </Stack>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: 'rgba(255,255,255,0.7)' }}
+                            >
+                              {restaurant.orders} orders • ⭐ {restaurant.rating}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              fontWeight="700"
+                              sx={{ color: '#10b981' }}
+                            >
+                              {restaurant.revenue}
+                            </Typography>
+                          </Stack>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            </Fade>
           </Grid>
         </Grid>
 
-        {/* Quick Actions */}
-        <Box mt={{ xs: 3, sm: 5 }}>
+        {/* Quick Actions with Enhanced Cards */}
+        <Box mt={6}>
           <Typography
-            variant={isMobile ? "body1" : "h6"}
-            fontWeight="600"
-            color="text.primary"
-            mb={2}
+            variant="h5"
+            fontWeight="700"
+            sx={{ 
+              color: 'white', 
+              mb: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}
           >
             ⚡ Quick Actions
           </Typography>
-          <Grid container spacing={{ xs: 2, sm: 3 }}>
+          <Grid container spacing={3}>
             {[
-              { title: 'Manage Orders', icon: <ShoppingCart />, color: '#2196F3', desc: 'View and manage all orders' },
-              { title: 'Rider Management', icon: <DeliveryDining />, color: '#4CAF50', desc: 'Track and assign riders' },
-              { title: 'Restaurant Partners', icon: <Restaurant />, color: '#FF9800', desc: 'Manage restaurant partnerships' },
-              { title: 'Analytics', icon: <Analytics />, color: '#9C27B0', desc: 'View detailed reports' },
+              { 
+                title: 'Manage Orders', 
+                icon: <ShoppingCart />, 
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                desc: 'View and manage all orders',
+                shadowColor: 'rgba(102, 126, 234, 0.4)'
+              },
+              { 
+                title: 'Rider Management', 
+                icon: <DeliveryDining />, 
+                gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                desc: 'Track and assign riders',
+                shadowColor: 'rgba(240, 147, 251, 0.4)'
+              },
+              { 
+                title: 'Restaurant Partners', 
+                icon: <Restaurant />, 
+                gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                desc: 'Manage restaurant partnerships',
+                shadowColor: 'rgba(79, 172, 254, 0.4)'
+              },
+              { 
+                title: 'Analytics', 
+                icon: <Analytics />, 
+                gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                desc: 'View detailed reports',
+                shadowColor: 'rgba(67, 233, 123, 0.4)'
+              },
             ].map((action, index) => (
               <Grid item xs={6} sm={6} md={3} key={index}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    p: { xs: 2, sm: 3 },
-                    borderRadius: { xs: 2, sm: 3 },
-                    border: '1px solid rgba(0,0,0,0.05)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    height: '100%',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
-                    }
-                  }}
-                >
-                  <Box
+                <Grow in={mounted} timeout={2500 + index * 200}>
+                  <Card
+                    elevation={0}
                     sx={{
-                      width: { xs: 40, sm: 50 },
-                      height: { xs: 40, sm: 50 },
-                      borderRadius: 2,
-                      backgroundColor: `${action.color}15`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: action.color,
-                      mb: { xs: 1.5, sm: 2 },
+                      height: '100%',
+                      borderRadius: 4,
+                      background: action.gradient,
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                        transition: 'opacity 0.3s ease',
+                      },
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        top: -100,
+                        left: -100,
+                        width: 200,
+                        height: 200,
+                        background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
+                        borderRadius: '50%',
+                        transition: 'all 0.6s ease',
+                        transform: 'scale(0)',
+                        opacity: 0,
+                      },
+                      '&:hover': {
+                        transform: 'translateY(-12px) scale(1.05) rotateY(5deg)',
+                        boxShadow: `0 25px 80px ${action.shadowColor}, 0 12px 30px rgba(0,0,0,0.15)`,
+                        '&::before': {
+                          opacity: 0.8,
+                        },
+                        '&::after': {
+                          transform: 'scale(1)',
+                          opacity: 1,
+                        }
+                      }
                     }}
                   >
-                    {React.cloneElement(action.icon, {
-                      sx: { fontSize: { xs: 20, sm: 24 } }
-                    })}
-                  </Box>
-                  <Typography
-                    variant={isMobile ? "body2" : "h6"}
-                    fontWeight="600"
-                    color="text.primary"
-                    mb={1}
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1.25rem' } }}
-                  >
-                    {action.title}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                  >
-                    {action.desc}
-                  </Typography>
-                </Card>
+                    <CardContent sx={{ p: 3, position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <Box
+                        sx={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 3,
+                          background: 'rgba(255,255,255,0.2)',
+                          backdropFilter: 'blur(10px)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          mb: 3,
+                          transition: 'all 0.3s ease',
+                        }}
+                      >
+                        {React.cloneElement(action.icon, {
+                          sx: { 
+                            fontSize: 28, 
+                            color: 'white',
+                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                          }
+                        })}
+                      </Box>
+                      <Typography
+                        variant="h6"
+                        fontWeight="700"
+                        sx={{ 
+                          color: 'white',
+                          mb: 2,
+                          textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        {action.title}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.8)',
+                          lineHeight: 1.6,
+                          textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                          flexGrow: 1
+                        }}
+                      >
+                        {action.desc}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grow>
               </Grid>
             ))}
           </Grid>
+        </Box>
+
+        {/* Floating Action Button */}
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 30,
+            right: 30,
+            zIndex: 1000,
+          }}
+        >
+          <Grow in={mounted} timeout={3000}>
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 8px 32px rgba(102, 126, 234, 0.4)',
+                transition: 'all 0.3s ease',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                '&:hover': {
+                  transform: 'scale(1.1) rotate(180deg)',
+                  boxShadow: '0 12px 48px rgba(102, 126, 234, 0.6)',
+                }
+              }}
+            >
+              <AutoAwesome sx={{ color: 'white', fontSize: 28 }} />
+            </Box>
+          </Grow>
         </Box>
       </Container>
     </Box>

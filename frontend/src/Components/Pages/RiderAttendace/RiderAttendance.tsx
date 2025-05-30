@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Chip,
@@ -12,155 +12,67 @@ import {
 import ReusableListingPage from './AttendanceListingPage';
 import AttendanceCard from './AttendanceCard';
 
-// Sample data
-const sampleAttendanceData = [
-  {
-    id: 1,
-    date: '2024-05-24',
-    riderName: 'John Smith',
-    punchIn: '08:00 AM',
-    punchOut: '05:30 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 2,
-    date: '2024-05-24',
-    riderName: 'Sarah Johnson',
-    punchIn: '08:15 AM',
-    punchOut: '05:45 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 3,
-    date: '2024-05-24',
-    riderName: 'Mike Wilson',
-    punchIn: '08:30 AM',
-    punchOut: '04:00 PM',
-    status: 'Early Leave',
-    totalHours: '7.5 hrs'
-  },
-  {
-    id: 4,
-    date: '2024-05-23',
-    riderName: 'Emily Davis',
-    punchIn: '-',
-    punchOut: '-',
-    status: 'Absent',
-    totalHours: '0 hrs'
-  },
-  {
-    id: 5,
-    date: '2024-05-23',
-    riderName: 'John Smith',
-    punchIn: '09:00 AM',
-    punchOut: '06:00 PM',
-    status: 'Late',
-    totalHours: '9 hrs'
-  },
-  {
-    id: 6,
-    date: '2024-05-22',
-    riderName: 'Sarah Johnson',
-    punchIn: '07:45 AM',
-    punchOut: '05:15 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 7,
-    date: '2024-04-22',
-    riderName: 'Mike Wilson',
-    punchIn: '08:00 AM',
-    punchOut: '05:30 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 8,
-    date: '2024-03-25',
-    riderName: 'Emily Davis',
-    punchIn: '08:10 AM',
-    punchOut: '05:40 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 9,
-    date: '2024-02-15',
-    riderName: 'Alex Brown',
-    punchIn: '08:05 AM',
-    punchOut: '05:35 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 10,
-    date: '2023-12-20',
-    riderName: 'Lisa Chen',
-    punchIn: '08:20 AM',
-    punchOut: '05:20 PM',
-    status: 'Present',
-    totalHours: '9 hrs'
-  },
-  {
-    id: 11,
-    date: '2024-01-15',
-    riderName: 'David Miller',
-    punchIn: '08:00 AM',
-    punchOut: '05:30 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  },
-  {
-    id: 12,
-    date: '2024-01-16',
-    riderName: 'Jessica Taylor',
-    punchIn: '-',
-    punchOut: '-',
-    status: 'Absent',
-    totalHours: '0 hrs'
-  },
-  {
-    id: 13,
-    date: '2024-02-10',
-    riderName: 'Robert Garcia',
-    punchIn: '08:45 AM',
-    punchOut: '05:30 PM',
-    status: 'Late',
-    totalHours: '8.75 hrs'
-  },
-  {
-    id: 14,
-    date: '2024-03-05',
-    riderName: 'Amanda Lee',
-    punchIn: '08:00 AM',
-    punchOut: '03:30 PM',
-    status: 'Early Leave',
-    totalHours: '7.5 hrs'
-  },
-  {
-    id: 15,
-    date: '2024-06-01',
-    riderName: 'Chris Anderson',
-    punchIn: '08:00 AM',
-    punchOut: '05:30 PM',
-    status: 'Present',
-    totalHours: '9.5 hrs'
-  }
-];
+// Define AttendanceRecord type for attendance data
+interface AttendanceRecord {
+  id: number;
+  date: string;
+  riderName: string;
+  punchIn: string;
+  punchOut: string;
+  status: string;
+  totalHours: string;
+}
 
 // Main App Component
 const RiderAttendanceApp = () => {
   const theme = useTheme();
-  
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        // Fetch all attendance records from backend
+        const response = await fetch('http://localhost:4003/api/attendance/all');
+        if (!response.ok) throw new Error('Failed to fetch attendance data');
+        const data = await response.json();
+        // Map backend fields to frontend fields if needed
+        const mapped: AttendanceRecord[] = data.map((item: any) => ({
+          id: item.id,
+          date: item.attendance_date,
+          riderName: item.rider_name ? item.rider_name : '-', // Use full name from backend
+          punchIn: item.check_in_time ? new Date(item.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+          punchOut: item.check_out_time ? new Date(item.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+          status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
+          totalHours: item.check_in_time && item.check_out_time ?
+            (() => {
+              const inTime = new Date(item.check_in_time);
+              const outTime = new Date(item.check_out_time);
+              const diffMs = outTime.getTime() - inTime.getTime();
+              const hours = Math.floor(diffMs / 3600000);
+              const mins = Math.floor((diffMs % 3600000) / 60000);
+              return `${hours + (mins/60)} hrs`;
+            })() : '-',
+        }));
+        setAttendanceData(mapped);
+      } catch (err: any) {
+        setError(err.message || 'Error loading attendance');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAttendance();
+  }, []);
+
   // Table columns configuration
   const columns = [
     { 
       key: 'date', 
       label: 'Date',
-      render: (value) => (
+      render: (value: string) => (
         <Typography variant="body2" fontWeight="500">
           {new Date(value).toLocaleDateString('en-US', {
             weekday: 'short',
@@ -174,7 +86,7 @@ const RiderAttendanceApp = () => {
     { 
       key: 'riderName', 
       label: 'Rider Name',
-      render: (value) => (
+      render: (value: string) => (
         <Box display="flex" alignItems="center" gap={1}>
           <Avatar sx={{ width: 28, height: 28, backgroundColor: theme.palette.primary.main }}>
             <Person fontSize="small" />
@@ -188,7 +100,7 @@ const RiderAttendanceApp = () => {
     { 
       key: 'punchIn', 
       label: 'Punch In',
-      render: (value) => (
+      render: (value: string) => (
         <Typography 
           variant="body2" 
           fontWeight="600"
@@ -201,7 +113,7 @@ const RiderAttendanceApp = () => {
     { 
       key: 'punchOut', 
       label: 'Punch Out',
-      render: (value) => (
+      render: (value: string) => (
         <Typography 
           variant="body2" 
           fontWeight="600"
@@ -214,8 +126,8 @@ const RiderAttendanceApp = () => {
     { 
       key: 'status', 
       label: 'Status',
-      render: (value) => {
-        const getStatusColor = (status) => {
+      render: (value: string) => {
+        const getStatusColor = (status: string) => {
           switch (status.toLowerCase()) {
             case 'present': return 'success';
             case 'absent': return 'error';
@@ -228,7 +140,7 @@ const RiderAttendanceApp = () => {
         return (
           <Chip 
             label={value} 
-            color={getStatusColor(value)} 
+            color={getStatusColor(value) as any} 
             size="small"
             sx={{ 
               fontWeight: 'bold',
@@ -241,7 +153,7 @@ const RiderAttendanceApp = () => {
     { 
       key: 'totalHours', 
       label: 'Total Hours',
-      render: (value) => (
+      render: (value: string) => (
         <Typography variant="body2" fontWeight="700" color="primary.main">
           {value}
         </Typography>
@@ -250,26 +162,20 @@ const RiderAttendanceApp = () => {
   ];
 
   // Generate unique values for filters
-  const uniqueRiders = [...new Set(sampleAttendanceData.map(item => item.riderName))].sort();
-  const uniqueStatuses = [...new Set(sampleAttendanceData.map(item => item.status))].sort();
-  
-  // Generate date filter options
-  const uniqueMonths = [...new Set(sampleAttendanceData.map(item => {
+  const uniqueRiders = [...new Set(attendanceData.map(item => item.riderName))].sort();
+  const uniqueStatuses = [...new Set(attendanceData.map(item => item.status))].sort();
+  const uniqueMonths = [...new Set(attendanceData.map(item => {
     const date = new Date(item.date);
     return date.getMonth() + 1;
   }))].sort((a, b) => a - b);
-
-  const uniqueYears = [...new Set(sampleAttendanceData.map(item => {
+  const uniqueYears = [...new Set(attendanceData.map(item => {
     const date = new Date(item.date);
     return date.getFullYear();
   }))].sort((a, b) => b - a);
-
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-
-  // Filter configurations
   const filters = {
     riderName: {
       label: 'Rider Name',
@@ -297,14 +203,14 @@ const RiderAttendanceApp = () => {
 
   return (
     <ReusableListingPage
-      data={sampleAttendanceData}
+      data={attendanceData}
       columns={columns}
       CardComponent={AttendanceCard}
       searchFields={['riderName', 'date', 'status']}
       filters={filters}
       title="🚴‍♂️ Rider Attendance Management"
       description="View, search, and filter attendance records for all riders. Use the filters to narrow down by name, status, month, or year."
-      emptyMessage="No attendance records found for the selected criteria."
+      emptyMessage={loading ? 'Loading attendance records...' : (error || 'No attendance records found for the selected criteria.')}
     />
   );
 };
