@@ -8,22 +8,22 @@ function useUserData() {
 
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    console.log(userId,"userIduserIduserId----------------")
+    console.log(userId, "userIduserIduserId----------------");
 
     if (!userId) {
       setError("User ID not found. Please login.");
       setLoading(false);
       return;
     }
-    fetch(`http://localhost:4003/api/users/${userId}`)
+    const token = localStorage.getItem("accessToken");
+    axios
+      .get(`http://localhost:4003/api/users/${userId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch user data");
-        return res.json();
+        setUser(res.data); // API returns user object
       })
-      .then((data) => {
-        setUser(data); // API returns user object
-      })
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(err.response?.data?.message || err.message))
       .finally(() => setLoading(false));
   }, []);
 

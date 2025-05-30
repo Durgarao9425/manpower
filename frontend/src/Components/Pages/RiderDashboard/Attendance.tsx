@@ -87,21 +87,22 @@ const Attendance: React.FC = () => {
     store_id: 0    // Default store_id
   });
 
-  const { userData } = useUserData(); // Custom hook to get user data
+  const { userData: userDataObj } = useUserData(); // Custom hook to get user data
+  const userData = userDataObj as any; // fallback to any for compatibility
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const buttonRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
-  const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const workingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxDragDistance = isMobile ? 240 : 280;
 
 
   // Effect to fetch rider's details (id, name) and their assignment (company_id, store_id)
 useEffect(() => {
   const fetchRiderDataAndAssignments = async () => {
-    if (!userData?.user?.id) {
+    if (!userData?.id) {
       setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
       setLoading(false);
       return;
@@ -111,7 +112,7 @@ useEffect(() => {
 
     try {
       // Step 1: Fetch rider by user_id
-      const riderResponse = await axios.get<{ id: number; name?: string }[]>(`${API_BASE}/riders?user_id=${userData.user.id}`);
+      const riderResponse = await axios.get<{ id: number; name?: string }[]>(`${API_BASE}/riders?user_id=${userData.id}`);
       console.log('Rider Data Response::::::::::::::::::::::::::', riderResponse.data);
 
       if (Array.isArray(riderResponse.data) && riderResponse.data.length > 0) {
@@ -154,7 +155,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
 
         setRiderData(finalRiderData);
       } else {
-        console.warn(`No rider data found for user_id: ${userData.user.id}`);
+        console.warn(`No rider data found for user_id: ${userData.id}`);
         setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
       }
     } catch (error) {
@@ -166,7 +167,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
   };
 
   fetchRiderDataAndAssignments();
-}, [userData?.user?.id]);
+}, [userData?.id]);
  // Dependencies: userData.user.id and API_BASE (as it's used in effect)
 
   // Fetch today's attendance record if riderData.id is valid (non-zero)
@@ -287,19 +288,15 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
     setLoading(true);
     try {
       const todayDateString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format for query
-      const response = await fetch(`${API_BASE}/attendance?rider_id=${riderData.id}&date=${todayDateString}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})); // Try to parse error, default to empty object
-        throw new Error(errorData.error || `Failed to fetch attendance (status: ${response.status})`);
-      }
-      
-      const records: AttendanceRecord[] = await response.json();
-      
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.get(`${API_BASE}/attendance`, {
+        params: { rider_id: riderData.id, date: todayDateString },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const records: AttendanceRecord[] = response.data;
       if (records.length > 0) {
         const record = records[0];
         setTodayRecord(record);
-        
         if (record.check_in_time && !record.check_out_time) {
           setAttendanceState('punch-out');
           setPunchInTime(new Date(record.check_in_time));
@@ -323,9 +320,14 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         setPunchOutTime(null);
         setWorkingTime(0);
       }
-    } catch (error: any) {
-      console.error('Error fetching today attendance:', error);
-      showToastMessage(error.message || 'Could not load today\'s attendance.', 'error');
+    } catch (error) {
+      let message = 'Could not load today\'s attendance.';
+      if (typeof error === 'object' && error !== null && 'message' in error) {
+        message = (error as any).message || message;
+      }
+      setToastMessage(message);
+      setToastSeverity('error');
+      setShowToast(true);
       // Reset to default state on error
       setTodayRecord(null);
       setAttendanceState('punch-in');
@@ -358,7 +360,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         store_id: riderData.store_id,
         attendance_date: getTodayDateForAPI(), // Or a more specific date logic if needed
         status: 'present' as 'present', // Explicitly type
-        marked_by: userData?.user?.id || 0, // Use the logged-in user's ID
+        marked_by: userData?.id || 0, // Use the logged-in user's ID
         remarks: 'Punched In',
         check_in_time: formatDateForAPI(now),
         check_in_latitude: location.latitude,
@@ -402,7 +404,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
         // company_id: riderData.company_id, 
         // store_id: riderData.store_id,
         attendance_date: todayRecord.attendance_date, // Use date from existing record
-        marked_by: userData?.user?.id || 0, // Use the logged-in user's ID
+        marked_by: userData?.id || 0, // Use the logged-in user's ID
         remarks: 'Punched Out',
         check_out_time: formatDateForAPI(now),
         check_out_latitude: location.latitude,
@@ -658,7 +660,7 @@ console.log(fetchedRiderId,"fetchedRiderId@@@@@@@@@@@@@@@@@@@@@@@")
 
           {attendanceState === 'completed' && (
             <Box>
-              <Chip icon={<CheckCircle />} label="Day Completed" color="success" size="large" sx={{ fontWeight: 'bold', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }} />
+              <Chip icon={<CheckCircle />} label="Day Completed" color="success" size="medium" sx={{ fontWeight: 'bold', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }} />
               <br />
               <Button variant="outlined" onClick={resetAttendance} sx={{ textTransform: 'none', borderRadius: 2, px: 3 }}>
                 Start New Day

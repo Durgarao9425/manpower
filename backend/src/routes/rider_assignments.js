@@ -45,10 +45,11 @@ router.get('/', async (req, res) => {
 // Get assignment by rider id
 router.get('/by-rider/:riderId', async (req, res) => {
   const { riderId } = req.params;
-  const sql = 'SELECT * FROM rider_assignments WHERE rider_id = ? ORDER BY assigned_date DESC, id DESC LIMIT 1';
+  // Only return the latest assignment where both company_id and store_id are NOT NULL
+  const sql = `SELECT * FROM rider_assignments WHERE rider_id = ? AND company_id IS NOT NULL AND store_id IS NOT NULL ORDER BY assigned_date DESC, id DESC LIMIT 1`;
   try {
     const results = await db.query(sql, [riderId]);
-    if (results.length === 0) return res.status(404).json({ error: 'No assignment found' });
+    if (results.length === 0) return res.status(404).json({ error: 'No valid assignment found' });
     res.json(results[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

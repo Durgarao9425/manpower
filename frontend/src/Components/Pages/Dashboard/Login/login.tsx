@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -13,6 +13,7 @@ import {
   InputAdornment,
   Alert,
   Grid,
+  CircularProgress,
 } from "@mui/material";
 import {
   Visibility,
@@ -23,6 +24,7 @@ import {
 } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "./authcontext";
 
 const theme = createTheme({
   palette: {
@@ -117,80 +119,42 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Import useAuth hook
+  const { login } = useAuth();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoginError("");
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      console.log("Form validation failed");
+      return;
+    }
 
     setIsSubmitting(true);
-    console.log(formData,"formDataformData")
-try {
-  // Send login credentials to backend for authentication
-  const response = await fetch("http://localhost:4003/api/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      username: formData.username,
-      password: formData.password,
-    }),
-  });
+    console.log("Submitting login form with username:", formData.username);
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    setLoginError(data.message || "Invalid username or password");
-    return;
-  }
-
-  // If login successful, store user data
-  if (data.user) {
-    const userId = data.user.id;
-
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", data.user.user_type);
-    localStorage.setItem("userId", userId.toString());
-    localStorage.setItem("userName", data.user.full_name);
-    localStorage.setItem("userEmail", data.user.email);
-
-    if (formData.rememberMe) {
-      localStorage.setItem("rememberedUser", formData.username);
-    } else {
-      localStorage.removeItem("rememberedUser");
+    try {
+      // Use the auth service to login
+      console.log("Calling login function from auth context");
+      await login(formData.username, formData.password);
+      console.log("Login successful");
+      
+      // Remember username if selected
+      if (formData.rememberMe) {
+        localStorage.setItem("rememberedUser", formData.username);
+        console.log("Remembered username saved");
+      } else {
+        localStorage.removeItem("rememberedUser");
+        console.log("Remembered username removed");
+      }
+      
+      // Note: Navigation is handled in the auth context after successful login
+    } catch (error) {
+      console.error("Login form error:", error);
+      setLoginError(error instanceof Error ? error.message : "Unable to connect to server. Please try again.");
+      setIsSubmitting(false);
     }
-
-    // Additional APIs after successful login
-    const [userRes, notificationsRes, tasksRes] = await Promise.all([
-      fetch(`http://localhost:4003/api/users/${userId}`),
-      fetch(`http://localhost:4003/api/notifications/${userId}`),
-      fetch(`http://localhost:4003/api/tasks/${userId}`),
-    ]);
-
-    const userDetails = await userRes.json();
-    const notifications = await notificationsRes.json();
-    const tasks = await tasksRes.json();
-
-    console.log("User Details:", userDetails);
-    console.log("Notifications:", notifications);
-    console.log("Tasks:", tasks);
-
-    // Navigate based on user type
-    if (data.user.user_type === "admin") {
-      navigate("/dashboard");
-    } else if (data.user.user_type === "rider") {
-      navigate("/rider-dashboard");
-    } else {
-      setLoginError("Access denied. Invalid user type.");
-    }
-  } else {
-    setLoginError("Invalid response from server");
-  }
-} catch (error) {
-  console.error("Login error:", error);
-  setLoginError("Unable to connect to server. Please try again.");
-}
   };
   
 

@@ -3,10 +3,11 @@ import {
   Route,
   Routes as RouterRoutes,
   Navigate,
-  Outlet,
-  useNavigate,
 } from "react-router-dom";
-import { useEffect } from "react";
+
+// Import the new ProtectedRoute component
+import ProtectedRoute from "../Components/Common/ProtectedRoute";
+import TestAuth from "../Components/Common/TestAuth";
 
 // Page Components
 import Logout from "../Components/Pages/Dashboard/Login/logout";
@@ -25,42 +26,29 @@ import OrderManagementSystem from "../Components/Pages/OrderPage/OrderPage";
 import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
 import CompanySettings from "../Components/Pages/SettingPage/Settings";
 import LoginPage from "../Components/Pages/Dashboard/Login/login";
-import ReusableListingPage from "../Components/Pages/RiderAttendace/AttendanceListingPage";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
 import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
 import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
-import LoginPageNew from "../Components/Pages/Dashboard/Login/loginNew";
 import SliderManagementPage from "../Components/Pages/SliderPage/SliderPage";
 import RiderEarningPage from "../Components/Pages/RiderEarnings/MainPage";
 
-// ProtectedRoute Component
-interface ProtectedRouteProps {
-  allowedRoles: string[];
-}
-
-const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
-  const navigate = useNavigate();
-  const userRole = localStorage.getItem("userRole");
-  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-    } else if (!allowedRoles.includes(userRole || "")) {
-      navigate("/unauthorized"); // Optional: create Unauthorized page
-    }
-  }, [isAuthenticated, userRole, allowedRoles, navigate]);
-
-  if (!isAuthenticated || !allowedRoles.includes(userRole || "")) {
-    return null; // or a loading spinner
-  }
-
-  return <Outlet />;
+// NotFound and Unauthorized Pages
+const NotFound = () => {
+  return (
+    <div style={{ padding: "2rem", textAlign: "center" }}>
+      <h1>404 - Page Not Found</h1>
+      <p>The page you are looking for does not exist.</p>
+    </div>
+  );
 };
 
-// NotFound Page
-const NotFound = () => {
-  return <div style={{ padding: "2rem", textAlign: "center" }}>404 - Not Found</div>;
+const Unauthorized = () => {
+  return (
+    <div style={{ padding: "2rem", textAlign: "center" }}>
+      <h1>403 - Unauthorized</h1>
+      <p>You do not have permission to access this page.</p>
+    </div>
+  );
 };
 
 // App Routes
@@ -69,9 +57,10 @@ const AppRoutes = () => {
     <RouterRoutes>
       {/* Public Routes */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPageNew />} />
-      {/* <Route path="/login" element={<LoginPage />} /> */}
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/logout" element={<Logout />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
+      <Route path="/test-auth" element={<TestAuth />} />
 
       {/* Admin Protected Routes */}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
@@ -94,8 +83,6 @@ const AppRoutes = () => {
           <Route path="/payments" element={<PaymentListingPage />} />
           <Route path="/slider-page" element={<SliderManagementPage />} />
           <Route path="/rider-earnings" element={<RiderEarningPage />} />
-
-
         </Route>
       </Route>
 
