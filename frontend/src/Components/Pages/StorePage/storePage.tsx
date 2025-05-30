@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Box,
   Button,
@@ -42,6 +41,7 @@ import {
   FilterList as FilterIcon
 } from '@mui/icons-material';
 import StoreForm from './storeForm';
+import apiService from '../../../services/apiService';
 
 type Store = {
   id: number;
@@ -142,8 +142,8 @@ const StoreManagement = () => {
     const fetchStores = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/stores');
-        setStores(response.data);
+        const data = await apiService.get('/stores');
+        setStores(data);
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch stores');
@@ -157,8 +157,8 @@ const StoreManagement = () => {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await axios.get('/api/companies');
-        setCompanies(response.data);
+        const data = await apiService.get('/companies');
+        setCompanies(data);
       } catch (err) {
         // Optionally handle error
       }
@@ -214,11 +214,11 @@ const StoreManagement = () => {
         setStores(prev => prev.map(store => store.id === editingStore.id ? { ...store, ...formData, updated_at: new Date().toISOString() } : store));
       } else {
         // Add new store to backend
-        const response = await axios.post('/api/stores', {
+        const data = await apiService.post('/stores', {
           ...formData,
           company_id: Number(formData.company_id),
         });
-        setStores(prev => [...prev, response.data]);
+        setStores(prev => [...prev, data]);
       }
       setShowForm(false);
       setEditingStore(null);

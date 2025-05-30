@@ -165,31 +165,33 @@ class AuthService {
    */
   isAuthenticated(): boolean {
     const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
     const expirationTime = parseInt(localStorage.getItem('tokenExpiration') || '0');
-    
-    return !!accessToken && expirationTime > Date.now();
+    // If access token is valid, or refresh token exists, consider authenticated
+    return (!!accessToken && expirationTime > Date.now()) || !!refreshToken;
   }
 
   /**
    * Get access token (with automatic refresh if needed)
    */
   async getAccessToken(): Promise<string | null> {
-    if (!this.isAuthenticated()) {
-      return null;
-    }
-    
-    // Check if token needs refresh
+    const accessToken = localStorage.getItem('accessToken');
     const expirationTime = parseInt(localStorage.getItem('tokenExpiration') || '0');
-    if (expirationTime - Date.now() < REFRESH_THRESHOLD) {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (accessToken && expirationTime > Date.now()) {
+      return accessToken;
+    }
+    // If access token expired but refresh token exists, try to refresh
+    if (refreshToken) {
       try {
         return await this.refreshToken();
       } catch (error) {
-        console.error('Token refresh failed:', error);
+        this.clearSession();
         return null;
       }
     }
-    
-    return localStorage.getItem('accessToken');
+    // No valid tokens
+    return null;
   }
 
   /**
