@@ -2,6 +2,26 @@ const express = require('express');
 const db = require('../config/database');
 const router = express.Router();
 
+// Helper to set new token in response header for sliding expiration
+function setSlidingToken(req, res) {
+    if (req.user) {
+        const jwt = require('jsonwebtoken');
+        const token = jwt.sign(req.user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '5m' });
+        res.set('x-new-token', token);
+    }
+}
+
+// Add sliding token to all GET/POST/PUT/DELETE responses
+router.use((req, res, next) => {
+    // Save original res.json
+    const originalJson = res.json;
+    res.json = function (body) {
+        setSlidingToken(req, res);
+        return originalJson.call(this, body);
+    };
+    next();
+});
+
 // Get all riders or filter by user_id
 router.get('/', async (req, res) => {
   const { user_id } = req.query;
