@@ -17,8 +17,11 @@ router.post('/settings/per-order-amount', ordersController.setPerOrderAmount);
 // Upload daily orders
 router.post('/upload-daily', upload.single('file'), ordersController.uploadDailyOrders);
 
-// Recent uploads
-router.get('/orders/daily-uploads', ordersController.getRecentDailyUploads);
+// Daily order uploads endpoints
+router.get('/daily-uploads', ordersController.getRecentDailyUploads);
+router.get('/daily-uploads/:uploadId', ordersController.getDailyOrderUploadDetails);
+router.delete('/daily-uploads/:uploadId', ordersController.deleteDailyOrderUpload);
+router.get('/daily-stats', ordersController.getDailyOrderStats);
 
 // Fetch companies
 router.get('/companies', async (req, res) => {

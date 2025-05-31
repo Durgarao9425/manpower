@@ -51,12 +51,25 @@ router.get('/by-rider/:riderId', async (req, res) => {
   const { riderId } = req.params;
   const sql = `SELECT * FROM rider_assignments WHERE rider_id = ? AND company_id IS NOT NULL AND store_id IS NOT NULL ORDER BY assigned_date DESC, id DESC LIMIT 1`;
   try {
-    const results = await db.query(sql, [riderId]);
-    if (results.length === 0) return res.status(404).json({ success: false, message: 'No valid assignment found' });
+    const [results] = await db.query(sql, [riderId]);
+    console.log('Rider assignment query results:', results);
+    
+    if (!results || results.length === 0) {
+      return res.status(404).json({ success: false, message: 'No valid assignment found' });
+    }
 
+    // Return the first result as a single object
+    const assignment = results[0];
+    console.log('Returning assignment:', assignment);
+    
     // Include token in the response if required
-    res.json({ success: true, data: results[0], token: req.headers.authorization });
+    res.json({ 
+      success: true, 
+      data: assignment, 
+      token: req.headers.authorization 
+    });
   } catch (err) {
+    console.error('Error fetching rider assignment:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

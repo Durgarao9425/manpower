@@ -111,8 +111,10 @@ const RiderListingPage: React.FC = () => {
   // Load stores when company is selected
   useEffect(() => {
     if (selectedCompany) {
+      console.log('Loading stores for company ID:', selectedCompany);
       fetchStoresByCompany(selectedCompany);
     } else {
+      console.log('No company selected, clearing stores');
       setStores([]);
     }
   }, [selectedCompany]);
@@ -152,8 +154,19 @@ const RiderListingPage: React.FC = () => {
 
   const fetchStoresByCompany = async (companyId: string) => {
     try {
+      console.log(`Fetching stores for company ID: ${companyId}`);
       const response = await api.get(`/stores?company_id=${companyId}`);
-      setStores(response.data);
+      console.log('Stores response:', response.data);
+      
+      if (Array.isArray(response.data)) {
+        setStores(response.data);
+      } else if (response.data && Array.isArray(response.data.data)) {
+        // Handle case where API returns { data: [...] }
+        setStores(response.data.data);
+      } else {
+        console.warn('Unexpected stores response format:', response.data);
+        setStores([]);
+      }
     } catch (error) {
       console.error('Error fetching stores:', error);
       setStores([]);
@@ -194,11 +207,28 @@ const RiderListingPage: React.FC = () => {
     setSelectedRider(rider);
     try {
       const res = await api.get(`/rider-assignments/by-rider/${rider.id}`);
-      if (res.data.success) {
-        const assignment = res.data.data;
-        setSelectedCompany(assignment.company_id?.toString() || '');
-        setSelectedStore(assignment.store_id?.toString() || '');
-        setCompanyRiderId(assignment.company_rider_id || '');
+      console.log('Rider assignment response:', res.data);
+      
+      if (res.data.success && res.data.data) {
+        // Handle both single object and array response formats
+        const assignment = Array.isArray(res.data.data) ? res.data.data[0] : res.data.data;
+        
+        if (assignment) {
+          // Convert to string to ensure compatibility with Select component
+          setSelectedCompany(assignment.company_id?.toString() || '');
+          setSelectedStore(assignment.store_id?.toString() || '');
+          setCompanyRiderId(assignment.company_rider_id || '');
+          console.log('Found assignment:', {
+            company_id: assignment.company_id,
+            store_id: assignment.store_id,
+            company_rider_id: assignment.company_rider_id
+          });
+        } else {
+          setSelectedCompany('');
+          setSelectedStore('');
+          setCompanyRiderId('');
+          console.warn('No assignment data found in response');
+        }
       } else {
         setSelectedCompany('');
         setSelectedStore('');
@@ -215,9 +245,19 @@ const RiderListingPage: React.FC = () => {
   };
 
   const handleAssignSubmit = async () => {
-    if (!selectedRider || !selectedCompany || !selectedStore || !companyRiderId) return;
+    if (!selectedRider || !selectedCompany || !selectedStore || !companyRiderId) {
+      console.warn('Missing required fields for rider assignment');
+      return;
+    }
     
     try {
+      console.log('Submitting assignment data:', {
+        rider_id: selectedRider.id,
+        company_id: selectedCompany,
+        store_id: selectedStore,
+        company_rider_id: companyRiderId
+      });
+      
       await api.post('/rider-assignments', {
         rider_id: selectedRider.id,
         company_id: selectedCompany,
@@ -232,8 +272,12 @@ const RiderListingPage: React.FC = () => {
       setCompanyRiderId('');
       setAssignSuccess('Rider assigned successfully!');
       setTimeout(() => setAssignSuccess(''), 3000);
+      
+      // Refresh rider data to show updated assignments
+      fetchRiders();
     } catch (error) {
       console.error('Error assigning rider:', error);
+      alert('Failed to assign rider. Please try again.');
     }
   };
 
@@ -466,12 +510,21 @@ const RiderListingPage: React.FC = () => {
   };
 
   const handleCompanyChange = (event: SelectChangeEvent) => {
-    setSelectedCompany(event.target.value);
+    const companyId = event.target.value;
+    console.log('Selected company ID:', companyId);
+    setSelectedCompany(companyId);
     setSelectedStore(''); // Reset store when company changes
+    
+    // Fetch stores for this company
+    if (companyId) {
+      fetchStoresByCompany(companyId);
+    }
   };
 
   const handleStoreChange = (event: SelectChangeEvent) => {
-    setSelectedStore(event.target.value);
+    const storeId = event.target.value;
+    console.log('Selected store ID:', storeId);
+    setSelectedStore(storeId);
   };
 
   if (showRegistrationForm) {
@@ -528,6 +581,7 @@ const RiderListingPage: React.FC = () => {
               value={selectedCompany}
               onChange={handleCompanyChange}
               label="Company"
+              displayEmpty
             >
               <MenuItem value="">Select Company</MenuItem>
               {companies.map((company) => (
@@ -544,6 +598,7 @@ const RiderListingPage: React.FC = () => {
               value={selectedStore}
               onChange={handleStoreChange}
               label="Store"
+              displayEmpty
             >
               <MenuItem value="">Select Store</MenuItem>
               {stores.map((store) => (
@@ -568,6 +623,14 @@ const RiderListingPage: React.FC = () => {
               {assignSuccess}
             </Typography>
           )}
+          
+          {/* Debug info - can be removed in production */}
+          <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1, display: 'none' }}>
+            <Typography variant="caption" component="div">Debug Info:</Typography>
+            <Typography variant="caption" component="div">Company ID: {selectedCompany}</Typography>
+            <Typography variant="caption" component="div">Store ID: {selectedStore}</Typography>
+            <Typography variant="caption" component="div">Company Rider ID: {companyRiderId}</Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
