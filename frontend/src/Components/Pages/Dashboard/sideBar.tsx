@@ -153,7 +153,7 @@ const navigationItems = [
     submenu: [
       { id: "payments-list", text: "Payments", icon: <PaidIcon />, path: "/payments" },
       { id: "earnings", text: "Earnings", icon: <SavingsIcon />, path: "/earnings" },
-      { id: "advance", text: "Advance", icon: <PaymentIcon />, path: "/advance" },
+      { id: "advance", text: "Advance", icon: <PaymentIcon />, path: "/rider-advance" },
       { id: "settlement", text: "Settlement", icon: <GavelIcon />, path: "/settlement" },
     ]
   },

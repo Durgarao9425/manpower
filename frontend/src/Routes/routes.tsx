@@ -25,7 +25,6 @@ import RoleManagementPage from "../Components/Pages/RolePermissions/RolePermissi
 import OrderManagementSystem from "../Components/Pages/OrderPage/OrderPage";
 import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
 import CompanySettings from "../Components/Pages/SettingPage/Settings";
-import LoginPage from "../Components/Pages/Dashboard/Login/login";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
 import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
 import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
