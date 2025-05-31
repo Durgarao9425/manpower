@@ -84,6 +84,7 @@ const CustomFieldsManager: React.FC = () => {
     const [editingField, setEditingField] = useState<CustomField | null>(null);
     const [loading, setLoading] = useState(false);
     const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    
 
     const { control, handleSubmit, watch, reset, formState: { errors } } = useForm<CustomField>({
         defaultValues: {
@@ -111,16 +112,11 @@ const CustomFieldsManager: React.FC = () => {
 
     // Transaction field types
     const transactionFieldTypes = [
-        { value: 'percentage', label: 'Percentage' },
-        { value: 'amount', label: 'Fixed Amount' },
-        { value: 'multiplier', label: 'Multiplier' },
-        { value: 'discount', label: 'Discount' },
-        { value: 'markup', label: 'Markup' },
-        { value: 'tax', label: 'Tax' },
-        { value: 'surcharge', label: 'Surcharge' },
-        { value: 'commission', label: 'Commission' },
-        { value: 'interest', label: 'Interest' },
-        { value: 'penalty', label: 'Penalty' }
+        { value: '%', label: 'Percentage (%)' },
+        { value: '*', label: 'Multiplier (*)' },
+        { value: '+', label: 'Addition (+)' },
+        { value: '-', label: 'Subtraction (-)' },
+        { value: '=', label: 'Sum (=)' }
     ];
 
 
@@ -164,7 +160,6 @@ const CustomFieldsManager: React.FC = () => {
     };
 
     const handleDelete = async (fieldId: string) => {
-        if (window.confirm('Are you sure you want to delete this field?')) {
             try {
                 setLoading(true);
 
@@ -180,7 +175,6 @@ const CustomFieldsManager: React.FC = () => {
                 setAlert({ type: 'error', message: 'Failed to delete field. Please try again.' });
             } finally {
                 setLoading(false);
-            }
         }
     };
 
@@ -339,7 +333,7 @@ const CustomFieldsManager: React.FC = () => {
                                             ) : '-'}
                                         </TableCell>
                                         <TableCell>
-                                            {field.is_transaction_field ? field.transaction_value || '-' : '-'}
+                                            {field.transaction_value || '-'}
                                         </TableCell>
                                         <TableCell>
                                             <IconButton
@@ -371,14 +365,15 @@ const CustomFieldsManager: React.FC = () => {
                 onClose={handleCloseDialog}
                 maxWidth="md"
                 fullWidth
+                scroll="paper"
             >
                 <form onSubmit={handleSubmit(onSubmit)}>
-                    <DialogTitle sx={{ backgroundColor: '#f8f9fa', color: '#495057' }}>
+                    <DialogTitle sx={{ backgroundColor: '#f8f9fa', color: '#495057'}}>
                         {editingField ? 'Edit Field' : 'Add New Field'}
                     </DialogTitle>
 
                     <DialogContent sx={{ mt: 2 }}>
-                        <Grid container spacing={3}>
+                        <Grid container spacing={3} mt={1}>
                             <Grid item xs={12} md={6}>
                                 <Controller
                                     name="field_key"
@@ -409,7 +404,7 @@ const CustomFieldsManager: React.FC = () => {
                                             fullWidth
                                             error={!!errors.field_label}
                                             helperText={errors.field_label?.message}
-                                            placeholder="e.g., TDS"
+                                            placeholder="SHould not be empty"
                                         />
                                     )}
                                 />
@@ -475,16 +470,17 @@ const CustomFieldsManager: React.FC = () => {
                                             )}
                                         />
                                     </Grid>
-
+                                     </>
+)}
                                     <Grid item xs={12} md={6}>
                                         <Controller
                                             name="transaction_value"
                                             control={control}
-                                            rules={isTransactionField ? { required: 'Transaction value is required' } : {}}
+                                            rules={isTransactionField ? { required: 'value is required' } : {}}
                                             render={({ field }) => (
                                                 <TextField
                                                     {...field}
-                                                    label="Transaction Value"
+                                                    label="Value"
                                                     type="number"
                                                     fullWidth
                                                     error={!!errors.transaction_value}
@@ -494,8 +490,8 @@ const CustomFieldsManager: React.FC = () => {
                                             )}
                                         />
                                     </Grid>
-                                </>
-                            )}
+                               
+                            
                         </Grid>
                     </DialogContent>
 

@@ -164,6 +164,13 @@ const navigationItems = [
     path: "/user-page",
     hasSubmenu: false
   },
+    {
+    id: "custom_fields",
+    text: "Custom Fields",
+    icon: <WorkIcon />,
+    path: "/custom-fields",
+    hasSubmenu: false
+  },
   {
     id: "reports",
     text: "Reports",
