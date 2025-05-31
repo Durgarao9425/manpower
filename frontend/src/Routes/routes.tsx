@@ -25,12 +25,13 @@ import RoleManagementPage from "../Components/Pages/RolePermissions/RolePermissi
 import OrderManagementSystem from "../Components/Pages/OrderPage/OrderPage";
 import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
 import CompanySettings from "../Components/Pages/SettingPage/Settings";
-import LoginPage from "../Components/Pages/Dashboard/Login/login";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
 import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
 import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
 import SliderManagementPage from "../Components/Pages/SliderPage/SliderPage";
 import RiderEarningPage from "../Components/Pages/RiderEarnings/MainPage";
+import EnhancedLoginPage from "../Components/Pages/Dashboard/Login/loginNew";
+import RiderDeliveryReport from "../Components/Reports/reports";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -57,7 +58,8 @@ const AppRoutes = () => {
     <RouterRoutes>
       {/* Public Routes */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
+      {/* <Route path="/login" element={<LoginPage />} /> */}
+      <Route path="/login" element={<EnhancedLoginPage />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/test-auth" element={<TestAuth />} />
@@ -82,7 +84,8 @@ const AppRoutes = () => {
           <Route path="/upload-orders" element={<OrdersListingPage />} />
           <Route path="/payments" element={<PaymentListingPage />} />
           <Route path="/slider-page" element={<SliderManagementPage />} />
-          <Route path="/rider-earnings" element={<RiderEarningPage />} />
+          <Route path="/earnings" element={<RiderEarningPage />} />
+          <Route path="/reports" element={<RiderDeliveryReport />} />
         </Route>
       </Route>
 

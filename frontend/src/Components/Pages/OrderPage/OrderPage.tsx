@@ -238,8 +238,8 @@ export default function OrderManagementSystem() {
       formData.append('company_id', company);
       formData.append('order_date', orderDate);
       if (store) formData.append('store_id', store);
+      console.log(formData,"formData------------------------------")
 
-      // Use apiService for file upload (pass FormData and set headers)
       await apiService.post('/orders/upload-daily', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent: ProgressEvent) => {

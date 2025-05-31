@@ -247,7 +247,7 @@ const ReusableTable = ({
           {filters.length > 0 && (
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
               <FilterListIcon color="action" />
-              {filters.map((filter) => (
+              {filters?.map((filter) => (
                 <FormControl key={filter.field} size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>{filter.label}</InputLabel>
                   <Select
