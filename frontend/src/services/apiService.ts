@@ -25,9 +25,17 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle token expiration
+// Response interceptor to handle token expiration and sliding token update
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Check for sliding token in response headers
+    const newToken = response.headers['x-new-token'] || response.headers['X-New-Token'];
+    if (newToken) {
+      localStorage.setItem('accessToken', newToken);
+      // Optionally: update token expiration time if you store it separately
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config;
     

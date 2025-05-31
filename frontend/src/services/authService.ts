@@ -56,6 +56,9 @@ class AuthService {
   // Timer for automatic token refresh
   private refreshTimer: number | null = null;
 
+  // Cached access token
+  private cachedAccessToken: string | null = null;
+
   /**
    * Login user and get tokens
    */
@@ -113,34 +116,19 @@ class AuthService {
    */
   async refreshToken(): Promise<string> {
     try {
-      // Get refresh token from localStorage
       const refreshToken = localStorage.getItem('refreshToken');
-      
-      // Call refresh token endpoint
-      const response = await api.post<RefreshResponse>('/login/refresh', {
-        refreshToken,
-      });
+      const response = await api.post('/login/refresh', { refreshToken });
 
       if (response.data.success) {
-        // Update access token and expiration
         const { accessToken, expiresIn } = response.data;
         localStorage.setItem('accessToken', accessToken);
-        
-        // Calculate new expiration time
-        const expirationTime = Date.now() + expiresIn * 1000;
-        localStorage.setItem('tokenExpiration', expirationTime.toString());
-        this.tokenExpiration = expirationTime;
-        
-        // Setup refresh timer
-        this.setupRefreshTimer();
-        
+        localStorage.setItem('tokenExpiration', (Date.now() + expiresIn * 1000).toString());
         return accessToken;
       } else {
         throw new Error('Token refresh failed');
       }
     } catch (error) {
-      // If refresh fails, logout user
-      this.clearSession();
+      console.error('Refresh token error:', error);
       throw error;
     }
   }
@@ -175,22 +163,30 @@ class AuthService {
    * Get access token (with automatic refresh if needed)
    */
   async getAccessToken(): Promise<string | null> {
+    if (this.cachedAccessToken) {
+      return this.cachedAccessToken;
+    }
+
     const accessToken = localStorage.getItem('accessToken');
     const expirationTime = parseInt(localStorage.getItem('tokenExpiration') || '0');
     const refreshToken = localStorage.getItem('refreshToken');
+
     if (accessToken && expirationTime > Date.now()) {
+      this.cachedAccessToken = accessToken;
       return accessToken;
     }
-    // If access token expired but refresh token exists, try to refresh
+
     if (refreshToken) {
       try {
-        return await this.refreshToken();
+        const newToken = await this.refreshToken();
+        this.cachedAccessToken = newToken;
+        return newToken;
       } catch (error) {
-        this.clearSession();
+        console.error('Token refresh failed:', error);
         return null;
       }
     }
-    // No valid tokens
+
     return null;
   }
 
@@ -246,6 +242,9 @@ class AuthService {
       window.clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
+
+    // Clear cached token
+    this.cachedAccessToken = null;
   }
 
   /**

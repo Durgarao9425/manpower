@@ -9,144 +9,193 @@ import {
   LinearProgress,
   Box,
   Typography,
-} from '@mui/material';
-import { useAuth } from '../Pages/Dashboard/Login/authcontext';
+} from '@mui/material'; // Ensure Material UI is correctly installed and imported
+import { useAuth } from '../Pages/Dashboard/Login/authcontext'; // Adjust path as per your project structure
 
-// Warning threshold in milliseconds (default: 5 minutes)
-const WARNING_THRESHOLD = 
-  (import.meta.env.VITE_TOKEN_EXPIRY_WARNING || 5) * 60 * 1000;
+// Warning threshold in milliseconds (e.g., 5 minutes before JWT expires)
+// This is for the JWT's own lifetime warning.
+const JWT_EXPIRY_WARNING_THRESHOLD = (parseInt(import.meta.env.VITE_TOKEN_EXPIRY_WARNING_MINS) || 5) * 60 * 1000;
 
-// Check interval in milliseconds (30 seconds)
+// Interval to check token status (e.g., every 30 seconds)
 const CHECK_INTERVAL = 30 * 1000;
 
-/**
- * Component that shows an alert when the JWT token is about to expire
- * Gives the user options to refresh the token or logout
- */
 const TokenExpirationAlert: React.FC = () => {
-  const [open, setOpen] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [progress, setProgress] = useState<number>(100);
-  const [hasLoggedOut, setHasLoggedOut] = useState(false); // Prevent multiple dialogs
-  const { logout } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [timeLeftForJwt, setTimeLeftForJwt] = useState<number>(JWT_EXPIRY_WARNING_THRESHOLD);
+  const [jwtProgress, setJwtProgress] = useState<number>(100);
 
-  // Format time remaining in minutes and seconds
+  // Get authentication status and functions from AuthContext
+  const { logout, isAuthenticated, isLoading: isAuthLoading, currentUser } = useAuth();
+
+  // Helper to format time remaining
   const formatTimeLeft = (milliseconds: number): string => {
-    const minutes = Math.floor(milliseconds / 60000);
-    const seconds = Math.floor((milliseconds % 60000) / 1000);
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
   };
 
-  // Check token expiration
-  const checkTokenExpiration = useCallback(() => {
-    if (hasLoggedOut) return; // Prevent dialog if already logged out
-    const expirationTime = parseInt(localStorage.getItem('tokenExpiration') || '0');
-    if (!expirationTime) return;
-    const now = Date.now();
-    const timeRemaining = expirationTime - now;
-
-    // If token will expire soon, show alert
-    if (timeRemaining > 0 && timeRemaining <= WARNING_THRESHOLD) {
-      setTimeLeft(timeRemaining);
-      setProgress((timeRemaining / WARNING_THRESHOLD) * 100);
-      setOpen(true);
-    } else if (timeRemaining <= 0) {
-      // Token has expired, logout
-      setHasLoggedOut(true);
-      setOpen(true); // Show dialog one last time
-    } else {
-      setOpen(false);
+  // Function to handle token refresh
+  const handleRefreshToken = async () => {
+    try {
+      // Dynamically import authService to avoid circular dependencies if any
+      const authServiceModule = await import('../../services/authService'); // Adjust path
+      const authService = authServiceModule.default;
+      await authService.refreshToken();
+      setIsDialogOpen(false); // Close dialog on successful refresh
+      // The checkTokenStatus interval will pick up the new expiration time
+    } catch (error) {
+      console.error('TokenExpirationAlert: Failed to refresh token:', error);
+      // If refresh fails, logout should be triggered.
+      // authService.refreshToken() itself calls clearSession on failure.
+      // The AuthContext will then detect unauthenticated state.
+      await logout(); // Ensure logout is called to update context and navigate
+      setIsDialogOpen(false); // Close dialog
     }
-  }, [logout, hasLoggedOut]);
+  };
 
-  // Set up interval to check token expiration
+  // Function to handle manual logout from dialog
+  const handleLogout = async () => {
+    setIsDialogOpen(false);
+    await logout(); // AuthContext handles navigation
+  };
+
+  // Callback to check the JWT's status
+  const checkTokenStatus = useCallback(() => {
+    // Do not run checks if auth is loading, user is not authenticated, or no user object
+    if (isAuthLoading || !isAuthenticated || !currentUser) {
+      if (isDialogOpen) {
+        setIsDialogOpen(false); // Close dialog if open and auth state is not valid
+      }
+      return;
+    }
+
+    const tokenExpirationStr = localStorage.getItem('tokenExpiration');
+    if (!tokenExpirationStr) {
+      // This might happen if tokens are cleared but context hasn't updated yet.
+      // Or if tokenExpiration was never set.
+      if (isDialogOpen) setIsDialogOpen(false);
+      // console.warn('TokenExpirationAlert: tokenExpiration not found in localStorage while authenticated.');
+      return;
+    }
+
+    const expirationTime = parseInt(tokenExpirationStr, 10);
+    if (isNaN(expirationTime) || expirationTime === 0) {
+      if (isDialogOpen) setIsDialogOpen(false);
+      console.warn('TokenExpirationAlert: Invalid tokenExpiration value in localStorage.');
+      return;
+    }
+
+    const now = Date.now();
+    const remainingTime = expirationTime - now;
+
+    if (remainingTime <= 0) {
+      // JWT has actually expired. AuthContext should handle this via its checkAuth or interceptors.
+      // If this component detects it first, it means something might be out of sync.
+      console.warn('TokenExpirationAlert: JWT expired according to localStorage. Auth system should handle this.');
+      // It's possible an inactivity logout has already occurred or is about to.
+      // If still authenticated here, it's an issue. Forcing dialog close.
+      if (isDialogOpen) setIsDialogOpen(false);
+      // Consider if a forced logout from here is needed if isAuthenticated is still true.
+      // However, `authService.getAccessToken` and interceptors should ideally catch this.
+    } else if (remainingTime <= JWT_EXPIRY_WARNING_THRESHOLD) {
+      // JWT is about to expire, show the warning dialog
+      setTimeLeftForJwt(remainingTime);
+      setJwtProgress((remainingTime / JWT_EXPIRY_WARNING_THRESHOLD) * 100);
+      if (!isDialogOpen) {
+        setIsDialogOpen(true); // Open the dialog
+      }
+    } else {
+      // JWT is valid and not expiring soon
+      if (isDialogOpen) {
+        setIsDialogOpen(false); // Close dialog if it was open for JWT warning
+      }
+    }
+  }, [isAuthLoading, isAuthenticated, currentUser, isDialogOpen, JWT_EXPIRY_WARNING_THRESHOLD]);
+
+
+  // Effect to periodically check JWT status
   useEffect(() => {
-    // Check immediately on mount
-    checkTokenExpiration();
+    if (!isAuthLoading && isAuthenticated) {
+      const intervalId = setInterval(checkTokenStatus, CHECK_INTERVAL);
+      return () => clearInterval(intervalId);
+    }
+  }, [isAuthLoading, isAuthenticated]);
 
-    // Set up interval
-    const intervalId = setInterval(checkTokenExpiration, CHECK_INTERVAL);
 
-    // Clean up interval on unmount
-    return () => clearInterval(intervalId);
-  }, [checkTokenExpiration]);
-
-  // Update progress bar every second when dialog is open
+  // Effect to update the countdown timer when the JWT warning dialog is open
   useEffect(() => {
-    if (!open) return;
+    if (!isDialogOpen || !isAuthenticated) return; // Only run if dialog is open and user is authenticated
 
-    const updateTimer = setInterval(() => {
-      setTimeLeft((prev) => {
-        const newTime = prev - 1000;
-        setProgress((newTime / WARNING_THRESHOLD) * 100);
-        return newTime > 0 ? newTime : 0;
+    const countdownTimer = setInterval(() => {
+      setTimeLeftForJwt((prevTime) => {
+        const newTime = prevTime - 1000;
+        if (newTime <= 0) {
+          clearInterval(countdownTimer);
+          // Time in dialog ran out. If token wasn't refreshed, user should be logged out.
+          // The checkTokenStatus should eventually detect actual expiry.
+          // Or inactivity logout from AuthContext might have occurred.
+          // For safety, if dialog countdown reaches zero, close it.
+          // The main checkTokenStatus or inactivity logout will handle actual session end.
+          setIsDialogOpen(false);
+          console.log("TokenExpirationAlert: JWT warning countdown reached zero.");
+          return 0;
+        }
+        setJwtProgress(Math.max(0, (newTime / JWT_EXPIRY_WARNING_THRESHOLD) * 100));
+        return newTime;
       });
     }, 1000);
 
-    return () => clearInterval(updateTimer);
-  }, [open]);
+    return () => clearInterval(countdownTimer);
+  }, [isDialogOpen, isAuthenticated, JWT_EXPIRY_WARNING_THRESHOLD]);
 
-  // Handle refresh token
-  const handleRefresh = async () => {
-    try {
-      // Import authService
-      const authService = (await import('../../services/authService')).default;
-      
-      // Use authService to refresh the token
-      await authService.refreshToken();
-      setOpen(false);
-    } catch (error) {
-      console.error('Failed to refresh token:', error);
-      logout();
-    }
-  };
 
-  // Handle logout
-  const handleLogout = () => {
-    setHasLoggedOut(true);
-    setOpen(false);
-    logout();
-    window.location.href = '/login';
-  };
+  // If auth is loading, or user is not authenticated, don't render the dialog.
+  // The useEffects should handle closing the dialog if auth state changes.
+  if (!isDialogOpen || !isAuthenticated || isAuthLoading) {
+    return null;
+  }
+
+  // Determine dialog content based on JWT warning
+  // This dialog is now specifically for JWT expiration warning.
+  // Session expiry due to inactivity is handled by AuthContext (results in logout, isAuthenticated=false).
+  const dialogTitle = 'Session Expiring Soon';
+  const dialogText = `Your login session will expire in ${formatTimeLeft(timeLeftForJwt)}. Would you like to extend it?`;
 
   return (
     <Dialog
-      open={open}
-      onClose={() => {}}
-      aria-labelledby="token-expiration-alert"
-      disableEscapeKeyDown
+      open={isDialogOpen}
+      onClose={(_, reason) => {
+        // Prevent closing on backdrop click or escape key while warning is active
+        if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+          return;
+        }
+        setIsDialogOpen(false); // Allow closing if user clicks X (though usually no X on modal)
+      }}
+      aria-labelledby="token-expiration-alert-title"
+      disableEscapeKeyDown // Prevent closing with Escape key
     >
-      <DialogTitle id="token-expiration-alert">
-        {hasLoggedOut ? 'Session Expired' : 'Session Expiring Soon'}
-      </DialogTitle>
+      <DialogTitle id="token-expiration-alert-title">{dialogTitle}</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          {hasLoggedOut
-            ? 'Your session has expired due to inactivity. Please log in again.'
-            : `Your session will expire in ${formatTimeLeft(timeLeft)}. Would you like to continue?`}
-        </DialogContentText>
-        {hasLoggedOut ? null : (
-          <Box sx={{ width: '100%', mt: 2 }}>
-            <LinearProgress 
-              variant="determinate" 
-              value={progress} 
-              color={progress < 30 ? 'error' : progress < 70 ? 'warning' : 'primary'} 
-            />
-            <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
-              {formatTimeLeft(timeLeft)} remaining
-            </Typography>
-          </Box>
-        )}
+        <DialogContentText>{dialogText}</DialogContentText>
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <LinearProgress
+            variant="determinate"
+            value={jwtProgress}
+            color={jwtProgress < 30 ? 'error' : jwtProgress < 70 ? 'warning' : 'primary'}
+          />
+          <Typography variant="caption" sx={{ display: 'block', mt: 1, textAlign: 'center' }}>
+            {formatTimeLeft(timeLeftForJwt)} remaining
+          </Typography>
+        </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleLogout} color="primary" variant="contained" autoFocus>
-          OK
+        <Button onClick={handleLogout} color="primary">
+          Logout
         </Button>
-        {!hasLoggedOut && (
-          <Button onClick={handleRefresh} color="primary">
-            Stay Logged In
-          </Button>
-        )}
+        <Button onClick={handleRefreshToken} color="primary" variant="contained" autoFocus>
+          Stay Logged In
+        </Button>
       </DialogActions>
     </Dialog>
   );

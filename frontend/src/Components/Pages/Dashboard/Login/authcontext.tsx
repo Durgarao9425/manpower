@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import authService from "../../../../services/authService";
 import type { User } from "../../../../services/authService";
+import LoadingSpinner from '../../../Common/Loaders';
 
 // Auth context interface
 interface AuthContextType {
@@ -52,22 +53,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check authentication status on mount
   useEffect(() => {
     const initAuth = async () => {
+      setIsLoading(true);
       const isAuth = await checkAuth();
-      if (!isAuth) {
-        // Try auto-login if credentials are stored
-        const rememberedUser = localStorage.getItem("rememberedUser");
-        const rememberedPass = localStorage.getItem("rememberedPass"); // Only for dev/demo!
-        if (rememberedUser && rememberedPass) {
-          try {
-            await login(rememberedUser, rememberedPass);
-          } catch {
-            // If auto-login fails, redirect to login page
-            navigate('/login', { replace: true });
-          }
-        } else {
-          navigate('/login', { replace: true });
+      if (isAuth) {
+        const userData = authService.getCurrentUser();
+        if (userData) {
+          setCurrentUser(userData);
+          setIsAuthenticated(true);
         }
+      } else {
+        navigate('/login', { replace: true });
       }
+      setIsLoading(false);
     };
     initAuth();
   }, []);
@@ -102,7 +99,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check if user is authenticated
   const checkAuth = useCallback(async (): Promise<boolean> => {
     try {
-      // Always try to get a valid access token (refresh if needed)
       const token = await authService.getAccessToken();
       if (token) {
         const user = authService.getCurrentUser();
@@ -113,8 +109,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return true;
         }
       }
-      
-      // If we get here, user is not authenticated
       setCurrentUser(null);
       setUserRole(null);
       setIsAuthenticated(false);
@@ -212,7 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {children}
+      {isLoading ? <LoadingSpinner /> : children}
     </AuthContext.Provider>
   );
 };
