@@ -194,8 +194,8 @@ const RiderListingPage: React.FC = () => {
     setSelectedRider(rider);
     try {
       const res = await api.get(`/rider-assignments/by-rider/${rider.id}`);
-      const assignment = Array.isArray(res.data) ? res.data[0] : res.data;
-      if (assignment) {
+      if (res.data.success) {
+        const assignment = res.data.data;
         setSelectedCompany(assignment.company_id?.toString() || '');
         setSelectedStore(assignment.store_id?.toString() || '');
         setCompanyRiderId(assignment.company_rider_id || '');
@@ -203,8 +203,10 @@ const RiderListingPage: React.FC = () => {
         setSelectedCompany('');
         setSelectedStore('');
         setCompanyRiderId('');
+        console.warn('No active assignment found for the rider.');
       }
     } catch (err) {
+      console.error('Error fetching rider assignment:', err);
       setSelectedCompany('');
       setSelectedStore('');
       setCompanyRiderId('');

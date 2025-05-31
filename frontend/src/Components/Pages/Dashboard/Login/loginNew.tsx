@@ -1151,7 +1151,9 @@ const IllustrationSection: React.FC = () => (
 );
 
 export default function EnhancedLoginPage(): JSX.Element {
-  console.log(authService.generateAdminToken())
+
+
+  
   const [formData, setFormData] = useState<FormData>({
     username: "",
     password: "",
