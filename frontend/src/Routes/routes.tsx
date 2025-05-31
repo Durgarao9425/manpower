@@ -32,6 +32,7 @@ import SliderManagementPage from "../Components/Pages/SliderPage/SliderPage";
 import RiderEarningPage from "../Components/Pages/RiderEarnings/MainPage";
 import EnhancedLoginPage from "../Components/Pages/Dashboard/Login/loginNew";
 import RiderDeliveryReport from "../Components/Reports/reports";
+import CustomFieldsManager from "../Components/Pages/CustomeFields/Customfields";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -86,6 +87,7 @@ const AppRoutes = () => {
           <Route path="/slider-page" element={<SliderManagementPage />} />
           <Route path="/earnings" element={<RiderEarningPage />} />
           <Route path="/reports" element={<RiderDeliveryReport />} />
+          <Route path="/custom-fields" element={<CustomFieldsManager />} />
         </Route>
       </Route>
 
