@@ -266,6 +266,26 @@ class AuthService {
       }
     }, timeUntilRefresh);
   }
+
+  /**
+   * Generate and log an admin token for testing purposes
+   */
+  async generateAdminToken(): Promise<void> {
+    try {
+      const response = await api.post<AuthResponse>('/login', {
+        username: 'admin',
+        password: 'admin123', // Replace with actual admin credentials
+      });
+
+      if (response.data.success) {
+        console.log('Admin Token:', response.data.accessToken);
+      } else {
+        console.error('Failed to generate admin token:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error generating admin token:', error);
+    }
+  }
 }
 
 // Create and export singleton instance

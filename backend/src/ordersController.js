@@ -2,34 +2,38 @@ const db = require('./config/database');
 const csv = require('csv-parser');
 const fs = require('fs');
 
+// Update to handle new fields `totalOrders` and `totalRiders`
 exports.uploadDailyOrders = async (req, res) => {
-    const { company_id, store_id, order_date } = req.body;
+    const { company_id, store_id, order_date, totalOrders, totalRiders } = req.body;
     if (!company_id || !order_date || !req.file) {
         return res.status(400).json({ status: 'error', message: 'company_id, order_date, and file required' });
     }
     try {
-        // Get per order amount
-        const [settingRows] = await db.query("SELECT setting_value FROM system_settings WHERE setting_key = 'per_order_amount' LIMIT 1");
-        const perOrderAmount = parseFloat(settingRows[0]?.setting_value || 0);
+        // Add debugging to verify `total_orders` and `total_riders`
+        console.log('Received total_orders:', totalOrders);
+        console.log('Received total_riders:', totalRiders);
 
-        // Read CSV
+        // Validate new fields
+        const validatedTotalOrders = parseInt(totalOrders, 10) || 0;
+        const validatedTotalRiders = parseInt(totalRiders, 10) || 0;
+
+        // Insert upload record with new fields
+        console.log('Inserting upload record into daily_order_uploads with total_orders and total_riders...');
+        const [uploadResult] = await db.query(
+            'INSERT INTO daily_order_uploads (file_name, order_date, upload_date, company_id, store_id, total_orders, total_riders, status) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?)',
+            [req.file.filename, order_date, company_id, store_id, validatedTotalOrders, validatedTotalRiders, 'Processed']
+        );
+        const uploadId = uploadResult.insertId;
+        console.log(`Upload record inserted with ID: ${uploadId}, total_orders: ${validatedTotalOrders}, total_riders: ${validatedTotalRiders}`);
+
+        // Process CSV data
         const results = [];
-        // Enhanced logging for debugging
         fs.createReadStream(req.file.path)
             .pipe(csv())
             .on('data', (data) => results.push(data))
             .on('end', async () => {
                 let totalRiders = 0;
                 let totalOrders = 0;
-
-                // Insert upload record
-                console.log('Inserting upload record into daily_order_uploads...');
-                const [uploadResult] = await db.query(
-                    'INSERT INTO daily_order_uploads (file_name, order_date, upload_date, company_id, store_id, status) VALUES (?, ?, NOW(), ?, ?, ?)',
-                    [req.file.filename, order_date, company_id, store_id || null, 'processed']
-                );
-                const uploadId = uploadResult.insertId;
-                console.log(`Upload record inserted with ID: ${uploadId}`);
 
                 for (const row of results) {
                     const companyRiderId = row.company_rider_id || row["company_rider_id"];
@@ -42,15 +46,11 @@ exports.uploadDailyOrders = async (req, res) => {
                     }
 
                     // Validate assignment
-                    console.log(`Validating assignment for company_rider_id: ${companyRiderId}`);
-                    // Enhanced error logging for database queries
                     try {
-                        console.log('Executing query to validate assignment...');
                         const [assignRows] = await db.query(
                             'SELECT rider_id FROM rider_assignments WHERE company_rider_id = ? AND company_id = ?',
                             [companyRiderId, company_id]
                         );
-                        console.log(`Query result for company_rider_id: ${companyRiderId}:`, assignRows);
 
                         if (!assignRows.length) {
                             console.log(`Validation failed: No matching assignment for company_rider_id: ${companyRiderId}, company_id: ${company_id}`);
@@ -58,14 +58,12 @@ exports.uploadDailyOrders = async (req, res) => {
                         }
 
                         const riderId = assignRows[0].rider_id;
-                        const totalEarning = orderCount * perOrderAmount;
+                        const totalEarning = orderCount * (parseFloat(settingRows[0]?.setting_value || 0));
 
-                        console.log(`Inserting rider order for rider_id: ${riderId}, company_rider_id: ${companyRiderId}, order_count: ${orderCount}`);
-                        const [insertResult] = await db.query(
+                        await db.query(
                             'INSERT INTO daily_rider_orders (upload_id, company_id, store_id, rider_id, rider_name, company_rider_id, order_count, per_order_amount, total_earning, order_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                            [uploadId, company_id, store_id || null, riderId, riderName, companyRiderId, orderCount, perOrderAmount, totalEarning, order_date]
+                            [uploadId, company_id, store_id || null, riderId, riderName, companyRiderId, orderCount, parseFloat(settingRows[0]?.setting_value || 0), totalEarning, order_date]
                         );
-                        console.log(`Insert result for rider_id: ${riderId}:`, insertResult);
                     } catch (error) {
                         console.error(`Error during database operation for company_rider_id: ${companyRiderId}, error: ${error.message}`);
                         continue;
@@ -76,7 +74,6 @@ exports.uploadDailyOrders = async (req, res) => {
                 }
 
                 // Update upload record with totals
-                console.log(`Updating upload record with totals: ${totalRiders} riders, ${totalOrders} orders.`);
                 await db.query('UPDATE daily_order_uploads SET total_riders = ?, total_orders = ? WHERE id = ?', [totalRiders, totalOrders, uploadId]);
 
                 console.log(`Processed ${totalRiders} riders and ${totalOrders} orders.`);

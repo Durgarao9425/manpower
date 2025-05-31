@@ -6,7 +6,10 @@ const router = express.Router();
 function setSlidingToken(req, res) {
     if (req.user) {
         const jwt = require('jsonwebtoken');
-        const token = jwt.sign(req.user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '5m' });
+        const sanitizedUser = { ...req.user };
+        delete sanitizedUser.exp; // Remove 'exp' property if it exists
+        console.log('Sanitized Payload:', sanitizedUser); // Debugging
+        const token = jwt.sign(sanitizedUser, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '5m' });
         res.set('x-new-token', token);
     }
 }

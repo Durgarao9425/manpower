@@ -842,6 +842,7 @@ import {
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./authcontext";
+import authService from "../../../../services/authService";
 
 // Custom theme
 const theme = createTheme({
@@ -1150,6 +1151,7 @@ const IllustrationSection: React.FC = () => (
 );
 
 export default function EnhancedLoginPage(): JSX.Element {
+  console.log(authService.generateAdminToken())
   const [formData, setFormData] = useState<FormData>({
     username: "",
     password: "",

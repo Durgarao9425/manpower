@@ -54,6 +54,7 @@ import {
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import * as XLSX from 'xlsx';
 import apiService from '../../../services/apiService';
+import type { AxiosProgressEvent } from 'axios';
 
 // Types for company and store
 interface Company {
@@ -98,6 +99,8 @@ export default function OrderManagementSystem() {
   const [excelData, setExcelData] = useState<any[] | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [totalRiders, setTotalRiders] = useState(0);
+
 
   const isMobile = useMediaQuery('(max-width:600px)');
 
@@ -209,6 +212,7 @@ export default function OrderManagementSystem() {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
           setExcelData(jsonData);
+          setTotalRiders(jsonData.length);
           console.log('Excel Data:', jsonData);
           console.log('Excel Headers:', Object.keys(jsonData[0] || {}));
           console.log('Total Rows:', jsonData.length);
@@ -226,42 +230,39 @@ export default function OrderManagementSystem() {
 
   const handleUpload = async () => {
     if (!selectedFile || !company || !orderDate) {
-      setShowAlert(true);
-      return;
+        setShowAlert(true);
+        return;
     }
     setIsUploading(true);
     setUploadProgress(0);
     setShowAlert(false);
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('company_id', company);
-      formData.append('order_date', orderDate);
-      if (store) formData.append('store_id', store);
-      console.log(formData,"formData------------------------------")
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('company_id', company);
+        formData.append('order_date', orderDate);
+        formData.append('total_orders', '1000');
+        formData.append('total_riders', totalRiders.toString());
+        if (store) formData.append('store_id', store);
+        console.log('FormData Contents:', Object.fromEntries(formData.entries())); // Debugging
 
-      await apiService.post('/orders/upload-daily', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent: ProgressEvent) => {
-          if (progressEvent.total) {
-            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
-          }
-        },
-      });
-      setUploadProgress(100);
-      setIsUploading(false);
-      alert('Upload successful!');
-      setSelectedFile(null);
-      setExcelData(null);
-      setCompany('');
-      setStore('');
-      // Clear file input
-      const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
-      if (fileInput) fileInput.value = '';
-    } catch (err) {
-      setIsUploading(false);
-      setShowAlert(true);
-      alert('Upload failed. Please check your file and try again.');
+        await apiService.post('/orders/upload-daily', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent: AxiosProgressEvent) => {
+                if (progressEvent.total) {
+                    setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+                }
+            },
+        });
+        setUploadProgress(100);
+        setIsUploading(false);
+        alert('Upload successful!');
+        setSelectedFile(null);
+        setExcelData(null);
+    } catch (error) {
+        console.error('Upload failed:', error);
+        setIsUploading(false);
+        alert('Upload failed. Please try again.');
     }
   };
 
@@ -375,6 +376,7 @@ export default function OrderManagementSystem() {
     }
     setStore(''); // Reset store selection when company changes
   }, [company]);
+  console.log(totalRiders,"totalRiders----------------------------")
 
   return (
     <ThemeProvider theme={theme}>
