@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import authService from "../../../../services/authService";
 import type { User } from "../../../../services/authService";
 import LoadingSpinner from '../../../Common/Loaders';
@@ -46,9 +46,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [sessionTimeoutId, setSessionTimeoutId] = useState<number | null>(null);
+  const [sessionExpired, setSessionExpired] = useState<boolean>(false);
   
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Check authentication status on mount
   useEffect(() => {
@@ -56,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       const isAuth = await checkAuth();
       if (isAuth) {
+        setSessionExpired(false); // Reset session expired flag on login
         const userData = authService.getCurrentUser();
         if (userData) {
           setCurrentUser(userData);
@@ -72,6 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Set up activity listeners for session timeout
   useEffect(() => {
     if (isAuthenticated) {
+      setSessionExpired(false); // Reset flag on auth
       // Set initial timeout
       setSessionTimeout();
       
@@ -170,19 +172,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [navigate]);
 
-  // Set session timeout
-  const setSessionTimeout = useCallback(() => {
-    const timeoutId = window.setTimeout(() => {
-      // Auto logout after inactivity
-      if (isAuthenticated) {
-        logout();
-        alert('Your session has expired due to inactivity. Please log in again.');
-      }
-    }, SESSION_TIMEOUT);
-    
-    setSessionTimeoutId(timeoutId);
-  }, [isAuthenticated, logout]);
-
   // Clear session timeout
   const clearSessionTimeout = useCallback(() => {
     if (sessionTimeoutId) {
@@ -190,6 +179,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSessionTimeoutId(null);
     }
   }, [sessionTimeoutId]);
+
+  // Set session timeout
+  const setSessionTimeout = useCallback(() => {
+    clearSessionTimeout(); // Always clear before setting new
+    const timeoutId = window.setTimeout(() => {
+      if (isAuthenticated && !sessionExpired) {
+        setSessionExpired(true);
+        logout();
+        alert('Your session has expired due to inactivity. Please log in again.');
+      }
+    }, SESSION_TIMEOUT);
+    setSessionTimeoutId(timeoutId);
+  }, [isAuthenticated, logout, sessionExpired, clearSessionTimeout]);
 
   // Context value
   const contextValue: AuthContextType = {
