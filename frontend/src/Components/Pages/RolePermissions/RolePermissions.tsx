@@ -55,6 +55,7 @@ import {
   TwoWheeler
 } from '@mui/icons-material';
 import axios from 'axios';
+import apiService from '../../../services/apiService';
 
 // Theme colors
 const themeColors = {
@@ -142,8 +143,9 @@ const RoleManagementPage = () => {
   const fetchAdminUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/users`);
-      const adminUsers = response.data.filter((user: User) => user.user_type === 'admin');
+      // const data = await apiService.get("/companies");
+      const response = await apiService.get(`/users`);
+      const adminUsers = response.filter((user: User) => user.user_type === 'admin');
       setAdminUsers(adminUsers);
 
       // Initialize permissions for each admin user

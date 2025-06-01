@@ -10,9 +10,30 @@ const getWeekNumber = (date) => {
   return 4;
 };
 
+// Add validation for required fields
+const validateRequestBody = (body) => {
+  const requiredFields = [
+    'company_id', 'year', 'total_amount', 'commission_amount', 'net_amount', 'status',
+    'file_path', 'mapping_status', 'published_at', 'published_by',
+    'payment_date','remarks','amount'
+  ];
+
+  for (const field of requiredFields) {
+    if (!body[field]) {
+      return `Missing required field: ${field}`;
+    }
+  }
+  return null;
+};
+
 // POST API to insert data into company_payments table
 router.post('/company_payments', async (req, res) => {
   try {
+    const validationError = validateRequestBody(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
     const {
       company_id,
       year,
@@ -21,23 +42,19 @@ router.post('/company_payments', async (req, res) => {
       net_amount,
       status,
       file_path,
-      notes,
       mapping_status,
       published_at,
       published_by,
       payment_date,
-      start_date,
-      end_date,
       amount,
-      payment_reference,
       remarks,
     } = req.body;
 
     const week_number = getWeekNumber(new Date(payment_date));
 
     const query = `INSERT INTO company_payments (
-      company_id, week_number, year, total_amount, commission_amount, net_amount, status, file_path, notes, mapping_status, published_at, published_by, payment_date, start_date, end_date, amount, payment_reference, remarks
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      company_id, week_number, year, total_amount, commission_amount, net_amount, status, file_path, mapping_status, published_at, published_by, payment_date, amount,remarks
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const values = [
       company_id,
@@ -48,15 +65,11 @@ router.post('/company_payments', async (req, res) => {
       net_amount,
       status,
       file_path,
-      notes,
       mapping_status,
       published_at,
       published_by,
       payment_date,
-      start_date,
-      end_date,
       amount,
-      payment_reference,
       remarks
     ];
 
@@ -68,7 +81,7 @@ router.post('/company_payments', async (req, res) => {
     });
   } catch (error) {
     console.error('Error inserting payment record:', error);
-    res.status(500).json({ error: 'Failed to create payment record' });
+    res.status(500).json({ error: 'Failed to create payment record', details: error.message });
   }
 });
 
@@ -96,15 +109,11 @@ router.put('/company_payments/:id', async (req, res) => {
       net_amount,
       status,
       file_path,
-      notes,
       mapping_status,
       published_at,
       published_by,
       payment_date,
-      start_date,
-      end_date,
       amount,
-      payment_reference,
       remarks,
     } = req.body;
 
@@ -117,15 +126,11 @@ router.put('/company_payments/:id', async (req, res) => {
       net_amount = ?,
       status = ?,
       file_path = ?,
-      notes = ?,
       mapping_status = ?,
       published_at = ?,
       published_by = ?,
       payment_date = ?,
-      start_date = ?,
-      end_date = ?,
       amount = ?,
-      payment_reference = ?,
       remarks = ?
     WHERE id = ?`;
 

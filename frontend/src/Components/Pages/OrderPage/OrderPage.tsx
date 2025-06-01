@@ -413,37 +413,6 @@ export default function OrderManagementSystem() {
         </AppBar>
 
         <Container maxWidth="xl" sx={{ py: 3 }}>
-          {/* Stats Cards - Adjusted for smaller size */}
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={4}>
-              <StatCard
-                title="Total Uploads"
-                value={orders.length}
-                icon={Inventory}
-                gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                delay={0}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
-              <StatCard
-                title="Total Orders"
-                value={orders.reduce((sum, order) => sum + order.orders, 0)}
-                icon={TrendingUp}
-                gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
-                delay={100}
-              />
-            </Grid>
-            <Grid item xs={12} sm={12} md={4}>
-              <StatCard
-                title="Active Companies"
-                value={new Set(orders.map(order => order.company)).size}
-                icon={Business}
-                gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
-                delay={200}
-              />
-            </Grid>
-          </Grid>
-
           {/* Main Content */}
           <Slide direction="up" in={true} timeout={600}>
             <Card elevation={0} sx={{ borderRadius: 3 }}>
