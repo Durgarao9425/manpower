@@ -36,7 +36,7 @@ import {
     Cancel as CancelIcon
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
-import axios from 'axios';
+import apiService from '../../../services/apiService';
 
 // Types
 interface CustomField {
@@ -119,27 +119,29 @@ const CustomFieldsManager: React.FC = () => {
         { value: '=', label: 'Sum (=)' },
     ];
 
+    const fetchFields = async () => {
+        try {
+            setLoading(true);
+            const fields = await apiService.get('/custom-fields');
+            setFields(fields);
+        } catch (error) {
+            setAlert({ type: 'error', message: 'Failed to fetch fields. Please try again.' });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // API call function (currently using dummy data)
     const saveField = async (fieldData: CustomField) => {
         try {
             setLoading(true);
 
-            // Uncomment and modify this when ready to use real API
-            // const response = await axios.post('http://localhost:4003/api/setting_config', fieldData);
-
-            // For now, simulate API call with timeout
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
             if (editingField) {
-                // Update existing field
-                setFields(prev => prev.map(field =>
-                    field.id === editingField.id ? { ...fieldData, id: editingField.id } : field
-                ));
+                await apiService.put(`/custom-fields/${editingField.id}`, fieldData);
+                setFields(prev => prev.map(field => field.id === editingField.id ? { ...fieldData, id: editingField.id } : field));
                 setAlert({ type: 'success', message: 'Field updated successfully!' });
             } else {
-                // Add new field
-                const newField = { ...fieldData, id: Date.now().toString() };
+                const response = await apiService.post('/custom-fields/add-field', fieldData);
+                const newField = { ...fieldData, id: response.fieldId };
                 setFields(prev => [...prev, newField]);
                 setAlert({ type: 'success', message: 'Field created successfully!' });
             }
@@ -163,13 +165,7 @@ const CustomFieldsManager: React.FC = () => {
         if (window.confirm('Are you sure you want to delete this field?')) {
             try {
                 setLoading(true);
-
-                // Uncomment when ready to use real API
-                // await axios.delete(`http://localhost:4003/api/setting_config/${fieldId}`);
-
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 500));
-
+                await apiService.delete(`/custom-fields/${fieldId}`);
                 setFields(prev => prev.filter(field => field.id !== fieldId));
                 setAlert({ type: 'success', message: 'Field deleted successfully!' });
             } catch (error) {
@@ -201,6 +197,10 @@ const CustomFieldsManager: React.FC = () => {
         setIsDialogOpen(false);
         setEditingField(null);
     };
+
+    useEffect(() => {
+        fetchFields();
+    }, []);
 
     useEffect(() => {
         if (alert) {

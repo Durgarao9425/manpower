@@ -1,5 +1,9 @@
+const NodeCache = require('node-cache');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+// Initialize cache for decoded tokens
+const tokenCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
 /**
  * Middleware to authenticate JWT tokens
@@ -28,11 +32,24 @@ const auth = (req, res, next) => {
   }
 
   try {
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+    // Check cache for decoded token
+    let decoded = tokenCache.get(token);
+
+    if (!decoded) {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      tokenCache.set(token, decoded); // Cache the decoded token
+    }
+
     // Add user from payload to request object
     req.user = decoded;
+
+    // Implement sliding expiration
+    const remainingTime = decoded.exp * 1000 - Date.now();
+    if (remainingTime < 5 * 60 * 1000) { // Less than 5 minutes remaining
+      const newToken = jwt.sign(decoded, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '1h' });
+      res.set('x-new-token', newToken);
+    }
+
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

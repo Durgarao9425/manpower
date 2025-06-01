@@ -59,6 +59,34 @@ class AuthService {
   // Cached access token
   private cachedAccessToken: string | null = null;
 
+  // Add a method to track user activity
+  private lastActivityTime: number = Date.now();
+
+  constructor() {
+    // Listen for user activity
+    window.addEventListener('mousemove', this.updateActivityTime.bind(this));
+    window.addEventListener('keydown', this.updateActivityTime.bind(this));
+    window.addEventListener('click', this.updateActivityTime.bind(this));
+
+    // Check inactivity on page load
+    this.checkInactivityOnPageLoad();
+  }
+
+  private updateActivityTime(): void {
+    this.lastActivityTime = Date.now();
+  }
+
+  private checkInactivityOnPageLoad(): void {
+    const inactivityDuration = Date.now() - this.lastActivityTime;
+    const maxInactivityDuration = 5 * 60 * 1000; // 5 minutes
+
+    if (inactivityDuration > maxInactivityDuration) {
+      console.log('User inactive for more than 5 minutes, redirecting to login');
+      this.logout();
+      window.location.href = '/login';
+    }
+  }
+
   /**
    * Login user and get tokens
    */
