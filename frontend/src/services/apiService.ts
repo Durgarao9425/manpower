@@ -180,3 +180,50 @@ export default apiService;
 
 // Export the axios instance for direct use if needed
 export { api };
+
+// Slider Images API
+export const fetchSliderImages = async (): Promise<Slider[]> => {
+  const response = await api.get('/slider-images');
+  return response.data;
+};
+
+export const addSliderImage = async (sliderData: Slider): Promise<{ id: number }> => {
+  const response = await api.post('/slider-images', sliderData);
+  return response.data;
+};
+
+export const updateSliderImage = async (id: number, sliderData: Partial<Slider>): Promise<{ message: string }> => {
+  const response = await api.put(`/slider-images/${id}`, sliderData);
+  return response.data;
+};
+
+export const deleteSliderImage = async (id: number): Promise<{ message: string }> => {
+  const response = await api.delete(`/slider-images/${id}`);
+  return response.data;
+};
+
+// Fetch companies API
+export const fetchCompanies = async (): Promise<Company[]> => {
+  const response = await api.get('/companies');
+  return response.data;
+};
+
+// Define Slider type
+interface Slider {
+  id: number;
+  title: string;
+  description: string;
+  image_path: string;
+  status: string;
+  display_order: number;
+  company_id: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Define Company type
+interface Company {
+  id: number;
+  company_name: string;
+}
