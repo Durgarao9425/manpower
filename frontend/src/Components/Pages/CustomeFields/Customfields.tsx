@@ -335,7 +335,7 @@ const CustomFieldsManager: React.FC = () => {
                                             ) : '-'}
                                         </TableCell>
                                         <TableCell>
-                                            {field.transaction_value || '-'}
+                                            {`${field.transaction_value} (${field.transaction_field_type || ''})` || '-'}
                                         </TableCell>
                                         <TableCell>
                                             <IconButton

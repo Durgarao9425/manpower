@@ -33,6 +33,7 @@ import RiderEarningPage from "../Components/Pages/RiderEarnings/MainPage";
 import EnhancedLoginPage from "../Components/Pages/Dashboard/Login/loginNew";
 import RiderDeliveryReport from "../Components/Reports/reports";
 import CustomFieldsManager from "../Components/Pages/CustomeFields/Customfields";
+import OrdersList from "../Components/Pages/UploadOrderPage/UploadOrderList";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -88,6 +89,7 @@ const AppRoutes = () => {
           <Route path="/earnings" element={<RiderEarningPage />} />
           <Route path="/reports" element={<RiderDeliveryReport />} />
           <Route path="/custom-fields" element={<CustomFieldsManager />} />
+          <Route path="/durgarao" element={<OrdersList />} />
         </Route>
       </Route>
 
