@@ -72,4 +72,96 @@ router.post('/company_payments', async (req, res) => {
   }
 });
 
+// GET API to fetch payment records
+router.get('/company_payments', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM company_payments');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching payment records:', error);
+    res.status(500).json({ error: 'Failed to fetch payment records' });
+  }
+});
+
+// PUT API to update payment records
+router.put('/company_payments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      company_id,
+      week_number,
+      year,
+      total_amount,
+      commission_amount,
+      net_amount,
+      status,
+      file_path,
+      notes,
+      mapping_status,
+      published_at,
+      published_by,
+      payment_date,
+      start_date,
+      end_date,
+      amount,
+      payment_reference,
+      remarks,
+    } = req.body;
+
+    const query = `UPDATE company_payments SET 
+      company_id = ?,
+      week_number = ?,
+      year = ?,
+      total_amount = ?,
+      commission_amount = ?,
+      net_amount = ?,
+      status = ?,
+      file_path = ?,
+      notes = ?,
+      mapping_status = ?,
+      published_at = ?,
+      published_by = ?,
+      payment_date = ?,
+      start_date = ?,
+      end_date = ?,
+      amount = ?,
+      payment_reference = ?,
+      remarks = ?
+    WHERE id = ?`;
+
+    const values = [
+      company_id,
+      week_number,
+      year,
+      total_amount,
+      commission_amount,
+      net_amount,
+      status,
+      file_path,
+      notes,
+      mapping_status,
+      published_at,
+      published_by,
+      payment_date,
+      start_date,
+      end_date,
+      amount,
+      payment_reference,
+      remarks,
+      id
+    ];
+
+    const [result] = await db.execute(query, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Payment record not found' });
+    }
+
+    res.json({ message: 'Payment record updated successfully' });
+  } catch (error) {
+    console.error('Error updating payment record:', error);
+    res.status(500).json({ error: 'Failed to update payment record' });
+  }
+});
+
 module.exports = router;
