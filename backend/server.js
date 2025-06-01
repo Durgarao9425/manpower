@@ -90,7 +90,7 @@ app.use('/api/rider-assignments', auth, riderAssignmentsRouter);
 app.use('/api/attendance', auth, attendanceRouter);
 app.use('/api/orders', auth, ordersRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
-app.use('/api/company_payments', companyPaymentsRouter);
+app.use('/api', companyPaymentsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

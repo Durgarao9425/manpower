@@ -26,7 +26,7 @@ import OrderManagementSystem from "../Components/Pages/OrderPage/OrderPage";
 import RiderRegistrationForm from "../Components/Pages/RidersPage/Riderform";
 import CompanySettings from "../Components/Pages/SettingPage/Settings";
 import RiderDashboard from "../Components/Pages/Dashboard/DynamicDashboard";
-import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
+// import OrdersListingPage from "../Components/Pages/UploadOrderPage/UploadOrderpage";
 import PaymentListingPage from "../Components/Pages/PaymentPage/paymentPage";
 import SliderManagementPage from "../Components/Pages/SliderPage/SliderPage";
 import RiderEarningPage from "../Components/Pages/RiderEarnings/MainPage";
@@ -34,6 +34,7 @@ import EnhancedLoginPage from "../Components/Pages/Dashboard/Login/loginNew";
 import RiderDeliveryReport from "../Components/Reports/reports";
 import CustomFieldsManager from "../Components/Pages/CustomeFields/Customfields";
 import OrdersList from "../Components/Pages/UploadOrderPage/UploadOrderList";
+import ExcelFieldMapper from "../Components/Pages/UploadOrderPage/OrderView";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -83,13 +84,14 @@ const AppRoutes = () => {
           <Route path="/settings" element={<CompanySettings />} />
           <Route path="/rider-attendance" element={<RiderAttendanceApp />} />
           <Route path="/dynami-dashboard" element={<RiderDashboard />} />
-          <Route path="/upload-orders" element={<OrdersListingPage />} />
+          {/* <Route path="/upload-orders" element={<OrdersListingPage />} /> */}
           <Route path="/payments" element={<PaymentListingPage />} />
           <Route path="/slider-page" element={<SliderManagementPage />} />
           <Route path="/earnings" element={<RiderEarningPage />} />
           <Route path="/reports" element={<RiderDeliveryReport />} />
           <Route path="/custom-fields" element={<CustomFieldsManager />} />
-          <Route path="/durgarao" element={<OrdersList />} />
+          <Route path="/upload-orders" element={<OrdersList />} />
+          <Route path="/weekly-order-view" element={<ExcelFieldMapper />} />
         </Route>
       </Route>
 
