@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material'; // Ensure Material UI is correctly installed and imported
 import { useAuth } from '../Pages/Dashboard/Login/authcontext'; // Adjust path as per your project structure
+import { useNavigate } from 'react-router-dom'; // Import useNavigate for navigation
 
 // Warning threshold in milliseconds (e.g., 5 minutes before JWT expires)
 // This is for the JWT's own lifetime warning.
@@ -26,6 +27,7 @@ const TokenExpirationAlert: React.FC = () => {
 
   // Get authentication status and functions from AuthContext
   const { logout, isAuthenticated, isLoading: isAuthLoading, currentUser } = useAuth();
+  const navigate = useNavigate(); // Initialize useNavigate
 
   // Helper to format time remaining
   const formatTimeLeft = (milliseconds: number): string => {
@@ -161,6 +163,22 @@ const TokenExpirationAlert: React.FC = () => {
   // Session expiry due to inactivity is handled by AuthContext (results in logout, isAuthenticated=false).
   const dialogTitle = 'Session Expiring Soon';
   const dialogText = `Your login session will expire in ${formatTimeLeft(timeLeftForJwt)}. Would you like to extend it?`;
+
+  // Handle session expired scenario
+  const handleSessionExpired = () => {
+    if (isDialogOpen) return; // Prevent multiple alerts
+
+    setIsDialogOpen(true);
+    alert('Your session has expired due to inactivity. Please log in again.');
+    setIsDialogOpen(false);
+    navigate('/login', { replace: true });
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      handleSessionExpired();
+    }
+  }, [isAuthenticated]);
 
   return (
     <Dialog
