@@ -76,6 +76,7 @@ const attendanceRouter = require('./src/routes/attendance');
 const ordersRoutes = require('./src/routes/orders');
 const customFieldsRoutes = require('./src/routes/customFields');
 const companyPaymentsRouter = require('./src/routes/company_payments');
+const sliderImagesRoutes = require('./src/routes/sliderImages');
 
 // Public routes
 app.use('/api/login', loginRoute);
@@ -91,6 +92,8 @@ app.use('/api/attendance', auth, attendanceRouter);
 app.use('/api/orders', auth, ordersRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api', companyPaymentsRouter);
+app.use('/api/company_payments', companyPaymentsRouter);
+app.use('/api/slider-images', sliderImagesRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

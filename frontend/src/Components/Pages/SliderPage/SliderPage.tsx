@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -41,93 +41,9 @@ import {
   Add as AddIcon,
   CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
+import { fetchSliderImages, addSliderImage, updateSliderImage, deleteSliderImage, fetchCompanies } from '../../../services/apiService';
 
-// Dummy data for sliders - Updated to match database schema
-const initialSliderData = [
-  {
-    id: 1,
-    title: 'Island Hopping Extravaganza',
-    description: 'Discover beautiful islands and pristine beaches',
-    image_path: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop',
-    status: 'active',
-    display_order: 1,
-    created_by: 'Admin',
-    company_id: 1,
-    created_at: '2025-05-29 11:54:00',
-    updated_at: '2025-05-29 11:54:00'
-  },
-  {
-    id: 2,
-    title: 'Cultural Wonders of Europe',
-    description: 'Explore historic cities and cultural landmarks',
-    image_path: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=300&h=200&fit=crop',
-    status: 'active',
-    display_order: 2,
-    created_by: 'Manager',
-    company_id: 2,
-    created_at: '2025-05-28 10:54:00',
-    updated_at: '2025-05-28 10:54:00'
-  },
-  {
-    id: 3,
-    title: 'Safari Expedition in Africa',
-    description: 'Wildlife adventure in African savanna',
-    image_path: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=300&h=200&fit=crop',
-    status: 'pending',
-    display_order: 3,
-    created_by: 'Editor',
-    company_id: 3,
-    created_at: '2025-05-27 09:54:00',
-    updated_at: '2025-05-27 09:54:00'
-  },
-  {
-    id: 4,
-    title: 'Grand Canyon Explorer',
-    description: 'Breathtaking views of natural wonders',
-    image_path: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop',
-    status: 'inactive',
-    display_order: 4,
-    created_by: 'Admin',
-    company_id: 1,
-    created_at: '2025-05-26 08:54:00',
-    updated_at: '2025-05-26 08:54:00'
-  },
-  {
-    id: 5,
-    title: 'Historic Cities of Asia',
-    description: 'Ancient temples and modern metropolises',
-    image_path: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=300&h=200&fit=crop',
-    status: 'active',
-    display_order: 5,
-    created_by: 'Manager',
-    company_id: 2,
-    created_at: '2025-05-25 07:54:00',
-    updated_at: '2025-05-25 07:54:00'
-  },
-  {
-    id: 6,
-    title: 'Mountain Adventures',
-    description: 'Hiking and climbing in scenic mountains',
-    image_path: 'https://images.unsplash.com/photo-1464822759844-d150baec013a?w=300&h=200&fit=crop',
-    status: 'active',
-    display_order: 6,
-    created_by: 'Editor',
-    company_id: 3,
-    created_at: '2025-05-24 06:54:00',
-    updated_at: '2025-05-24 06:54:00'
-  }
-];
-
-// Company options for dropdown
-const companies = [
-  { id: 1, name: 'Travel Co.' },
-  { id: 2, name: 'Euro Tours' },
-  { id: 3, name: 'Wild Adventures' },
-  { id: 4, name: 'Nature Trips' },
-  { id: 5, name: 'Asia Explorer' }
-];
-
-// Correct TypeScript types
+// Define Slider type
 interface Slider {
   id: number;
   title: string;
@@ -141,6 +57,7 @@ interface Slider {
   updated_at: string;
 }
 
+// Correct TypeScript types
 interface FormData {
   id?: number; // Optional for new sliders
   title: string;
@@ -154,7 +71,7 @@ interface FormData {
 
 // Define component
 const SliderManagementPage = () => {
-  const [sliders, setSliders] = useState<Slider[]>(initialSliderData);
+  const [sliders, setSliders] = useState<Slider[]>([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedSliderId, setSelectedSliderId] = useState(null);
   const [openModal, setOpenModal] = useState(false);
@@ -176,7 +93,36 @@ const SliderManagementPage = () => {
   const [imagePreview, setImagePreview] = useState('');
   const [errors, setErrors] = useState({});
 
-  const handleMenuClick = (event, sliderId) => {
+  // Companies state
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  useEffect(() => {
+    const loadSliders = async () => {
+      try {
+        const data: Slider[] = await fetchSliderImages();
+        setSliders(data);
+      } catch (error) {
+        console.error('Error fetching slider images:', error);
+      }
+    };
+    loadSliders();
+  }, []);
+
+  // Fetch companies for dropdown
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const data = await fetchCompanies();
+        setCompanies(data);
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+      }
+    };
+    loadCompanies();
+  }, []);
+
+  // Fix type errors and add proper type annotations
+  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>, sliderId: number) => {
     setAnchorEl(event.currentTarget);
     setSelectedSliderId(sliderId);
   };
@@ -186,10 +132,10 @@ const SliderManagementPage = () => {
     setSelectedSliderId(null);
   };
 
-  const handleStatusToggle = (sliderId, newStatus) => {
-    setSliders(prev => 
-      prev.map(slider => 
-        slider.id === sliderId 
+  const handleStatusToggle = (sliderId: number, newStatus: string) => {
+    setSliders((prev) =>
+      prev.map((slider) =>
+        slider.id === sliderId
           ? { ...slider, status: newStatus, updated_at: new Date().toISOString().replace('T', ' ').slice(0, -5) }
           : slider
       )
@@ -230,21 +176,23 @@ const SliderManagementPage = () => {
     setErrors({});
   };
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof FormData, value: string | number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      // In a real app, you'd upload to server and get back URL
-      const imageUrl = URL.createObjectURL(file);
-      setImagePreview(imageUrl);
-      setFormData(prev => ({ ...prev, image_path: imageUrl }));
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+        setFormData((prev) => ({ ...prev, image_path: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -271,43 +219,25 @@ const SliderManagementPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleAddOrEditSlider = (): void => {
-    if (!validateForm()) return;
-
-    if (isEditMode && formData.id) {
-      // Update existing slider
-      const updatedSlider: Slider = {
-        ...formData,
-        id: formData.id,
-        created_at: sliders.find(s => s.id === formData.id)?.created_at || new Date().toISOString().replace('T', ' ').slice(0, -5),
-        updated_at: new Date().toISOString().replace('T', ' ').slice(0, -5)
-      };
-
-      setSliders(prev => 
-        prev.map(slider => 
-          slider.id === formData.id ? updatedSlider : slider
-        )
-      );
-    } else {
-      // Add new slider
-      const newSlider: Slider = {
-        ...formData,
-        id: Math.max(...sliders.map(s => s.id)) + 1,
-        created_at: new Date().toISOString().replace('T', ' ').slice(0, -5),
-        updated_at: new Date().toISOString().replace('T', ' ').slice(0, -5)
-      };
-
-      setSliders(prev => [newSlider, ...prev]);
+  const handleAddOrEditSlider = async (): Promise<void> => {
+    try {
+      if (isEditMode) {
+        await handleUpdateSlider();
+      } else {
+        await handleAddSlider();
+      }
+    } catch (error) {
+      console.error('Error adding or editing slider:', error);
     }
-
-    handleCloseModal();
   };
 
-  const handleDeleteSlider = (sliderId: number): void => {
-    if (window.confirm('Are you sure you want to delete this slider?')) {
-      setSliders(prev => prev.filter(slider => slider.id !== sliderId));
+  const handleDeleteSlider = async (sliderId: number): Promise<void> => {
+    try {
+      await deleteSliderImage(sliderId);
+      setSliders((prev) => prev.filter((slider) => slider.id !== sliderId));
+    } catch (error) {
+      console.error('Error deleting slider image:', error);
     }
-    handleMenuClose();
   };
 
   const handleEditSlider = (sliderId: number): void => {
@@ -342,35 +272,65 @@ const SliderManagementPage = () => {
     handleMenuClose();
   };
 
-  const handleChangePage = (event, newPage) => {
+  const handleChangePage = (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event) => {
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case 'active':
-        return 'success';
-      case 'pending':
-        return 'warning';
+        return 'green';
       case 'inactive':
-        return 'error';
+        return 'red';
+      case 'pending':
+        return 'orange';
       default:
-        return 'default';
+        return 'gray';
     }
   };
 
-  const getStatusLabel = (status) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+  const getStatusLabel = (status: string): string => {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'inactive':
+        return 'Inactive';
+      case 'pending':
+        return 'Pending';
+      default:
+        return 'Unknown';
+    }
   };
 
-  const getCompanyName = (companyId) => {
-    const company = companies.find(c => c.id === companyId);
-    return company ? company.name : 'Unknown';
+  const getCompanyName = (companyId: number): string => {
+    const company = companies.find((c) => c.id === companyId);
+    return company ? company.company_name : 'Unknown';
+  };
+
+  // Add these inside the SliderManagementPage component
+  const handleAddSlider = async () => {
+    try {
+      const newSlider = await addSliderImage(formData);
+      setSliders((prev) => [...prev, { ...formData, id: newSlider.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error adding slider image:', error);
+    }
+  };
+
+  const handleUpdateSlider = async () => {
+    try {
+      await updateSliderImage(selectedSliderId, formData);
+      setSliders((prev) => prev.map((slider) => (slider.id === selectedSliderId ? { ...slider, ...formData, updated_at: new Date().toISOString() } : slider)));
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error updating slider image:', error);
+    }
   };
 
   // Paginated data
@@ -625,22 +585,22 @@ const SliderManagementPage = () => {
                   sx={{ mb: 2 }}
                 />
                 
-                <FormControl fullWidth error={!!errors.company_id}>
-                  <InputLabel>Company *</InputLabel>
+                <FormControl fullWidth sx={{ mb: 2 }} error={!!errors.company_id}>
+                  <InputLabel>Company</InputLabel>
                   <Select
-                    value={formData.company_id}
-                    label="Company *"
-                    onChange={(e) => handleInputChange('company_id', e.target.value)}
+                    value={formData.company_id || ''}
+                    onChange={(e) => handleInputChange('company_id', Number(e.target.value))}
+                    label="Company"
+                    displayEmpty
                   >
+                    <MenuItem value="">Select Company</MenuItem>
                     {companies.map((company) => (
                       <MenuItem key={company.id} value={company.id}>
-                        {company.name}
+                        {company.company_name}
                       </MenuItem>
                     ))}
                   </Select>
-                  {errors.company_id && (
-                    <FormHelperText>{errors.company_id}</FormHelperText>
-                  )}
+                  {errors.company_id && <FormHelperText>{errors.company_id}</FormHelperText>}
                 </FormControl>
               </Grid>
               
