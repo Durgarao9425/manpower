@@ -35,6 +35,7 @@ import RiderDeliveryReport from "../Components/Reports/reports";
 import CustomFieldsManager from "../Components/Pages/CustomeFields/Customfields";
 import OrdersList from "../Components/Pages/UploadOrderPage/UploadOrderList";
 import ExcelFieldMapper from "../Components/Pages/UploadOrderPage/OrderView";
+import InvoiceListPage from "../Components/Pages/Invoice/InvoiceListPage";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -92,6 +93,7 @@ const AppRoutes = () => {
           <Route path="/custom-fields" element={<CustomFieldsManager />} />
           <Route path="/upload-orders" element={<OrdersList />} />
           <Route path="/weekly-order-view" element={<ExcelFieldMapper />} />
+          <Route path="/invoice" element={<InvoiceListPage />} />
         </Route>
       </Route>
 

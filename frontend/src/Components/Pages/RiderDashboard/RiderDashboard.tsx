@@ -1,12 +1,13 @@
-import { Alert, alpha, Box, Button, Card, CardContent, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel, List, ListItem, ListItemIcon, ListItemText, MenuItem, Modal, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useTheme } from '@mui/material';
-import React, {  useEffect, useRef } from 'react';
+import { Alert, alpha, Box, Button, Card, CardContent, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel, List, ListItem, ListItemIcon, ListItemText, MenuItem, Modal, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { useTheme as useMuiTheme } from '@mui/material';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import durgarao from '../../../Images/durgarao.jpeg';
 import {
     SwipeRight as SwipeRightIcon,
     Close as CloseIcon,
     AccessTime as TimeIcon,
-    
+
 } from '@mui/icons-material';
 import Attendance from './Attendance';
 import { Orders } from './RiderOrdersPage';
@@ -16,11 +17,13 @@ import { Certificate } from './RiderCertificatePage';
 import { Dashboard } from './DashboardReusable';
 import { useState } from "react";
 import { InfoCard, TabPanel } from "./TablePannel";
+import { ThemeProvider, useTheme } from '../../../context/ThemeContext';
 // Logout Component
 const Logout: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavigate }) => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const navigate = useNavigate()
+    const navigate = useNavigate();
     const [openSnackbar, setOpenSnackbar] = useState(false);
+    const { themeColor } = useTheme();
 
 
     const handleLogout = () => {
@@ -78,7 +81,7 @@ const Logout: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavig
                         onClick={() => setShowConfirmModal(true)}
                         style={{
                             padding: '12px 24px',
-                            backgroundColor: '#f44336',
+                            backgroundColor: themeColor,
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',
@@ -87,8 +90,8 @@ const Logout: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavig
                             cursor: 'pointer',
                             transition: 'background-color 0.2s ease'
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#d32f2f'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f44336'}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = `${themeColor}dd`}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = themeColor}
                     >
                         Yes, Logout
                     </button>
@@ -231,7 +234,7 @@ const Logout: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavig
                                     style={{
                                         flex: 1,
                                         padding: '10px',
-                                        backgroundColor: '#f44336',
+                                        backgroundColor: themeColor,
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: '6px',
@@ -335,14 +338,15 @@ interface CardData {
 }
 const Payments: React.FC = () => {
     const [activeTab, setActiveTab] = useState(0);
+    const { themeColor } = useTheme();
 
     const paymentCards: CardData[] = [
-        { title: 'Statement Earnings', value: '₹12,500', color: '#4caf50' },
-        { title: 'Weekly Gross Earning', value: '₹8,750', color: '#2196f3' },
-        { title: 'Advance Request', value: '₹2,000', color: '#ff9800' },
-        { title: 'TDS 1.0%', value: '₹125', color: '#f44336' },
-        { title: 'Net Paid Amount', value: '₹11,125', color: '#9c27b0' },
-        { title: 'Payment Status', value: 'Paid', color: '#4caf50' },
+        { title: 'Statement Earnings', value: '₹12,500', color: themeColor },
+        { title: 'Weekly Gross Earning', value: '₹8,750', color: themeColor },
+        { title: 'Advance Request', value: '₹2,000', color: themeColor },
+        { title: 'TDS 1.0%', value: '₹125', color: themeColor },
+        { title: 'Net Paid Amount', value: '₹11,125', color: themeColor },
+        { title: 'Payment Status', value: 'Paid', color: themeColor },
     ];
 
     return (
@@ -363,10 +367,12 @@ const Payments: React.FC = () => {
         </div>
     );
 };
-const RiderDashboardApp: React.FC = () => {
+const RiderDashboardContent: React.FC = () => {
+    const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(0);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const { themeColor, setThemeColor } = useTheme();
 
     const navItems = [
         { label: 'Dashboard', icon: '🏠' },
@@ -375,6 +381,10 @@ const RiderDashboardApp: React.FC = () => {
         { label: 'Attendance', icon: '📅' },
         { label: 'More', icon: '⋯' },
     ];
+
+    const handleThemeChange = (color: string) => {
+        setThemeColor(color);
+    };
 
     const renderCurrentPage = () => {
         switch (currentPage) {
@@ -391,7 +401,7 @@ const RiderDashboardApp: React.FC = () => {
             case 5:
                 return <Profile />;
             case 6:
-                return <Settings />;
+                return <Settings themeColor={themeColor} onThemeChange={handleThemeChange} />;
             case 7:  // Certificate page
                 return <Certificate />;
             case 8:  // Logout page
@@ -418,7 +428,7 @@ const RiderDashboardApp: React.FC = () => {
             <div style={{
                 position: 'sticky',
                 top: 0,
-                backgroundColor: '#1976d2',
+                backgroundColor: themeColor,
                 color: 'white',
                 padding: '12px 16px',
                 display: 'flex',
@@ -460,13 +470,17 @@ const RiderDashboardApp: React.FC = () => {
                             {[
                                 { icon: '👤', text: 'Profile', page: 5 },
                                 { icon: '⚙️', text: 'Settings', page: 6 },
-                                { icon: '🚪', text: 'Logout', page: 8 },
+                                { icon: '🚪', text: 'Logout', action: () => navigate('/login') },
                             ].map((item, index) => (
                                 <div
                                     key={index}
                                     onClick={() => {
                                         setShowProfileMenu(false);
-                                        setCurrentPage(item.page);
+                                        if (item.action) {
+                                            item.action();
+                                        } else if (item.page !== undefined) {
+                                            setCurrentPage(item.page);
+                                        }
                                     }}
                                     style={{
                                         padding: '12px 16px',
@@ -520,8 +534,8 @@ const RiderDashboardApp: React.FC = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 cursor: 'pointer',
-                                color: currentPage === index ? '#1976d2' : '#666',
-                                backgroundColor: currentPage === index ? '#e3f2fd' : 'transparent',
+                                color: currentPage === index ? themeColor : '#666',
+                                backgroundColor: currentPage === index ? `${themeColor}15` : 'transparent',
                                 transition: 'all 0.2s ease'
                             }}
                         >
@@ -540,6 +554,15 @@ const RiderDashboardApp: React.FC = () => {
             </div>
         </div>
 
+    );
+};
+
+// Wrapper component that provides the theme context
+const RiderDashboardApp: React.FC = () => {
+    return (
+        <ThemeProvider>
+            <RiderDashboardContent />
+        </ThemeProvider>
     );
 };
 

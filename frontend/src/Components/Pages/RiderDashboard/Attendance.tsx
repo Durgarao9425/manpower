@@ -11,9 +11,10 @@ import {
   CircularProgress,
   Paper,
   Chip,
-  useTheme,
+  useTheme as useMuiTheme,
   useMediaQuery
 } from '@mui/material';
+import { useTheme } from '../../../context/ThemeContext';
 import {
   ArrowForward,
   LocationOn,
@@ -98,8 +99,9 @@ const Attendance: React.FC = () => {
 
   const { userData } = useUserData() as { userData: UserData };
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const muiTheme = useMuiTheme();
+  const { themeColor } = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
 
   const buttonRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
@@ -371,7 +373,13 @@ const Attendance: React.FC = () => {
       const requestUrl = `${API_BASE}/attendance?rider_id=${riderData.id}&date=${todayDateString}`;
       console.log(`Fetching attendance from URL: ${requestUrl}`);
       
-
+      // Make the API call
+      const response = await fetch(requestUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-auth-token': token
+        },
+      });
 
       if (!response.ok) {
         let errorMessage = `Failed to fetch attendance (status: ${response.status})`;
@@ -564,6 +572,17 @@ const Attendance: React.FC = () => {
             setDragX(0);
             return;
         }
+        
+        // Check for valid company_id and store_id before proceeding with punch-in
+        if (attendanceState === 'punch-in' && (riderData.company_id === 0 || !riderData.company_id || riderData.store_id === 0 || !riderData.store_id)) {
+            console.log('Validation failed - Current rider data:', riderData);
+            showToastMessage('Company or Store assignment is missing or invalid. Cannot punch in.', 'error');
+            setDragX(0);
+            return;
+        }
+        
+        // Log the rider data for debugging
+        console.log('Proceeding with punch operation. Rider data:', riderData);
 
         setLoading(true); // Main loading state for the entire operation
         try {
@@ -628,12 +647,25 @@ const Attendance: React.FC = () => {
                     throw new Error('Company or Store assignment missing/invalid after re-check.');
                 }
 
+                // Validate company_id and store_id before proceeding
+                if (!currentCompanyId || currentCompanyId === 0) {
+                    showToastMessage('Company assignment is missing or invalid. Cannot punch in.', 'error');
+                    throw new Error('Company ID is missing or invalid for punch-in');
+                }
+                
+                if (!currentStoreId || currentStoreId === 0) {
+                    showToastMessage('Store assignment is missing or invalid. Cannot punch in.', 'error');
+                    throw new Error('Store ID is missing or invalid for punch-in');
+                }
+                
                 const punchInDataForCall: PunchInData = {
                     id: riderData.id,
                     name: currentRiderName, // Use name from latest fetch
                     company_id: currentCompanyId,
                     store_id: currentStoreId
                 };
+                
+                console.log('Punch-in data validation passed:', punchInDataForCall);
                 const result = await executePunchIn(location, punchInDataForCall);
                 
                 setPunchInTime(now);
@@ -641,8 +673,8 @@ const Attendance: React.FC = () => {
                 setWorkingTime(0);
                 showToastMessage('Punched in successfully!');
                 setTodayRecord(result);
-                // Optionally update riderData state if re-fetched IDs should persist globally
-                // setRiderData(prev => ({ ...prev, company_id: currentCompanyId, store_id: currentStoreId }));
+                // Update riderData state with the re-fetched IDs to ensure they persist globally
+                setRiderData(prev => ({ ...prev, company_id: currentCompanyId, store_id: currentStoreId }));
 
             } else if (attendanceState === 'punch-out') {
                 const result = await executePunchOut(location);
@@ -754,14 +786,14 @@ const Attendance: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      {/* Optional Debug Info */}
-      {/* <Paper sx={{ p: 1, mb: 1, bgcolor: 'grey.100', fontSize: '0.7rem', overflow: 'auto', maxHeight: 100 }}>
+      {/* Debug Info */}
+      <Paper sx={{ p: 1, mb: 1, bgcolor: 'grey.100', fontSize: '0.7rem', overflow: 'auto', maxHeight: 100 }}>
          <Typography variant="caption">Debug: RiderID: {riderData.id}, Name: {riderData.name}, CoID: {riderData.company_id}, StID: {riderData.store_id}, Load: {loading.toString()}</Typography>
          {todayRecord && (<>
            <Typography variant="caption" display="block">CheckIn: {todayRecord.check_in_time ? new Date(todayRecord.check_in_time).toLocaleString() : 'N/A'}</Typography>
            <Typography variant="caption" display="block">CheckOut: {todayRecord.check_out_time ? new Date(todayRecord.check_out_time).toLocaleString() : 'N/A'}</Typography>
          </>)}
-       </Paper> */}
+       </Paper>
 
       <Card elevation={0} sx={{ borderRadius: { xs: 2, sm: 3 }, mb: 2, bgcolor: '#f8f9fa', overflow: 'visible' }}>
         <CardContent sx={{ p: { xs: 2, sm: 4 }, textAlign: 'center' }}>
@@ -792,7 +824,7 @@ const Attendance: React.FC = () => {
                 elevation={0}
                 sx={{
                   position: 'relative', height: { xs: 56, sm: 64 },
-                  bgcolor: loading ? 'grey.500' : (attendanceState === 'punch-in' ? '#4caf50' : '#f44336'),
+                  bgcolor: loading ? 'grey.500' : (attendanceState === 'punch-in' ? themeColor : '#f44336'),
                   borderRadius: { xs: 6, sm: 8 }, overflow: 'hidden',
                   cursor: loading || (riderData.id === 0 && attendanceState === 'punch-in') ? 'not-allowed' : 'pointer', userSelect: 'none',
                   opacity: loading || (riderData.id === 0 && attendanceState === 'punch-in') ? 0.7 : 1
@@ -823,7 +855,7 @@ const Attendance: React.FC = () => {
                   onMouseDown={handleMouseDown}
                   onTouchStart={handleTouchStart}
                 >
-                  <ArrowForward sx={{ color: attendanceState === 'punch-in' ? '#4caf50' : '#f44336', fontSize: { xs: 20, sm: 24 } }} />
+                  <ArrowForward sx={{ color: attendanceState === 'punch-in' ? themeColor : '#f44336', fontSize: { xs: 20, sm: 24 } }} />
                 </Box>
               </Paper>
             </Box>
