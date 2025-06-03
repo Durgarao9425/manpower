@@ -1,9 +1,12 @@
 import type { CardData } from "./types";
+import { useTheme } from '../../../context/ThemeContext';
 
 export const TabPanel: React.FC<{ activeTab: number; onTabChange: (tab: number) => void }> = ({
     activeTab,
     onTabChange,
-}) => (
+}) => {
+    const { themeColor } = useTheme();
+    return (
     <div style={{
         backgroundColor: 'white',
         borderRadius: '12px',
@@ -19,7 +22,7 @@ export const TabPanel: React.FC<{ activeTab: number; onTabChange: (tab: number) 
                         flex: 1,
                         padding: '16px',
                         textAlign: 'center',
-                        backgroundColor: activeTab === index ? '#1976d2' : 'transparent',
+                        backgroundColor: activeTab === index ? themeColor : 'transparent',
                         color: activeTab === index ? 'white' : '#333',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
@@ -50,7 +53,7 @@ export const TabPanel: React.FC<{ activeTab: number; onTabChange: (tab: number) 
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
                             <span style={{ color: '#666', fontWeight: 'bold' }}>Total Earnings</span>
-                            <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#1976d2' }}>₹10,000</span>
+                            <span style={{ fontWeight: 'bold', fontSize: '18px', color: themeColor }}>₹10,000</span>
                         </div>
                     </div>
                 </div>
@@ -72,7 +75,7 @@ export const TabPanel: React.FC<{ activeTab: number; onTabChange: (tab: number) 
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
                             <span style={{ color: '#666', fontWeight: 'bold' }}>Net Payable</span>
-                            <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#4caf50' }}>₹10,400</span>
+                            <span style={{ fontWeight: 'bold', fontSize: '18px', color: themeColor }}>₹10,400</span>
                         </div>
                     </div>
                 </div>
@@ -80,22 +83,26 @@ export const TabPanel: React.FC<{ activeTab: number; onTabChange: (tab: number) 
         </div>
     </div>
 );
+}
 
-
-export const InfoCard: React.FC<CardData> = ({ title, value, color = '#1976d2' }) => (
+export const InfoCard: React.FC<CardData> = ({ title, value, color = '#1976d2' }) => {
+    const { themeColor } = useTheme();
+    const cardColor = color === '#1976d2' ? themeColor : color;
+    return (
     <div style={{
         padding: '16px',
         borderRadius: '12px',
         textAlign: 'center',
-        background: `linear-gradient(135deg, ${color}15, ${color}05)`,
-        border: `1px solid ${color}30`,
+        background: `linear-gradient(135deg, ${cardColor}15, ${cardColor}05)`,
+        border: `1px solid ${cardColor}30`,
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     }}>
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
             {title}
         </div>
-        <div style={{ fontSize: '18px', fontWeight: 'bold', color }}>
+        <div style={{ fontSize: '18px', fontWeight: 'bold', color: cardColor }}>
             {value}
         </div>
     </div>
-);
+    );
+};
