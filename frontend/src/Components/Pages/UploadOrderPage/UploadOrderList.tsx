@@ -244,7 +244,7 @@ const OrdersList = () => {
   };
 
   const openViewModal = (order: OrderStatement) => {
-    navigate(`/weekly-order-view`);
+    navigate(`/weekly-order-view?uploadId=${order.id}`);
   };
 
   const openAddModal = () => {
