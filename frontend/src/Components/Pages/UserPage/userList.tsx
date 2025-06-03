@@ -26,10 +26,10 @@ import { ViewList, ViewModule, ArrowBack } from "@mui/icons-material";
 import ReusableTable from "./userTable";
 import ReusableCard from "./userCard";
 import UserForm from "./userform";
-import UserView from './userView';
+import UserView from "./userView";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
-import apiService from '../../../services/apiService';
+import apiService from "../../../services/apiService";
 
 // User type for TypeScript
 interface User {
@@ -135,7 +135,7 @@ const UserListing = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get('/users');
+      const response = await apiService.get("/users");
       setUsers(response);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -179,26 +179,42 @@ const UserListing = () => {
     try {
       if (currentUser?.id) {
         // Edit mode: update user
-        const response = await apiService.put(`/users/${currentUser?.id}`, userData);
+        // Include the ID in the userData for the API call
+        const updatedUserData = {
+          ...userData,
+          id: currentUser.id, // Make sure the ID is included
+        };
+
+        const response = await apiService.put(
+          `/users/${currentUser.id}`,
+          updatedUserData
+        );
+
+        // Make sure we're updating the users array with the complete user object including ID
+        const updatedUser = {
+          ...response,
+          id: currentUser.id, // Ensure ID is preserved in case it's not returned by the API
+        };
+
         setUsers((prev) =>
-          prev.map((u) => (u.id === currentUser?.id ? response : u))
+          prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
         );
         showSnackbar("User updated successfully");
       } else {
         // Create mode: add new user
-        const response = await apiService.post('/users', userData);
+        const response = await apiService.post("/users", userData);
         const createdUser = response;
         // If user_type is rider or company, send a second request to create the minimal record
-        if (userData.user_type === 'rider') {
-          await apiService.post('/riders', {
+        if (userData.user_type === "rider") {
+          await apiService.post("/riders", {
             rider_id: userData.full_name,
             user_id: createdUser.id,
             rider_code: userData.username,
             created_by: userData.created_by || 1,
-            status: userData.status || 'Active',
+            status: userData.status || "Active",
           });
-        } else if (userData.user_type === 'company') {
-          await apiService.post('/companies', {
+        } else if (userData.user_type === "company") {
+          await apiService.post("/companies", {
             user_id: createdUser.id,
             company_name: userData.full_name,
             company_email: userData.email,
@@ -215,7 +231,7 @@ const UserListing = () => {
     } catch (error) {
       console.error("Error saving user:", error);
       showSnackbar(
-        userData.id ? "Failed to update user" : "Failed to create user",
+        currentUser?.id ? "Failed to update user" : "Failed to create user",
         "error"
       );
     }
@@ -393,7 +409,7 @@ const UserListing = () => {
                   },
                 }}
               >
-                 Add New User
+                Add New User
               </Button>
 
               <ToggleButtonGroup

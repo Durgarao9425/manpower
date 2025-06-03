@@ -36,6 +36,9 @@ import CustomFieldsManager from "../Components/Pages/CustomeFields/Customfields"
 import OrdersList from "../Components/Pages/UploadOrderPage/UploadOrderList";
 import ExcelFieldMapper from "../Components/Pages/UploadOrderPage/OrderView";
 import InvoiceListPage from "../Components/Pages/Invoice/InvoiceListPage";
+import DataMappingView from "../Components/Pages/UploadOrderPage/uploadOrderViewPage";
+import DashboardNew from "../Components/Pages/Dashboard/dashboard";
+import PaymentManagement from "../Components/Pages/PaymentPage/mainPage";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -71,7 +74,7 @@ const AppRoutes = () => {
       {/* Admin Protected Routes */}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
         <Route element={<Layout />}>
-          <Route path="/dashboard" element={<TransportDashboard />} />
+          <Route path="/dashboard" element={<DashboardNew />} />
           <Route path="/riders" element={<RiderListingPage />} />
           <Route path="/companies" element={<CompanyPage />} />
           <Route path="/them-settings" element={<ThemeSettings />} />
@@ -86,7 +89,7 @@ const AppRoutes = () => {
           <Route path="/rider-attendance" element={<RiderAttendanceApp />} />
           <Route path="/dynami-dashboard" element={<RiderDashboard />} />
           {/* <Route path="/upload-orders" element={<OrdersListingPage />} /> */}
-          <Route path="/payments" element={<PaymentListingPage />} />
+          <Route path="/payments" element={<PaymentManagement />} />
           <Route path="/slider-page" element={<SliderManagementPage />} />
           <Route path="/earnings" element={<RiderEarningPage />} />
           <Route path="/reports" element={<RiderDeliveryReport />} />
@@ -94,6 +97,7 @@ const AppRoutes = () => {
           <Route path="/upload-orders" element={<OrdersList />} />
           <Route path="/weekly-order-view" element={<ExcelFieldMapper />} />
           <Route path="/invoice" element={<InvoiceListPage />} />
+          <Route path="/view-upload-orders" element={<DataMappingView />} />
         </Route>
       </Route>
 
