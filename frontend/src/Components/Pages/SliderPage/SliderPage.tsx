@@ -221,6 +221,10 @@ const SliderManagementPage = () => {
 
   const handleAddOrEditSlider = async (): Promise<void> => {
     try {
+      if (!validateForm()) {
+        return;
+      }
+      
       if (isEditMode) {
         await handleUpdateSlider();
       } else {
@@ -311,12 +315,55 @@ const SliderManagementPage = () => {
     const company = companies.find((c) => c.id === companyId);
     return company ? company.company_name : 'Unknown';
   };
+  
+  // Helper function to get full image URL
+  const getImageUrl = (imagePath: string): string => {
+    if (!imagePath) return 'https://placehold.co/350x150/4CAF50/FFFFFF?text=No+Image';
+    
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    
+    // If it's a base64 data URL, return as is
+    if (imagePath.startsWith('data:image/')) {
+      return imagePath;
+    }
+    
+    // Otherwise, construct full URL with your API base URL
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4003';
+    
+    // Remove leading slash if present to avoid double slashes
+    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+    
+    // Use the direct image endpoint for better reliability
+    const directUrl = `${API_BASE}/api/direct-image/${cleanPath}`;
+    console.log(`Using direct image URL: ${directUrl} from path: ${imagePath}`);
+    
+    return directUrl;
+  };
 
   // Add these inside the SliderManagementPage component
   const handleAddSlider = async () => {
     try {
+      if (!validateForm()) {
+        return;
+      }
+      
       const newSlider = await addSliderImage(formData);
-      setSliders((prev) => [...prev, { ...formData, id: newSlider.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+      console.log('New slider added:', newSlider);
+      
+      // Use the returned image_path if available
+      const updatedImagePath = newSlider.image_path || formData.image_path;
+      
+      setSliders((prev) => [...prev, { 
+        ...formData, 
+        id: newSlider.id, 
+        image_path: updatedImagePath,
+        created_at: new Date().toISOString(), 
+        updated_at: new Date().toISOString() 
+      }]);
+      
       handleCloseModal();
     } catch (error) {
       console.error('Error adding slider image:', error);
@@ -325,8 +372,27 @@ const SliderManagementPage = () => {
 
   const handleUpdateSlider = async () => {
     try {
-      await updateSliderImage(selectedSliderId, formData);
-      setSliders((prev) => prev.map((slider) => (slider.id === selectedSliderId ? { ...slider, ...formData, updated_at: new Date().toISOString() } : slider)));
+      if (!validateForm()) {
+        return;
+      }
+      
+      const response = await updateSliderImage(selectedSliderId, formData);
+      console.log('Slider updated:', response);
+      
+      // Use the returned image_path if available
+      const updatedImagePath = response.image_path || formData.image_path;
+      
+      setSliders((prev) => prev.map((slider) => (
+        slider.id === selectedSliderId 
+          ? { 
+              ...slider, 
+              ...formData, 
+              image_path: updatedImagePath,
+              updated_at: new Date().toISOString() 
+            } 
+          : slider
+      )));
+      
       handleCloseModal();
     } catch (error) {
       console.error('Error updating slider image:', error);
@@ -386,10 +452,27 @@ const SliderManagementPage = () => {
                       
                       <TableCell>
                         <Avatar
-                          src={slider.image_path}
+                          src={getImageUrl(slider.image_path)}
                           alt={slider.title}
                           variant="rounded"
                           sx={{ width: 50, height: 50 }}
+                          onError={(e) => {
+                            console.error(`Failed to load image for slider ${slider.id}`);
+                            
+                            // Try with a direct proxy approach
+                            const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4003';
+                            const proxyUrl = `${API_BASE}/api/image-proxy?url=${encodeURIComponent(getImageUrl(slider.image_path))}`;
+                            console.log(`Trying proxy URL: ${proxyUrl}`);
+                            
+                            // Update the image source to use the proxy
+                            (e.target as HTMLImageElement).src = proxyUrl;
+                            
+                            // If proxy fails, use fallback
+                            (e.target as HTMLImageElement).onerror = () => {
+                              console.error(`Proxy also failed, using fallback`);
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/350x150/9E9E9E/FFFFFF?text=Image+Not+Found';
+                            };
+                          }}
                         />
                       </TableCell>
                       

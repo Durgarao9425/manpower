@@ -1,10 +1,14 @@
+import { useTheme } from '../../../context/ThemeContext';
+
 export const DateFilter: React.FC<{
     startDate: string;
     endDate: string;
     onStartDateChange: (date: string) => void;
     onEndDateChange: (date: string) => void;
     onFilter: () => void;
-}> = ({ startDate, endDate, onStartDateChange, onEndDateChange, onFilter }) => (
+}> = ({ startDate, endDate, onStartDateChange, onEndDateChange, onFilter }) => {
+    const { themeColor } = useTheme();
+    return (
     <div style={{
         backgroundColor: 'white',
         padding: '16px',
@@ -59,7 +63,7 @@ export const DateFilter: React.FC<{
             style={{
                 width: '100%',
                 padding: '12px',
-                backgroundColor: '#1976d2',
+                backgroundColor: themeColor,
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -68,13 +72,14 @@ export const DateFilter: React.FC<{
                 cursor: 'pointer',
                 transition: 'background-color 0.2s ease'
             }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1565c0'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1976d2'}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = `${themeColor}dd`}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = themeColor}
         >
             Apply Filter
         </button>
     </div>
-);
+    );
+};
 
 
 // Reusable Components
@@ -82,19 +87,23 @@ export const StatsCard: React.FC<{ title: string; value: string; color: string }
     title,
     value,
     color,
-}) => (
+}) => {
+    const { themeColor } = useTheme();
+    const cardColor = color === '#1976d2' ? themeColor : color;
+    return (
     <div style={{
         padding: '16px',
         borderRadius: '12px',
-        background: `linear-gradient(135deg, ${color}15, ${color}05)`,
-        border: `1px solid ${color}30`,
+        background: `linear-gradient(135deg, ${cardColor}15, ${cardColor}05)`,
+        border: `1px solid ${cardColor}30`,
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     }}>
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
             {title}
         </div>
-        <div style={{ fontSize: '20px', fontWeight: 'bold', color }}>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', color: cardColor }}>
             {value}
         </div>
     </div>
-);
+    );
+};

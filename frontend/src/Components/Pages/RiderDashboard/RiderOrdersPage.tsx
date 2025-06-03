@@ -9,11 +9,12 @@ import {
     TextField,
     Button,
     Divider,
-    useTheme,
+    useTheme as useMuiTheme,
     useMediaQuery,
     Stack,
     Chip
 } from '@mui/material';
+import { useTheme } from '../../../context/ThemeContext';
 import {
     ArrowBack,
     Close
@@ -39,8 +40,9 @@ interface AdvanceRequestData {
 }
 
 export const Orders: React.FC = () => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const muiTheme = useMuiTheme();
+    const { themeColor } = useTheme();
+    const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
 
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -58,12 +60,12 @@ export const Orders: React.FC = () => {
     };
 
     const orderCards: CardData[] = [
-        { title: 'Total Orders', value: 45, color: '#2196f3' },
-        { title: 'Weekly Earnings', value: '₹8,750', color: '#4caf50' },
-        { title: 'Advance Request', value: '₹2,000', color: '#ff9800' },
-        { title: 'Advance Paid', value: '₹1,500', color: '#9c27b0' },
-        { title: 'Advance Pending', value: '₹500', color: '#f44336' },
-        { title: 'Due Amount', value: '₹300', color: '#795548' },
+        { title: 'Total Orders', value: 45, color: themeColor },
+        { title: 'Weekly Earnings', value: '₹8,750', color: themeColor },
+        { title: 'Advance Request', value: '₹2,000', color: themeColor },
+        { title: 'Advance Paid', value: '₹1,500', color: themeColor },
+        { title: 'Advance Pending', value: '₹500', color: themeColor },
+        { title: 'Due Amount', value: '₹300', color: themeColor },
     ];
 
     const handleFilter = () => {
@@ -142,7 +144,7 @@ export const Orders: React.FC = () => {
                 }}
             >
                 {/* Header */}
-                <AppBar position="static" color="default" elevation={1}>
+                <AppBar position="static" elevation={1} sx={{ backgroundColor: themeColor, color: 'white' }}>
                     <Toolbar>
                         <IconButton
                             edge="start"
@@ -195,10 +197,13 @@ export const Orders: React.FC = () => {
                                     <Chip
                                         label={`${advanceData.maxAdvancePercentage}%`}
                                         size="small"
-                                        color="primary"
+                                        sx={{ 
+                                            backgroundColor: themeColor,
+                                            color: 'white'
+                                        }}
                                     />
                                 </Box>
-                                <Typography variant="body1" fontWeight="bold" color="primary.main">
+                                <Typography variant="body1" fontWeight="bold" sx={{ color: themeColor }}>
                                     ₹{advanceData.maxAdvanceAmount.toFixed(2)}
                                 </Typography>
                             </Box>
@@ -214,7 +219,7 @@ export const Orders: React.FC = () => {
 
                             <Box display="flex" justifyContent="space-between" alignItems="center">
                                 <Typography variant="body1" fontWeight="bold">Remaining Eligible</Typography>
-                                <Typography variant="h6" fontWeight="bold" color="success.main">
+                                <Typography variant="h6" fontWeight="bold" sx={{ color: themeColor }}>
                                     ₹{advanceData.remainingEligible.toFixed(2)}
                                 </Typography>
                             </Box>
@@ -266,7 +271,15 @@ export const Orders: React.FC = () => {
                             fullWidth
                             variant="outlined"
                             onClick={handleCloseDrawer}
-                            sx={{ fontSize: '10px' }}
+                            sx={{ 
+                                fontSize: '10px',
+                                color: themeColor,
+                                borderColor: themeColor,
+                                '&:hover': {
+                                    borderColor: themeColor,
+                                    backgroundColor: `${themeColor}10`
+                                }
+                            }}
                         >
                             Cancel
                         </Button>
@@ -274,7 +287,13 @@ export const Orders: React.FC = () => {
                             fullWidth
                             variant="contained"
                             onClick={handleSubmitRequest}
-                            sx={{ fontSize: '13px' }}
+                            sx={{ 
+                                fontSize: '13px',
+                                backgroundColor: themeColor,
+                                '&:hover': {
+                                    backgroundColor: `${themeColor}dd`
+                                }
+                            }}
                             disabled={!requestAmount || parseFloat(requestAmount) <= 0 || parseFloat(requestAmount) > advanceData.remainingEligible}
                         >
                             Submit Request

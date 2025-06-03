@@ -1,25 +1,59 @@
 import { useState } from "react";
 
-export const Settings: React.FC = () => {
+interface SettingsProps {
+    themeColor: string;
+    onThemeChange: (color: string) => void;
+}
+
+export const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
     const [notifications, setNotifications] = useState({
         orderAlerts: true,
         paymentUpdates: true,
         promotionalOffers: false,
-        systemUpdates: true
+        systemUpdates: true,
+        deliveryReminders: true,
+        emergencyAlerts: true
     });
 
-    const [language, setLanguage] = useState('english');
+    const [preferences, setPreferences] = useState({
+        language: 'english',
+        currency: 'INR',
+        distanceUnit: 'km',
+        workingHours: '9-5',
+        autoAcceptOrders: false,
+        showEarningsPublic: false
+    });
+
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+    const [showColorPicker, setShowColorPicker] = useState(false);
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
 
-    const handleNotificationToggle = (key: string) => {
+    const predefinedColors = [
+        { name: 'Blue', color: '#1976d2' },
+        { name: 'Green', color: '#4caf50' },
+        { name: 'Orange', color: '#ff9800' },
+        { name: 'Purple', color: '#9c27b0' },
+        { name: 'Red', color: '#f44336' },
+        { name: 'Teal', color: '#009688' },
+        { name: 'Indigo', color: '#3f51b5' },
+        { name: 'Pink', color: '#e91e63' }
+    ];
+
+    const handleNotificationToggle = (key) => {
         setNotifications(prev => ({
             ...prev,
             [key]: !prev[key]
+        }));
+    };
+
+    const handlePreferenceChange = (key, value) => {
+        setPreferences(prev => ({
+            ...prev,
+            [key]: value
         }));
     };
 
@@ -33,15 +67,39 @@ export const Settings: React.FC = () => {
             return;
         }
         console.log('Password change requested');
-        // Add your password change logic here
         setShowChangePasswordModal(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         alert('Password changed successfully!');
     };
 
+    const handleColorChange = (color) => {
+        if (onThemeChange) {
+            onThemeChange(color);
+        }
+        setShowColorPicker(false);
+    };
+
     const settingSections = [
         {
-            title: 'Account Settings',
+            title: 'Theme & Appearance',
+            items: [
+                {
+                    icon: '🎨',
+                    title: 'Theme Color',
+                    subtitle: 'Customize app appearance',
+                    action: () => setShowColorPicker(true),
+                    showCurrentColor: true
+                },
+                {
+                    icon: '🌙',
+                    title: 'Dark Mode',
+                    subtitle: 'Coming soon',
+                    action: () => console.log('Dark mode toggle')
+                }
+            ]
+        },
+        {
+            title: 'Account & Profile',
             items: [
                 {
                     icon: '🔒',
@@ -60,30 +118,41 @@ export const Settings: React.FC = () => {
                     title: 'Email Address',
                     subtitle: 'durgarao9425@gmail.com',
                     action: () => console.log('Change email')
+                },
+                {
+                    icon: '🆔',
+                    title: 'Rider ID',
+                    subtitle: 'RDR001234',
+                    action: () => console.log('View rider details')
                 }
             ]
         },
         {
-            title: 'App Preferences',
+            title: 'Delivery Preferences',
             items: [
                 {
-                    icon: '🌐',
-                    title: 'Language',
-                    subtitle: 'English',
-                    action: () => console.log('Change language'),
-                    hasDropdown: true
+                    icon: '🚚',
+                    title: 'Working Hours',
+                    subtitle: `${preferences.workingHours}`,
+                    action: () => console.log('Set working hours')
                 },
                 {
-                    icon: '🎨',
-                    title: 'Theme',
-                    subtitle: 'Light Mode',
-                    action: () => console.log('Change theme')
+                    icon: '📍',
+                    title: 'Delivery Zone',
+                    subtitle: 'Hyderabad Central',
+                    action: () => console.log('Change delivery zone')
                 },
                 {
-                    icon: '🔊',
-                    title: 'Sound Effects',
-                    subtitle: 'Enabled',
-                    action: () => console.log('Toggle sound')
+                    icon: '⚡',
+                    title: 'Auto Accept Orders',
+                    subtitle: preferences.autoAcceptOrders ? 'Enabled' : 'Disabled',
+                    action: () => handlePreferenceChange('autoAcceptOrders', !preferences.autoAcceptOrders)
+                },
+                {
+                    icon: '📏',
+                    title: 'Distance Unit',
+                    subtitle: preferences.distanceUnit.toUpperCase(),
+                    action: () => console.log('Change distance unit')
                 }
             ]
         },
@@ -104,9 +173,50 @@ export const Settings: React.FC = () => {
                 },
                 {
                     icon: '📍',
-                    title: 'Location Access',
-                    subtitle: 'Always allowed',
+                    title: 'Location Sharing',
+                    subtitle: 'Always allowed during delivery',
                     action: () => console.log('Location settings')
+                },
+                {
+                    icon: '👁️',
+                    title: 'Profile Visibility',
+                    subtitle: preferences.showEarningsPublic ? 'Public' : 'Private',
+                    action: () => handlePreferenceChange('showEarningsPublic', !preferences.showEarningsPublic)
+                },
+                {
+                    icon: '🔑',
+                    title: 'Two-Factor Auth',
+                    subtitle: 'Not enabled',
+                    action: () => console.log('Setup 2FA')
+                }
+            ]
+        },
+        {
+            title: 'Company & Delivery Management',
+            items: [
+                {
+                    icon: '🏢',
+                    title: 'Company Portal',
+                    subtitle: 'Access management dashboard',
+                    action: () => console.log('Company portal')
+                },
+                {
+                    icon: '📊',
+                    title: 'Performance Analytics',
+                    subtitle: 'View delivery statistics',
+                    action: () => console.log('Performance analytics')
+                },
+                {
+                    icon: '🎯',
+                    title: 'Target & Goals',
+                    subtitle: 'Monthly delivery targets',
+                    action: () => console.log('Targets')
+                },
+                {
+                    icon: '💼',
+                    title: 'Supplier Network',
+                    subtitle: 'Connected suppliers: 15',
+                    action: () => console.log('Supplier network')
                 }
             ]
         },
@@ -116,7 +226,7 @@ export const Settings: React.FC = () => {
                 {
                     icon: '💬',
                     title: 'Contact Support',
-                    subtitle: 'Get help from our team',
+                    subtitle: '24/7 rider support available',
                     action: () => console.log('Contact support')
                 },
                 {
@@ -130,6 +240,24 @@ export const Settings: React.FC = () => {
                     title: 'Terms of Service',
                     subtitle: 'View terms and conditions',
                     action: () => console.log('Terms of service')
+                },
+                {
+                    icon: '🚨',
+                    title: 'Emergency Contacts',
+                    subtitle: 'Emergency support numbers',
+                    action: () => console.log('Emergency contacts')
+                },
+                {
+                    icon: '📚',
+                    title: 'Training Materials',
+                    subtitle: 'Delivery best practices',
+                    action: () => console.log('Training materials')
+                },
+                {
+                    icon: '💡',
+                    title: 'Feedback',
+                    subtitle: 'Share your suggestions',
+                    action: () => console.log('Feedback')
                 }
             ]
         }
@@ -172,7 +300,7 @@ export const Settings: React.FC = () => {
                                 width: '32px',
                                 height: '16px',
                                 borderRadius: '10px',
-                                backgroundColor: value ? '#4CAF50' : '#ccc',
+                                backgroundColor: value ? themeColor : '#ccc',
                                 position: 'relative',
                                 cursor: 'pointer',
                                 transition: 'background-color 0.3s ease',
@@ -191,7 +319,6 @@ export const Settings: React.FC = () => {
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
                             }} />
                         </div>
-
                     </div>
                 ))}
             </div>
@@ -240,6 +367,17 @@ export const Settings: React.FC = () => {
                                     {item.subtitle}
                                 </div>
                             </div>
+                            {item.showCurrentColor && (
+                                <div style={{
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '50%',
+                                    backgroundColor: themeColor,
+                                    marginRight: '8px',
+                                    border: '2px solid #fff',
+                                    boxShadow: '0 0 0 1px #ddd'
+                                }} />
+                            )}
                             <span style={{ color: '#ccc', fontSize: '16px' }}>›</span>
                         </div>
                     ))}
@@ -255,12 +393,97 @@ export const Settings: React.FC = () => {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
                 <div style={{ color: '#666', fontSize: '12px', marginBottom: '8px' }}>
-                    Rider Dashboard App
+                    Manpower Delivery Management System
+                </div>
+                <div style={{ color: '#999', fontSize: '11px', marginBottom: '4px' }}>
+                    Rider Dashboard App • Version 2.0.0
                 </div>
                 <div style={{ color: '#999', fontSize: '11px' }}>
-                    Version 1.0.0 • Build 2024.05.24
+                    Build 2024.06.02 • Supplier Network Connected
                 </div>
             </div>
+
+            {/* Color Picker Modal */}
+            {showColorPicker && (
+                <>
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        zIndex: 1001,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            width: '100%',
+                            maxWidth: '320px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                        }}>
+                            <h4 style={{ margin: '0 0 20px 0', color: '#333', textAlign: 'center' }}>
+                                Choose Theme Color
+                            </h4>
+
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(4, 1fr)',
+                                gap: '12px',
+                                marginBottom: '20px'
+                            }}>
+                                {predefinedColors.map((colorOption) => (
+                                    <div
+                                        key={colorOption.color}
+                                        onClick={() => handleColorChange(colorOption.color)}
+                                        style={{
+                                            width: '50px',
+                                            height: '50px',
+                                            borderRadius: '50%',
+                                            backgroundColor: colorOption.color,
+                                            cursor: 'pointer',
+                                            border: themeColor === colorOption.color ? '3px solid #333' : '2px solid #fff',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                            transition: 'transform 0.2s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        {themeColor === colorOption.color && (
+                                            <span style={{ color: 'white', fontSize: '16px' }}>✓</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ textAlign: 'center' }}>
+                                <button
+                                    onClick={() => setShowColorPicker(false)}
+                                    style={{
+                                        padding: '10px 24px',
+                                        backgroundColor: '#f5f5f5',
+                                        color: '#666',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Change Password Modal */}
             {showChangePasswordModal && (
@@ -378,7 +601,7 @@ export const Settings: React.FC = () => {
                                     style={{
                                         flex: 1,
                                         padding: '12px',
-                                        backgroundColor: '#1976d2',
+                                        backgroundColor: themeColor,
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: '8px',

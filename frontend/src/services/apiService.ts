@@ -183,23 +183,47 @@ export { api };
 
 // Slider Images API
 export const fetchSliderImages = async (): Promise<Slider[]> => {
-  const response = await api.get('/slider-images');
-  return response.data;
+  try {
+    const response = await api.get('/slider-images');
+    console.log('API Response for slider images:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching slider images:', error);
+    throw error;
+  }
 };
 
-export const addSliderImage = async (sliderData: Slider): Promise<{ id: number }> => {
-  const response = await api.post('/slider-images', sliderData);
-  return response.data;
+export const addSliderImage = async (sliderData: Slider): Promise<{ id: number, image_path?: string }> => {
+  try {
+    const response = await api.post('/slider-images', sliderData);
+    console.log('API Response for adding slider image:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error adding slider image:', error);
+    throw error;
+  }
 };
 
-export const updateSliderImage = async (id: number, sliderData: Partial<Slider>): Promise<{ message: string }> => {
-  const response = await api.put(`/slider-images/${id}`, sliderData);
-  return response.data;
+export const updateSliderImage = async (id: number, sliderData: Partial<Slider>): Promise<{ message: string, image_path?: string }> => {
+  try {
+    const response = await api.put(`/slider-images/${id}`, sliderData);
+    console.log('API Response for updating slider image:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating slider image:', error);
+    throw error;
+  }
 };
 
 export const deleteSliderImage = async (id: number): Promise<{ message: string }> => {
-  const response = await api.delete(`/slider-images/${id}`);
-  return response.data;
+  try {
+    const response = await api.delete(`/slider-images/${id}`);
+    console.log('API Response for deleting slider image:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting slider image:', error);
+    throw error;
+  }
 };
 
 // Fetch companies API
