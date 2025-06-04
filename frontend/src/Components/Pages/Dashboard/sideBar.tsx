@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -30,6 +30,8 @@ import {
   Chip,
   Tooltip,
   Slider,
+  ThemeProvider,
+  createTheme,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -50,7 +52,7 @@ import {
   Contrast as ContrastIcon,
   ViewCompact as CompactIcon,
 } from "@mui/icons-material";
-import durgarao from '../../../Images/durgarao.jpeg'
+import durgarao from "../../../Images/durgarao.jpeg";
 import PeopleIcon from "@mui/icons-material/People";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -64,13 +66,37 @@ import DownloadIcon from "@mui/icons-material/Download";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import ReplayIcon from '@mui/icons-material/Replay';
+import ReplayIcon from "@mui/icons-material/Replay";
 import useUserData from "../../Common/loginInformation";
 
+// Theme context
+const ThemeContext = createContext({
+  primaryColor: "#0F52BA",
+  fontFamily: "Inter",
+  fontSize: 15,
+  updateTheme: (color: string) => {},
+  updateFont: (font: string) => {},
+  updateFontSize: (size: number) => {},
+  isRiderDashboard: false,
+  setIsRiderDashboard: (value: boolean) => {},
+});
 
+// Helper function to safely access localStorage
+const getLocalStorage = (key: string, defaultValue: string) => {
+  try {
+    const value = localStorage.getItem(key);
+    return value !== null ? value : defaultValue;
+  } catch (error) {
+    console.warn("Error accessing localStorage:", error);
+    return defaultValue;
+  }
+};
+
+// Theme colors - initialize with localStorage value if available
 const themeColors = {
-  primary: "#0F52BA", // Solid version of your main brand color
-  primaryGradient: "linear-gradient(135deg, #0F52BA, #008080, #00A86B, #50C878, #8A2BE2, #4169E1, #37FDFC)",
+  primary: getLocalStorage("mpm-theme-color", "#0F52BA"), // Solid version of your main brand color
+  primaryGradient:
+    "linear-gradient(135deg, #0F52BA, #008080, #00A86B, #50C878, #8A2BE2, #4169E1, #37FDFC)",
 
   secondary: "#6B7280",
 
@@ -88,17 +114,19 @@ const themeColors = {
   error: "#EF4444",
 
   highlight: "#4F46E5",
-  hoverBg: "#F3F4F6"
+  hoverBg: "#F3F4F6",
 };
 
+// Custom hook to use theme context
+const useAppTheme = () => useContext(ThemeContext);
 
 const presets = [
-  { color: '#10B981', name: 'Green' },
-  { color: '#3B82F6', name: 'Blue' },
-  { color: '#8B5CF6', name: 'Purple' },
-  { color: '#60A5FA', name: 'Light Blue' },
-  { color: '#F59E0B', name: 'Orange' },
-  { color: '#EF4444', name: 'Red' },
+  { color: "#10B981", name: "Green" },
+  { color: "#3B82F6", name: "Blue" },
+  { color: "#8B5CF6", name: "Purple" },
+  { color: "#60A5FA", name: "Light Blue" },
+  { color: "#F59E0B", name: "Orange" },
+  { color: "#EF4444", name: "Red" },
 ];
 
 // Drawer width
@@ -112,7 +140,7 @@ const navigationItems = [
     text: "Home",
     icon: <DashboardIcon />,
     path: "/dashboard",
-    hasSubmenu: false
+    hasSubmenu: false,
   },
   {
     id: "riders",
@@ -120,20 +148,40 @@ const navigationItems = [
     icon: <PeopleIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "riders-list", text: "Riders", icon: <PeopleIcon />, path: "/riders" },
-      { id: "rider-attendance", text: "Rider Attendance", icon: <AccessTimeIcon />, path: "/rider-attendance" },
-    ]
+      {
+        id: "riders-list",
+        text: "Riders",
+        icon: <PeopleIcon />,
+        path: "/riders",
+      },
+      {
+        id: "rider-attendance",
+        text: "Rider Attendance",
+        icon: <AccessTimeIcon />,
+        path: "/rider-attendance",
+      },
+    ],
   },
 
-   {
+  {
     id: "orders",
     text: "Orders",
     icon: <LocalShippingIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "dailyorder", text: "Daily Orders", icon: <PeopleIcon />, path: "/orders" },
-      { id: "weekly-orders", text: "Weekly orders", icon: <AccessTimeIcon />, path: "/upload-orders" },
-    ]
+      {
+        id: "dailyorder",
+        text: "Daily Orders",
+        icon: <PeopleIcon />,
+        path: "/orders",
+      },
+      {
+        id: "weekly-orders",
+        text: "Weekly orders",
+        icon: <AccessTimeIcon />,
+        path: "/upload-orders",
+      },
+    ],
   },
   {
     id: "companies",
@@ -141,9 +189,14 @@ const navigationItems = [
     icon: <BusinessIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "companies-list", text: "Companies", icon: <BusinessIcon />, path: "/companies" },
+      {
+        id: "companies-list",
+        text: "Companies",
+        icon: <BusinessIcon />,
+        path: "/companies",
+      },
       { id: "stores", text: "Stores", icon: <StoreIcon />, path: "/stores" },
-    ]
+    ],
   },
   {
     id: "payments",
@@ -151,46 +204,66 @@ const navigationItems = [
     icon: <PaymentIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "payments-list", text: "Payments", icon: <PaidIcon />, path: "/payments" },
-      { id: "earnings", text: "Earnings", icon: <SavingsIcon />, path: "/earnings" },
-      { id: "advance", text: "Advance", icon: <PaymentIcon />, path: "/rider-advance" },
-      { id: "settlement", text: "Settlement", icon: <GavelIcon />, path: "/settlement" },
-    ]
+      {
+        id: "payments-list",
+        text: "Payments",
+        icon: <PaidIcon />,
+        path: "/payments",
+      },
+      {
+        id: "earnings",
+        text: "Earnings",
+        icon: <SavingsIcon />,
+        path: "/earnings",
+      },
+      {
+        id: "advance",
+        text: "Advance",
+        icon: <PaymentIcon />,
+        path: "/rider-advance",
+      },
+      {
+        id: "settlement",
+        text: "Settlement",
+        icon: <GavelIcon />,
+        path: "/settlement",
+      },
+    ],
   },
   {
     id: "user",
     text: "User",
     icon: <PersonIcon />,
     path: "/user-page",
-    hasSubmenu: false
+    hasSubmenu: false,
   },
   {
     id: "reports",
     text: "Reports",
     icon: <BarChartIcon />,
     path: "/reports",
-    hasSubmenu: false
+    hasSubmenu: false,
   },
-   {
+  {
     id: "custom-fields",
     text: "Custom Fields",
     icon: <WorkIcon />,
     path: "/custom-fields",
-    hasSubmenu: false
+    hasSubmenu: false,
   },
   {
     id: "slider-page",
     text: "Slider Page",
     icon: <DownloadIcon />,
     path: "/slider-page",
-    hasSubmenu: false
+    hasSubmenu: false,
   },
   {
     id: "invoice",
     text: "Invoice",
     icon: <ReceiptIcon />,
     path: "/invoice",
-    hasSubmenu: false
+    hasSubmenu: false,
   },
   {
     id: "settings",
@@ -198,18 +271,27 @@ const navigationItems = [
     icon: <SettingsIcon />,
     hasSubmenu: true,
     submenu: [
-      { id: "role-permissions", text: "Role Permissions", icon: <AdminPanelSettingsIcon />, path: "/role-permissions" },
-      { id: "data-import", text: "Data Import", icon: <UploadFileIcon />, path: "/data-import" },
-    ]
+      {
+        id: "role-permissions",
+        text: "Role Permissions",
+        icon: <AdminPanelSettingsIcon />,
+        path: "/role-permissions",
+      },
+      {
+        id: "data-import",
+        text: "Data Import",
+        icon: <UploadFileIcon />,
+        path: "/data-import",
+      },
+    ],
   },
 ];
 
-
 const fonts = [
-  { label: 'Public Sans', value: 'Public Sans' },
-  { label: 'DM Sans', value: 'DM Sans' },
-  { label: 'Inter', value: 'Inter' },
-  { label: 'Nunito Sans', value: 'Nunito Sans' }
+  { label: "Public Sans", value: "Public Sans" },
+  { label: "DM Sans", value: "DM Sans" },
+  { label: "Inter", value: "Inter" },
+  { label: "Nunito Sans", value: "Nunito Sans" },
 ];
 // Mobile bottom navigation items
 const bottomNavItems = [
@@ -224,22 +306,71 @@ interface AdminSidebarProps {
   pendingAlerts?: number;
 }
 
-export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts = 0 }) => {
+// Export the theme hook for use in other components
+export const useThemeSettings = () => useContext(ThemeContext);
+
+export const SideNav: React.FC<AdminSidebarProps> = ({
+  children,
+  pendingAlerts = 0,
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<{ [key: string]: boolean }>({});
+  const [expandedItems, setExpandedItems] = useState<{
+    [key: string]: boolean;
+  }>({});
 
-   const [selectedFont, setSelectedFont] = useState('Inter');
-  const [fontSize, setFontSize] = useState(15);
+  // Theme state with localStorage persistence
+  const [primaryColor, setPrimaryColor] = useState(() => {
+    return getLocalStorage("mpm-theme-color", "#0F52BA");
+  });
+
+  const [selectedFont, setSelectedFont] = useState(() => {
+    return getLocalStorage("mpm-theme-font", "Inter");
+  });
+
+  const [fontSize, setFontSize] = useState(() => {
+    const savedSize = getLocalStorage("mpm-theme-fontSize", "15");
+    return parseInt(savedSize);
+  });
+
+  const [isRiderDashboard, setIsRiderDashboard] = useState(false);
+
+  // Check if current path is rider dashboard to prevent theme changes
+  useEffect(() => {
+    const isRiderPath = location.pathname.includes("/rider-dashboard");
+    setIsRiderDashboard(isRiderPath);
+  }, [location.pathname]);
+
+  // Update themeColors.primary when primaryColor changes
+  useEffect(() => {
+    if (!isRiderDashboard) {
+      themeColors.primary = primaryColor;
+    }
+  }, [primaryColor, isRiderDashboard]);
+
+  // Create custom MUI theme based on settings
+  const customTheme = createTheme({
+    typography: {
+      fontFamily: isRiderDashboard
+        ? "Roboto, sans-serif"
+        : `${selectedFont}, sans-serif`,
+      fontSize: isRiderDashboard ? 14 : fontSize,
+    },
+    palette: {
+      primary: {
+        main: isRiderDashboard ? "#0F52BA" : primaryColor,
+      },
+    },
+  });
 
   // AppBar related states
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [profileAnchor, setProfileAnchor] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('main');
+  const [settingsTab, setSettingsTab] = useState("main");
 
   // Settings state
   const [darkMode, setDarkMode] = useState(false);
@@ -251,17 +382,58 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
   const handleCloseProfile = () => setProfileOpen(false);
   const handleProfileClick = () => setProfileOpen(true);
 
+  // Helper function to safely set localStorage
+  const setLocalStorage = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn("Error setting localStorage:", error);
+    }
+  };
+
+  // Theme context value with localStorage persistence
+  const themeContextValue = {
+    primaryColor,
+    fontFamily: selectedFont,
+    fontSize,
+    updateTheme: (color: string) => {
+      if (!isRiderDashboard) {
+        setPrimaryColor(color);
+        // Update themeColors.primary for consistency
+        themeColors.primary = color;
+        // Save to localStorage
+        setLocalStorage("mpm-theme-color", color);
+      }
+    },
+    updateFont: (font: string) => {
+      if (!isRiderDashboard) {
+        setSelectedFont(font);
+        // Save to localStorage
+        setLocalStorage("mpm-theme-font", font);
+      }
+    },
+    updateFontSize: (size: number) => {
+      if (!isRiderDashboard) {
+        setFontSize(size);
+        // Save to localStorage
+        setLocalStorage("mpm-theme-fontSize", size.toString());
+      }
+    },
+    isRiderDashboard,
+    setIsRiderDashboard,
+  };
+
   // User data
   // const userData = {
   //   name: "Durgarao",
   //   email: "durgarao@minimals.cc",
   //   avatar: durgarao
   // };
-    const { userData, loading, error } = useUserData();
+  const { userData, loading, error } = useUserData();
 
   const handleLogout = () => {
     // Optional: clear user data here
-    navigate('/login');
+    navigate("/login");
   };
 
   // Notifications data
@@ -274,7 +446,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
       category: "Communication",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Deja",
       type: "friend_request",
-      unread: true
+      unread: true,
     },
     {
       id: 2,
@@ -283,9 +455,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
       time: "a day",
       category: "Project UI",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jayvon",
-      description: "@Durgarao feedback by asking questions or just leave a note of appreciation.",
+      description:
+        "@Durgarao feedback by asking questions or just leave a note of appreciation.",
       type: "mention",
-      unread: true
+      unread: true,
     },
     {
       id: 3,
@@ -295,15 +468,17 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
       category: "File manager",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Lainey",
       type: "file",
-      unread: true
-    }
+      unread: true,
+    },
   ];
 
   const getActiveNavIndex = () => {
     for (let i = 0; i < navigationItems.length; i++) {
       const item = navigationItems[i];
-      if (location.pathname === item.path ||
-        location.pathname.startsWith(item.path + '/')) {
+      if (
+        location.pathname === item.path ||
+        location.pathname.startsWith(item.path + "/")
+      ) {
         return i;
       }
       if (item.submenu) {
@@ -326,17 +501,18 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
 
     const currentPath = location.pathname;
     const bottomNavIndex = bottomNavItems.findIndex(
-      item => currentPath === item.path ||
-        (item.path !== '/' && currentPath.startsWith(item.path))
+      (item) =>
+        currentPath === item.path ||
+        (item.path !== "/" && currentPath.startsWith(item.path))
     );
     setBottomNavValue(bottomNavIndex >= 0 ? bottomNavIndex : 0);
   }, [location.pathname]);
 
   const handleNavigation = (index: number, item: any) => {
     if (item.hasSubmenu) {
-      setExpandedItems(prev => ({
+      setExpandedItems((prev) => ({
         ...prev,
-        [item.id]: !prev[item.id]
+        [item.id]: !prev[item.id],
       }));
     } else {
       setNavValue(index);
@@ -357,8 +533,8 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
 
   const isActiveSubmenu = (parentItem: any) => {
     if (!parentItem.submenu) return false;
-    return parentItem.submenu.some((subItem: any) =>
-      location.pathname === subItem.path
+    return parentItem.submenu.some(
+      (subItem: any) => location.pathname === subItem.path
     );
   };
 
@@ -377,7 +553,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
 
   const handleCloseSettings = () => {
     setSettingsOpen(false);
-    setSettingsTab('main');
+    setSettingsTab("main");
   };
 
   const drawerContent = (
@@ -392,20 +568,22 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
       }}
     >
       {/* Header */}
-      <Box sx={{
-        p: 2,
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-        flexShrink: 0,
-        minHeight: 72,
-        borderBottom: `1px solid ${themeColors.borderColor}`,
-      }}>
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          flexShrink: 0,
+          minHeight: 72,
+          borderBottom: `1px solid ${themeColors.borderColor}`,
+        }}
+      >
         <Box
           sx={{
             width: 40,
             height: 40,
-            bgcolor: themeColors.primary,
+            bgcolor: primaryColor,
             borderRadius: 1,
             display: "flex",
             alignItems: "center",
@@ -468,13 +646,15 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                 sx={{
                   mb: 0.5,
                   borderRadius: 1,
-                  bgcolor: (navValue === index || isActiveSubmenu(item))
-                    ? themeColors.primary
-                    : "transparent",
+                  bgcolor:
+                    navValue === index || isActiveSubmenu(item)
+                      ? primaryColor
+                      : "transparent",
                   "&:hover": {
-                    bgcolor: (navValue === index || isActiveSubmenu(item))
-                      ? themeColors.primary
-                      : themeColors.hoverBg,
+                    bgcolor:
+                      navValue === index || isActiveSubmenu(item)
+                        ? primaryColor
+                        : themeColors.hoverBg,
                   },
                   cursor: "pointer",
                   transition: "all 0.2s ease-in-out",
@@ -492,9 +672,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                 >
                   <ListItemIcon
                     sx={{
-                      color: (navValue === index || isActiveSubmenu(item))
-                        ? "white"
-                        : themeColors.textSecondary,
+                      color:
+                        navValue === index || isActiveSubmenu(item)
+                          ? "white"
+                          : themeColors.textSecondary,
                       minWidth: 40,
                       transition: "color 0.2s ease-in-out",
                     }}
@@ -505,10 +686,12 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                     primary={item.text}
                     primaryTypographyProps={{
                       fontSize: "0.9rem",
-                      fontWeight: (navValue === index || isActiveSubmenu(item)) ? 500 : 400,
-                      color: (navValue === index || isActiveSubmenu(item))
-                        ? "white"
-                        : themeColors.textSecondary,
+                      fontWeight:
+                        navValue === index || isActiveSubmenu(item) ? 500 : 400,
+                      color:
+                        navValue === index || isActiveSubmenu(item)
+                          ? "white"
+                          : themeColors.textSecondary,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -522,9 +705,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                     <IconButton
                       size="small"
                       sx={{
-                        color: (navValue === index || isActiveSubmenu(item))
-                          ? "white"
-                          : themeColors.textSecondary,
+                        color:
+                          navValue === index || isActiveSubmenu(item)
+                            ? "white"
+                            : themeColors.textSecondary,
                       }}
                     >
                       {expandedItems[item.id] ? <ExpandLess /> : <ExpandMore />}
@@ -535,23 +719,31 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
 
               {/* Submenu */}
               {item.hasSubmenu && (
-                <Collapse in={expandedItems[item.id]} timeout="auto" unmountOnExit>
+                <Collapse
+                  in={expandedItems[item.id]}
+                  timeout="auto"
+                  unmountOnExit
+                >
                   <List component="div" disablePadding sx={{ pl: 2 }}>
                     {item.submenu?.map((subItem) => (
                       <ListItem
                         key={subItem.id}
                         disablePadding
-                        onClick={() => handleSubmenuNavigation(subItem.path, index)}
+                        onClick={() =>
+                          handleSubmenuNavigation(subItem.path, index)
+                        }
                         sx={{
                           mb: 0.5,
                           borderRadius: 1,
-                          bgcolor: location.pathname === subItem.path
-                            ? themeColors.primary
-                            : "transparent",
-                          "&:hover": {
-                            bgcolor: location.pathname === subItem.path
+                          bgcolor:
+                            location.pathname === subItem.path
                               ? themeColors.primary
-                              : themeColors.hoverBg,
+                              : "transparent",
+                          "&:hover": {
+                            bgcolor:
+                              location.pathname === subItem.path
+                                ? themeColors.primary
+                                : themeColors.hoverBg,
                           },
                           cursor: "pointer",
                           transition: "all 0.2s ease-in-out",
@@ -569,9 +761,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                         >
                           <ListItemIcon
                             sx={{
-                              color: location.pathname === subItem.path
-                                ? "white"
-                                : themeColors.textSecondary,
+                              color:
+                                location.pathname === subItem.path
+                                  ? "white"
+                                  : themeColors.textSecondary,
                               minWidth: 32,
                               transition: "color 0.2s ease-in-out",
                             }}
@@ -582,10 +775,12 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                             primary={subItem.text}
                             primaryTypographyProps={{
                               fontSize: "0.85rem",
-                              fontWeight: location.pathname === subItem.path ? 500 : 400,
-                              color: location.pathname === subItem.path
-                                ? "white"
-                                : themeColors.textSecondary,
+                              fontWeight:
+                                location.pathname === subItem.path ? 500 : 400,
+                              color:
+                                location.pathname === subItem.path
+                                  ? "white"
+                                  : themeColors.textSecondary,
                               whiteSpace: "nowrap",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
@@ -617,13 +812,20 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
         sx: {
           width: 360,
           maxHeight: 400,
-          mt: 1
-        }
+          mt: 1,
+        },
       }}
     >
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <Typography variant="h6">Notifications</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1 }}>
           <Chip label="All 22" size="small" color="primary" />
           <Chip label="Unread 12" size="small" variant="outlined" />
         </Box>
@@ -633,7 +835,10 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
         {notifications.map((notification) => (
           <ListItem key={notification.id} sx={{ py: 2 }}>
             <ListItemAvatar>
-              <Avatar src={notification.avatar} sx={{ width: 40, height: 40 }} />
+              <Avatar
+                src={notification.avatar}
+                sx={{ width: 40, height: 40 }}
+              />
             </ListItemAvatar>
             <Box sx={{ flex: 1, ml: 1 }}>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -643,13 +848,21 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                 {notification.time} • {notification.category}
               </Typography>
               {notification.description && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.5 }}
+                >
                   {notification.description}
                 </Typography>
               )}
-              {notification.type === 'friend_request' && (
-                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                  <Button variant="contained" size="small" sx={{ bgcolor: '#2B2D31', color: 'white' }}>
+              {notification.type === "friend_request" && (
+                <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    sx={{ bgcolor: "#2B2D31", color: "white" }}
+                  >
                     Accept
                   </Button>
                   <Button variant="outlined" size="small">
@@ -659,7 +872,15 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
               )}
             </Box>
             {notification.unread && (
-              <Box sx={{ width: 8, height: 8, bgcolor: '#00B8D4', borderRadius: '50%', ml: 1 }} />
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  bgcolor: "#00B8D4",
+                  borderRadius: "50%",
+                  ml: 1,
+                }}
+              />
             )}
           </ListItem>
         ))}
@@ -673,29 +894,29 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
       open={profileOpen}
       onClose={handleCloseProfile}
       sx={{
-        '& .MuiDrawer-paper': {
+        "& .MuiDrawer-paper": {
           width: 320,
-          bgcolor: '#f8f9fa',
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.1)'
-        }
+          bgcolor: "#f8f9fa",
+          boxShadow: "-4px 0 20px rgba(0,0,0,0.1)",
+        },
       }}
     >
-      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+        <Box sx={{ p: 2, display: "flex", justifyContent: "flex-end" }}>
           <IconButton onClick={handleCloseProfile} size="small">
             <CloseIcon />
           </IconButton>
         </Box>
 
-        <Box sx={{ px: 3, pb: 3, textAlign: 'center' }}>
+        <Box sx={{ px: 3, pb: 3, textAlign: "center" }}>
           <Avatar
             src={durgarao}
             sx={{
               width: 80,
               height: 80,
-              mx: 'auto',
+              mx: "auto",
               mb: 2,
-              border: '3px solid #10B981'
+              border: "3px solid #10B981",
             }}
           />
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -707,16 +928,40 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
         </Box>
 
         <List sx={{ flex: 1, px: 2 }}>
-          <ListItem sx={{ borderRadius: 2, mb: 1, '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}>
-            <ListItemIcon><HomeIcon /></ListItemIcon>
+          <ListItem
+            sx={{
+              borderRadius: 2,
+              mb: 1,
+              "&:hover": { bgcolor: "rgba(16, 185, 129, 0.1)" },
+            }}
+          >
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
             <ListItemText primary="Home" />
           </ListItem>
-          <ListItem sx={{ borderRadius: 2, mb: 1, '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}>
-            <ListItemIcon><PersonIcon /></ListItemIcon>
+          <ListItem
+            sx={{
+              borderRadius: 2,
+              mb: 1,
+              "&:hover": { bgcolor: "rgba(16, 185, 129, 0.1)" },
+            }}
+          >
+            <ListItemIcon>
+              <PersonIcon />
+            </ListItemIcon>
             <ListItemText primary="Profile" />
           </ListItem>
-          <ListItem sx={{ borderRadius: 2, mb: 1, '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}>
-            <ListItemIcon><WorkIcon /></ListItemIcon>
+          <ListItem
+            sx={{
+              borderRadius: 2,
+              mb: 1,
+              "&:hover": { bgcolor: "rgba(16, 185, 129, 0.1)" },
+            }}
+          >
+            <ListItemIcon>
+              <WorkIcon />
+            </ListItemIcon>
             <ListItemText primary="Projects" />
             <Chip label="3" size="small" color="error" />
           </ListItem>
@@ -729,12 +974,12 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
             startIcon={<LogoutIcon />}
             onClick={handleLogout}
             sx={{
-              bgcolor: '#ffebee',
-              color: '#d32f2f',
+              bgcolor: "#ffebee",
+              color: "#d32f2f",
               borderRadius: 3,
               py: 1.5,
-              '&:hover': { bgcolor: '#ffcdd2' },
-              boxShadow: 'none'
+              "&:hover": { bgcolor: "#ffcdd2" },
+              boxShadow: "none",
             }}
           >
             Logout
@@ -745,40 +990,48 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
   );
 
   const renderSettingsDrawer = () => (
-   
-<Drawer
-  anchor="right"
-  open={settingsOpen}
-  onClose={handleCloseSettings}
-  sx={{
-    '& .MuiDrawer-paper': {
-      width: 390,
-      bgcolor: '#f8f9fa',
-      boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
-      boxSizing: 'border-box', // important
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-    }
-  }}
->
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-    <Box sx={{
-      p: 3,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottom: '1px solid #e0e0e0',
-      bgcolor: '#f8f9fa',
-    }}>
+    <Drawer
+      anchor="right"
+      open={settingsOpen}
+      onClose={handleCloseSettings}
+      sx={{
+        "& .MuiDrawer-paper": {
+          width: 390,
+          bgcolor: "#f8f9fa",
+          boxShadow: "-4px 0 20px rgba(0,0,0,0.1)",
+          boxSizing: "border-box", // important
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            p: 3,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: "1px solid #e0e0e0",
+            bgcolor: "#f8f9fa",
+          }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Settings
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <IconButton size="small" sx={{ color: '#666' }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <IconButton size="small" sx={{ color: "#666" }}>
               <span>⚙️</span>
             </IconButton>
-            <IconButton size="small" sx={{ color: '#666' }}>
+            <IconButton size="small" sx={{ color: "#666" }}>
               <span>🔄</span>
             </IconButton>
             <IconButton size="small" onClick={handleCloseSettings}>
@@ -787,9 +1040,25 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
           </Box>
         </Box>
 
-    <Box sx={{ flex: 1, overflowY: 'auto', p: 3, boxSizing: 'border-box' }}>
-
-
+        <Box sx={{ flex: 1, overflowY: "auto", p: 3, boxSizing: "border-box" }}>
+          {isRiderDashboard && (
+            <Box
+              sx={{
+                mb: 3,
+                p: 2,
+                bgcolor: "#FEF3C7",
+                borderRadius: 2,
+                border: "1px solid #F59E0B",
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ color: "#92400E", fontWeight: 500 }}
+              >
+                Theme settings are disabled for Rider Dashboard as requested.
+              </Typography>
+            </Box>
+          )}
 
           <Box sx={{ mb: 4 }}>
             <Typography variant="subtitle2" fontWeight={600} mb={2}>
@@ -800,17 +1069,31 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
               {presets.map((preset, index) => (
                 <Grid item xs={4} key={index}>
                   <Box
+                    onClick={() => {
+                      if (!isRiderDashboard) {
+                        setPrimaryColor(preset.color);
+                        themeColors.primary = preset.color;
+                        // Save to localStorage
+                        setLocalStorage("mpm-theme-color", preset.color);
+                      }
+                    }}
                     sx={{
                       borderRadius: 2,
                       p: 1,
-                      bgcolor: 'background.paper',
-                      border: '1px solid #e0e0e0',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: '0.2s',
-                      '&:hover': {
-                        boxShadow: 2,
-                        transform: 'translateY(-2px)',
+                      bgcolor: "background.paper",
+                      border:
+                        primaryColor === preset.color
+                          ? "2px solid #10B981"
+                          : "1px solid #e0e0e0",
+                      textAlign: "center",
+                      cursor: isRiderDashboard ? "not-allowed" : "pointer",
+                      transition: "0.2s",
+                      opacity: isRiderDashboard ? 0.6 : 1,
+                      "&:hover": {
+                        boxShadow: isRiderDashboard ? "none" : 2,
+                        transform: isRiderDashboard
+                          ? "none"
+                          : "translateY(-2px)",
                       },
                     }}
                   >
@@ -820,7 +1103,7 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
                         height: 24,
                         bgcolor: preset.color,
                         borderRadius: 1,
-                        mx: 'auto',
+                        mx: "auto",
                       }}
                     />
                     <Typography variant="caption" mt={1} display="block">
@@ -832,115 +1115,133 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
             </Grid>
           </Box>
 
-         <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          borderRadius: 4,
-          width: '100%',  // Changed from fixed 320px to 100%
-          background: 'linear-gradient(145deg, #f0f4f8, #ffffff)',
-          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.05)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxSizing: 'border-box',
-        }}
-      >
-      <Box display="flex" alignItems="center" mb={2}>
-        <Typography
-          variant="subtitle2"
-          sx={{
-            fontWeight: 700,
-            bgcolor: '#000',
-            color: '#fff',
-            borderRadius: 2,
-            px: 1.5,
-            py: 0.5,
-            fontSize: '0.75rem'
-          }}
-        >
-          Font
-        </Typography>
-      </Box>
-
-      <Box display="flex" alignItems="center" gap={1} mb={1}>
-        <ReplayIcon fontSize="small" />
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-          Family
-        </Typography>
-      </Box>
-
-      <Grid container spacing={2} mb={2}>
-        {fonts.map((font) => (
-          <Grid item xs={6} key={font.value}>
-            <Paper
-              onClick={() => setSelectedFont(font.value)}
-              elevation={0}
-              sx={{
-                p: 2,
-                textAlign: 'center',
-                borderRadius: 3,
-                cursor: 'pointer',
-                border: selectedFont === font.value ? '2px solid #10B981' : '1px solid #ccc',
-                backgroundColor: selectedFont === font.value ? '#f0fdf4' : 'transparent',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <Typography
-                sx={{
-                  fontFamily: font.value,
-                  fontSize: '1.25rem',
-                  fontWeight: 600,
-                  color: selectedFont === font.value ? '#10B981' : '#aaa'
-                }}
-              >
-                Aa
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: selectedFont === font.value ? '#000' : '#aaa',
-                  fontWeight: 600
-                }}
-              >
-                {font.label}
-              </Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Box display="flex" alignItems="center" gap={1} mb={1}>
-        <ReplayIcon fontSize="small" />
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-          Size
-        </Typography>
-      </Box>
-
-      <Box px={1}>
-        <Tooltip title={`${fontSize}px`} arrow placement="top">
-          <Slider
-            value={fontSize}
-            onChange={(e, newValue) => setFontSize(newValue)}
-            min={12}
-            max={20}
-            step={1}
-            valueLabelDisplay="off"
+          <Paper
+            elevation={0}
             sx={{
-              color: '#10B981',
-              height: 8,
-              '& .MuiSlider-thumb': {
-                width: 20,
-                height: 20
-              },
-              '& .MuiSlider-track': {
-                border: 'none'
-              }
+              p: 3,
+              borderRadius: 4,
+              width: "100%", // Changed from fixed 320px to 100%
+              background: "linear-gradient(145deg, #f0f4f8, #ffffff)",
+              boxShadow: "0 4px 30px rgba(0, 0, 0, 0.05)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              boxSizing: "border-box",
+              opacity: isRiderDashboard ? 0.6 : 1,
             }}
-          />
-        </Tooltip>
-      </Box>
-    </Paper>
+          >
+            <Box display="flex" alignItems="center" mb={2}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 700,
+                  bgcolor: "#000",
+                  color: "#fff",
+                  borderRadius: 2,
+                  px: 1.5,
+                  py: 0.5,
+                  fontSize: "0.75rem",
+                }}
+              >
+                Font
+              </Typography>
+            </Box>
 
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <ReplayIcon fontSize="small" />
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                Family
+              </Typography>
+            </Box>
+
+            <Grid container spacing={2} mb={2}>
+              {fonts.map((font) => (
+                <Grid item xs={6} key={font.value}>
+                  <Paper
+                    onClick={() => {
+                      if (!isRiderDashboard) {
+                        setSelectedFont(font.value);
+                        // Save to localStorage
+                        setLocalStorage("mpm-theme-font", font.value);
+                      }
+                    }}
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      textAlign: "center",
+                      borderRadius: 3,
+                      cursor: isRiderDashboard ? "not-allowed" : "pointer",
+                      border:
+                        selectedFont === font.value
+                          ? "2px solid #10B981"
+                          : "1px solid #ccc",
+                      backgroundColor:
+                        selectedFont === font.value ? "#f0fdf4" : "transparent",
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontFamily: font.value,
+                        fontSize: "1.25rem",
+                        fontWeight: 600,
+                        color: selectedFont === font.value ? "#10B981" : "#aaa",
+                      }}
+                    >
+                      Aa
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: selectedFont === font.value ? "#000" : "#aaa",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {font.label}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <ReplayIcon fontSize="small" />
+              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                Size
+              </Typography>
+            </Box>
+
+            <Box px={1}>
+              <Tooltip title={`${fontSize}px`} arrow placement="top">
+                <Slider
+                  value={fontSize}
+                  onChange={(e, newValue) => {
+                    if (!isRiderDashboard) {
+                      const size = newValue as number;
+                      setFontSize(size);
+                      // Save to localStorage
+                      setLocalStorage("mpm-theme-fontSize", size.toString());
+                    }
+                  }}
+                  min={12}
+                  max={20}
+                  step={1}
+                  valueLabelDisplay="off"
+                  disabled={isRiderDashboard}
+                  sx={{
+                    color: "#10B981",
+                    height: 8,
+                    "& .MuiSlider-thumb": {
+                      width: 20,
+                      height: 20,
+                    },
+                    "& .MuiSlider-track": {
+                      border: "none",
+                    },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+          </Paper>
 
           {/* Mode Settings */}
           {/* <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -1110,255 +1411,255 @@ export const SideNav: React.FC<AdminSidebarProps> = ({ children, pendingAlerts =
     </Drawer>
   );
   return (
-    <Box
-      sx={{
-        display: "flex",
-        height: "100vh",
-        width: "100vw",
-        bgcolor: themeColors.background,
-        overflow: "hidden",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-      }}
-    >
-      <CssBaseline />
-
-      {/* Sidebar Drawer */}
-      <Box
-        component="nav"
-        sx={{
-          width: { sm: drawerWidth },
-          flexShrink: 0,
-          zIndex: theme.zIndex.drawer,
-        }}
-      >
-        {/* Mobile Drawer */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: "block", sm: "none" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: drawerWidth,
-              border: 0,
-              overflow: "hidden",
-            },
-          }}
-        >
-          {drawerContent}
-        </Drawer>
-
-        {/* Desktop Drawer */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: "none", sm: "block" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: drawerWidth,
-              border: 0,
-              position: "fixed",
-              height: "100vh",
-              overflow: "hidden",
-              top: 0,
-              left: 0,
-            },
-          }}
-          open
-        >
-          {drawerContent}
-        </Drawer>
-      </Box>
-
-      {/* Main Content Area */}
-      <Box
-        sx={{
-          flexGrow: 1,
-          display: "flex",
-          flexDirection: "column",
-          width: {
-            xs: "100%",
-            sm: `calc(100% - ${drawerWidth}px)`
-          },
-          // ml: { sm: `${drawerWidth}px` },
-          height: "100vh",
-          overflow: "hidden",
-        }}
-      >
-        {/* App Bar */}
-        <AppBar
-          position="static"
-          elevation={0}
-          sx={{
-            bgcolor: 'white',
-            borderBottom: '1px solid #e0e0e0',
-            zIndex: theme.zIndex.appBar
-          }}
-        >
-          <Toolbar sx={{ px: 3 }}>
-            <IconButton
-              edge="start"
-              sx={{ mr: 2, color: '#666', display: { sm: 'none' } }}
-              onClick={handleDrawerToggle}
-            >
-              <MenuIcon />
-            </IconButton>
-
-            <Typography
-              variant="h6"
-              sx={{
-                color: '#333',
-                fontWeight: 600,
-                flexGrow: 1,
-              }}
-            >
-              Welcome Durgarao Admin
-            </Typography>
-
-            <IconButton
-              onClick={handleNotificationClick}
-              sx={{ color: '#666', mr: 1 }}
-            >
-              <Badge
-                badgeContent={pendingAlerts}
-                color="error"
-                sx={{
-                  "& .MuiBadge-badge": {
-                    fontSize: "0.75rem",
-                    height: "18px",
-                    minWidth: "18px",
-                  }
-                }}
-              >
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-
-            <IconButton
-              onClick={handleSettingsClick}
-              sx={{
-                color: '#666',
-                mr: 1,
-                animation: 'spin 10s linear infinite', // ⏳ Slow spin (10 seconds per rotation)
-                '@keyframes spin': {
-                  from: { transform: 'rotate(0deg)' },
-                  to: { transform: 'rotate(360deg)' }
-                }
-              }}
-            >
-              <SettingsIcon />
-            </IconButton>
-
-
-
-            <IconButton
-              onClick={handleProfileClick}
-              sx={{ p: 0.5 }}
-            >
-              <Avatar
-                src={durgarao}
-                sx={{ width: 32, height: 32 }}
-              />
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-
-        {/* Main Content */}
+    <ThemeContext.Provider value={themeContextValue}>
+      <ThemeProvider theme={customTheme}>
         <Box
-          component="main"
           sx={{
-            flexGrow: 1,
-            overflow: "hidden",
             display: "flex",
-            flexDirection: "column",
+            height: "100vh",
+            width: "100vw",
             bgcolor: themeColors.background,
-          }}
-        >
-          <Box
-            sx={{
-              flex: 1,
-              overflowY: "auto",
-              overflowX: "hidden",
-              px: { xs: 2, sm: 3 },
-              py: 2,
-              "&::-webkit-scrollbar": {
-                width: "8px",
-              },
-              "&::-webkit-scrollbar-track": {
-                backgroundColor: "transparent",
-              },
-              "&::-webkit-scrollbar-thumb": {
-                backgroundColor: "#E5E7EB",
-                borderRadius: "4px",
-              },
-              "&::-webkit-scrollbar-thumb:hover": {
-                backgroundColor: "#D1D5DB",
-              },
-            }}
-          >
-            {children}
-          </Box>
-        </Box>
-      </Box>
-
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
-        <Paper
-          sx={{
+            overflow: "hidden",
             position: "fixed",
-            bottom: 0,
+            top: 0,
             left: 0,
             right: 0,
-            zIndex: theme.zIndex.bottomNavigation,
-            borderTop: `1px solid ${themeColors.borderColor}`,
+            bottom: 0,
+            fontFamily: isRiderDashboard
+              ? "Roboto, sans-serif"
+              : `${selectedFont}, sans-serif`,
+            fontSize: isRiderDashboard ? 14 : fontSize,
           }}
-          elevation={3}
         >
-          <BottomNavigation
-            value={bottomNavValue}
-            onChange={(event, newValue) => {
-              setBottomNavValue(newValue);
-              navigate(bottomNavItems[newValue].path);
-            }}
+          <CssBaseline />
+
+          {/* Sidebar Drawer */}
+          <Box
+            component="nav"
             sx={{
-              height: 64,
-              "& .MuiBottomNavigationAction-root": {
-                color: themeColors.textSecondary,
-                "&.Mui-selected": {
-                  color: themeColors.primary,
-                },
-              },
+              width: { sm: drawerWidth },
+              flexShrink: 0,
+              zIndex: theme.zIndex.drawer,
             }}
           >
-            {bottomNavItems.map((item, index) => (
-              <BottomNavigationAction
-                key={index}
-                label={item.label}
-                icon={item.icon}
+            {/* Mobile Drawer */}
+            <Drawer
+              variant="temporary"
+              open={mobileOpen}
+              onClose={handleDrawerToggle}
+              ModalProps={{ keepMounted: true }}
+              sx={{
+                display: { xs: "block", sm: "none" },
+                "& .MuiDrawer-paper": {
+                  boxSizing: "border-box",
+                  width: drawerWidth,
+                  border: 0,
+                  overflow: "hidden",
+                },
+              }}
+            >
+              {drawerContent}
+            </Drawer>
+
+            {/* Desktop Drawer */}
+            <Drawer
+              variant="permanent"
+              sx={{
+                display: { xs: "none", sm: "block" },
+                "& .MuiDrawer-paper": {
+                  boxSizing: "border-box",
+                  width: drawerWidth,
+                  border: 0,
+                  position: "fixed",
+                  height: "100vh",
+                  overflow: "hidden",
+                  top: 0,
+                  left: 0,
+                },
+              }}
+              open
+            >
+              {drawerContent}
+            </Drawer>
+          </Box>
+
+          {/* Main Content Area */}
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              flexDirection: "column",
+              width: {
+                xs: "100%",
+                sm: `calc(100% - ${drawerWidth}px)`,
+              },
+              // ml: { sm: `${drawerWidth}px` },
+              height: "100vh",
+              overflow: "hidden",
+            }}
+          >
+            {/* App Bar */}
+            <AppBar
+              position="static"
+              elevation={0}
+              sx={{
+                bgcolor: "white",
+                borderBottom: "1px solid #e0e0e0",
+                zIndex: theme.zIndex.appBar,
+              }}
+            >
+              <Toolbar sx={{ px: 3 }}>
+                <IconButton
+                  edge="start"
+                  sx={{ mr: 2, color: "#666", display: { sm: "none" } }}
+                  onClick={handleDrawerToggle}
+                >
+                  <MenuIcon />
+                </IconButton>
+
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "#333",
+                    fontWeight: 600,
+                    flexGrow: 1,
+                  }}
+                >
+                  Welcome Durgarao Admin
+                </Typography>
+
+                <IconButton
+                  onClick={handleNotificationClick}
+                  sx={{ color: "#666", mr: 1 }}
+                >
+                  <Badge
+                    badgeContent={pendingAlerts}
+                    color="error"
+                    sx={{
+                      "& .MuiBadge-badge": {
+                        fontSize: "0.75rem",
+                        height: "18px",
+                        minWidth: "18px",
+                      },
+                    }}
+                  >
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+
+                <IconButton
+                  onClick={handleSettingsClick}
+                  sx={{
+                    color: "#666",
+                    mr: 1,
+                    animation: "spin 10s linear infinite", // ⏳ Slow spin (10 seconds per rotation)
+                    "@keyframes spin": {
+                      from: { transform: "rotate(0deg)" },
+                      to: { transform: "rotate(360deg)" },
+                    },
+                  }}
+                >
+                  <SettingsIcon />
+                </IconButton>
+
+                <IconButton onClick={handleProfileClick} sx={{ p: 0.5 }}>
+                  <Avatar src={durgarao} sx={{ width: 32, height: 32 }} />
+                </IconButton>
+              </Toolbar>
+            </AppBar>
+
+            {/* Main Content */}
+            <Box
+              component="main"
+              sx={{
+                flexGrow: 1,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                bgcolor: themeColors.background,
+              }}
+            >
+              <Box
                 sx={{
-                  minWidth: 60,
-                  fontSize: "0.75rem",
+                  flex: 1,
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  px: { xs: 2, sm: 3 },
+                  py: 2,
+                  "&::-webkit-scrollbar": {
+                    width: "8px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "transparent",
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#E5E7EB",
+                    borderRadius: "4px",
+                  },
+                  "&::-webkit-scrollbar-thumb:hover": {
+                    backgroundColor: "#D1D5DB",
+                  },
                 }}
-              />
-            ))}
-          </BottomNavigation>
-        </Paper>
-      )}
+              >
+                {children}
+              </Box>
+            </Box>
+          </Box>
 
-      {/* Notification Menu */}
-      {renderNotificationMenu()}
+          {/* Mobile Bottom Navigation */}
+          {isMobile && (
+            <Paper
+              sx={{
+                position: "fixed",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: theme.zIndex.bottomNavigation,
+                borderTop: `1px solid ${themeColors.borderColor}`,
+              }}
+              elevation={3}
+            >
+              <BottomNavigation
+                value={bottomNavValue}
+                onChange={(event, newValue) => {
+                  setBottomNavValue(newValue);
+                  navigate(bottomNavItems[newValue].path);
+                }}
+                sx={{
+                  height: 64,
+                  "& .MuiBottomNavigationAction-root": {
+                    color: themeColors.textSecondary,
+                    "&.Mui-selected": {
+                      color: primaryColor,
+                    },
+                  },
+                }}
+              >
+                {bottomNavItems.map((item, index) => (
+                  <BottomNavigationAction
+                    key={index}
+                    label={item.label}
+                    icon={item.icon}
+                    sx={{
+                      minWidth: 60,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                ))}
+              </BottomNavigation>
+            </Paper>
+          )}
 
-      {/* Profile Menu */}
-      {renderProfileDrawer()}
+          {/* Notification Menu */}
+          {renderNotificationMenu()}
 
-      {/* Settings Dialog */}
-      {renderSettingsDrawer()}
-    </Box>
+          {/* Profile Menu */}
+          {renderProfileDrawer()}
+
+          {/* Settings Dialog */}
+          {renderSettingsDrawer()}
+        </Box>
+      </ThemeProvider>
+    </ThemeContext.Provider>
   );
 };
