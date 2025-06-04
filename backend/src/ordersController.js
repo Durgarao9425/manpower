@@ -1022,10 +1022,10 @@ exports.getWeeklySummary = async (req, res) => {
  */
 exports.getSystemFields = async (req, res) => {
   try {
-    const [systemFields] = await db.query('SELECT field_key, field_label, field_type FROM system_fields');
-    res.status(200).json({ status: 'success', data: systemFields });
+    const [systemFields] = await db.query('SELECT field_key as value, field_label as label, field_type FROM system_fields');
+    res.status(200).json(systemFields);
   } catch (error) {
     console.error('Error fetching system fields:', error);
-    res.status(500).json({ status: 'error', message: 'Failed to fetch system fields' });
+    res.status(500).json({ error: 'Failed to fetch system fields' });
   }
 };
