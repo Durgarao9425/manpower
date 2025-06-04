@@ -85,24 +85,34 @@ export const TabPanel: React.FC<{ activeTab: number; onTabChange: (tab: number) 
 );
 }
 
-export const InfoCard: React.FC<CardData> = ({ title, value, color = '#1976d2' }) => {
+export const InfoCard: React.FC<CardData> = ({ title, value, subtitle, color, icon }) => {
     const { themeColor } = useTheme();
-    const cardColor = color === '#1976d2' ? themeColor : color;
+    const cardColor = color || themeColor;
     return (
-    <div style={{
-        padding: '16px',
-        borderRadius: '12px',
-        textAlign: 'center',
-        background: `linear-gradient(135deg, ${cardColor}15, ${cardColor}05)`,
-        border: `1px solid ${cardColor}30`,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    }}>
-        <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-            {title}
+        <div style={{
+            padding: '16px',
+            borderRadius: '12px',
+            textAlign: 'center',
+            background: `linear-gradient(135deg, ${cardColor}15, ${cardColor}05)`,
+            border: `1px solid ${cardColor}30`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}>
+            {icon && (
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>
+                    {icon}
+                </div>
+            )}
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+                {title}
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: cardColor }}>
+                {value}
+            </div>
+            {subtitle && (
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                    {subtitle}
+                </div>
+            )}
         </div>
-        <div style={{ fontSize: '18px', fontWeight: 'bold', color: cardColor }}>
-            {value}
-        </div>
-    </div>
     );
 };

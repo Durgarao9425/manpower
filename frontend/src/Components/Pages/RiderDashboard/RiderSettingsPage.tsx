@@ -5,7 +5,7 @@ interface SettingsProps {
     onThemeChange: (color: string) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
+const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
     const [notifications, setNotifications] = useState({
         orderAlerts: true,
         paymentUpdates: true,
@@ -620,3 +620,5 @@ export const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange })
         </div>
     );
 };
+
+export default Settings;

@@ -10,20 +10,15 @@ const tokenCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
  * Verifies the token from Authorization header or cookies
  */
 const auth = (req, res, next) => {
-  // Get token from header
   const authHeader = req.headers.authorization;
-  
-  // Check for token in Authorization header
   let token;
+
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1];
-  } 
-  // Check for token in cookies as fallback
-  else if (req.cookies && req.cookies.token) {
+  } else if (req.cookies && req.cookies.token) {
     token = req.cookies.token;
   }
 
-  // If no token found, return unauthorized
   if (!token) {
     return res.status(401).json({ 
       success: false, 
@@ -32,24 +27,8 @@ const auth = (req, res, next) => {
   }
 
   try {
-    // Check cache for decoded token
-    let decoded = tokenCache.get(token);
-
-    if (!decoded) {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-      tokenCache.set(token, decoded); // Cache the decoded token
-    }
-
-    // Add user from payload to request object
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-
-    // Implement sliding expiration
-    const remainingTime = decoded.exp * 1000 - Date.now();
-    if (remainingTime < 5 * 60 * 1000) { // Less than 5 minutes remaining
-      const newToken = jwt.sign(decoded, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '1h' });
-      res.set('x-new-token', newToken);
-    }
-
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -59,7 +38,6 @@ const auth = (req, res, next) => {
         expired: true 
       });
     }
-    
     return res.status(401).json({ 
       success: false, 
       message: 'Invalid token' 

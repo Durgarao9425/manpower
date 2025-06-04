@@ -30,9 +30,11 @@ import {
   Visibility,
   Bloodtype,
   Business,
-  Numbers
+  Numbers,
+  ArrowBack
 } from '@mui/icons-material';
 import axios from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
 
 // TypeScript interfaces
 interface RiderDocument {
@@ -73,36 +75,60 @@ interface Rider {
   email?: string;
   phone?: string;
   address?: string;
+  full_name?: string;
+  phone_number?: string;
 }
 
-
-
-import { useParams } from 'react-router-dom';
-
-interface RiderViewProps {
-  rider?: Rider;
-  onClose?: () => void;
-}
-
-const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
+const RiderView: React.FC = () => {
   const { id } = useParams();
-  const [rider, setRider] = useState<Rider | null>(propRider || null);
-  const [loading, setLoading] = useState(!propRider && !!id);
+  const navigate = useNavigate();
+  const [rider, setRider] = useState<Rider | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (propRider) return; // If rider is passed as prop, don't fetch
-    if (!id) return;
-    setLoading(true);
-    axios.get(`/api/riders/${id}`)
-      .then(res => setRider(res.data))
-      .catch(err => setError('Failed to load rider'))
-      .finally(() => setLoading(false));
-  }, [id, propRider]);
+    const fetchRider = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`/api/riders/${id}`);
+        console.log('Rider data received:', response.data);
+        setRider(response.data);
+      } catch (err) {
+        console.error('Error fetching rider:', err);
+        setError('Failed to load rider data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (loading) return <Box p={4}><CircularProgress /></Box>;
-  if (error) return <Alert severity="error">{error}</Alert>;
-  if (!rider) return <Alert severity="info">Rider not found</Alert>;
+    if (id) {
+      fetchRider();
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  if (!rider) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info">Rider not found</Alert>
+      </Box>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     return status === 'Active' ? 'success' : 'error';
@@ -127,6 +153,7 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'long',
@@ -135,7 +162,7 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
   };
 
   const maskAccountNumber = (accountNumber: string) => {
-    if (!accountNumber) return '';
+    if (!accountNumber) return 'N/A';
     return accountNumber.slice(0, 4) + '****' + accountNumber.slice(-4);
   };
 
@@ -151,15 +178,15 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto', position: 'relative' }}>
-      {onClose && (
-        <IconButton
-          onClick={onClose}
-          sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}
-          aria-label="Close"
-        >
-          <span style={{ fontSize: 28, fontWeight: 'bold' }}>&times;</span>
-        </IconButton>
-      )}
+      {/* Back Button */}
+      <Button
+        startIcon={<ArrowBack />}
+        onClick={() => navigate('/riders')}
+        sx={{ mb: 3 }}
+      >
+        Back to Riders
+      </Button>
+
       {/* Header Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -168,12 +195,12 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
               <Avatar
                 sx={{ width: 80, height: 80, bgcolor: 'primary.main', fontSize: '2rem' }}
               >
-                {rider.name?.charAt(0) || 'R'}
+                {(rider.full_name || rider.account_holder_name || 'R').charAt(0)}
               </Avatar>
             </Grid>
             <Grid item xs>
               <Typography variant="h4" gutterBottom>
-                {rider.name || 'Unknown Rider'}
+                {rider.full_name || rider.account_holder_name || 'Unknown Rider'}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                 <Chip
@@ -218,7 +245,7 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Phone</Typography>
-                  <Typography variant="body1">{rider.phone || 'N/A'}</Typography>
+                  <Typography variant="body1">{rider.phone_number || rider.emergency_contact || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Date of Birth</Typography>
@@ -228,12 +255,12 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
                   <Typography variant="subtitle2" color="text.secondary">Blood Group</Typography>
                   <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
                     <Bloodtype sx={{ mr: 0.5, fontSize: '1rem' }} />
-                    {rider.blood_group}
+                    {rider.blood_group || 'N/A'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Emergency Contact</Typography>
-                  <Typography variant="body1">{rider.emergency_contact}</Typography>
+                  <Typography variant="body1">{rider.emergency_contact || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Joining Date</Typography>
@@ -261,11 +288,11 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
               <Grid container spacing={2}>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">ID Proof Type</Typography>
-                  <Typography variant="body1">{rider.id_proof}</Typography>
+                  <Typography variant="body1">{rider.id_proof || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">ID Card Number</Typography>
-                  <Typography variant="body1">{rider.id_card_number}</Typography>
+                  <Typography variant="body1">{rider.id_card_number || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Issue Date</Typography>
@@ -302,7 +329,7 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
                 <Grid item xs={6}>
                   <Typography variant="subtitle2" color="text.secondary">Vehicle Number</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                    {rider.vehicle_number}
+                    {rider.vehicle_number || 'N/A'}
                   </Typography>
                 </Grid>
               </Grid>
@@ -323,11 +350,11 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" color="text.secondary">Bank Name</Typography>
-                  <Typography variant="body1">{rider.bank_name}</Typography>
+                  <Typography variant="body1">{rider.bank_name || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" color="text.secondary">Account Holder Name</Typography>
-                  <Typography variant="body1">{rider.account_holder_name}</Typography>
+                  <Typography variant="body1">{rider.account_holder_name || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={8}>
                   <Typography variant="subtitle2" color="text.secondary">Account Number</Typography>
@@ -335,11 +362,11 @@ const RiderView: React.FC<RiderViewProps> = ({ rider: propRider, onClose }) => {
                 </Grid>
                 <Grid item xs={4}>
                   <Typography variant="subtitle2" color="text.secondary">IFSC Code</Typography>
-                  <Typography variant="body1">{rider.ifsc_code}</Typography>
+                  <Typography variant="body1">{rider.ifsc_code || 'N/A'}</Typography>
                 </Grid>
                 <Grid item xs={12}>
                   <Typography variant="subtitle2" color="text.secondary">UPI ID</Typography>
-                  <Typography variant="body1">{rider.upi_id}</Typography>
+                  <Typography variant="body1">{rider.upi_id || 'N/A'}</Typography>
                 </Grid>
               </Grid>
             </CardContent>

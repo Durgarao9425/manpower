@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import authService from "../../../../services/authService";
 import type { User } from "../../../../services/authService";
-import LoadingSpinner from '../../../Common/Loaders';
+import Loader from '../../../Common/Loaders';
 
 // Auth context interface
 interface AuthContextType {
@@ -53,19 +53,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check authentication status on mount
   useEffect(() => {
     const initAuth = async () => {
-      setIsLoading(true);
-      const isAuth = await checkAuth();
-      if (isAuth) {
-        setSessionExpired(false); // Reset session expired flag on login
-        const userData = authService.getCurrentUser();
-        if (userData) {
-          setCurrentUser(userData);
-          setIsAuthenticated(true);
+      try {
+        setIsLoading(true);
+        const token = await authService.getAccessToken();
+        if (token) {
+          const userData = authService.getCurrentUser();
+          if (userData) {
+            setCurrentUser(userData);
+            setUserRole(userData.user_type);
+            setIsAuthenticated(true);
+            setSessionExpired(false);
+          }
         }
-      } else {
-        navigate('/login', { replace: true });
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setCurrentUser(null);
+        setUserRole(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     initAuth();
   }, []);
@@ -98,32 +105,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [isAuthenticated]);
 
-  // Check if user is authenticated
-  const checkAuth = useCallback(async (): Promise<boolean> => {
-    try {
-      const token = await authService.getAccessToken();
-      if (token) {
-        const user = authService.getCurrentUser();
-        if (user) {
-          setCurrentUser(user);
-          setUserRole(user.user_type);
-          setIsAuthenticated(true);
-          return true;
-        }
-      }
-      setCurrentUser(null);
-      setUserRole(null);
-      setIsAuthenticated(false);
-      return false;
-    } catch (error) {
-      console.error('Auth check error:', error);
-      setCurrentUser(null);
-      setUserRole(null);
-      setIsAuthenticated(false);
-      return false;
-    }
-  }, []);
-
   // Login function
   const login = useCallback(async (username: string, password: string): Promise<void> => {
     try {
@@ -133,21 +114,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = await authService.login(username, password);
       console.log('Login successful, user:', user);
       
+      // Set all auth state at once to prevent flickering
       setCurrentUser(user);
       setUserRole(user.user_type);
       setIsAuthenticated(true);
+      setSessionExpired(false);
       
       // Navigate based on user role
-      if (user.user_type === 'admin') {
-        console.log('Navigating to admin dashboard');
-        navigate('/dashboard');
-      } else if (user.user_type === 'rider') {
-        console.log('Navigating to rider dashboard');
-        navigate('/rider-dashboard');
-      } else {
-        console.log('Navigating to default dashboard');
-        navigate('/dashboard');
-      }
+      const targetPath = user.user_type === 'rider' ? '/rider-dashboard' : '/dashboard';
+      navigate(targetPath, { replace: true });
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -155,6 +130,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, [navigate]);
+
+  // Check if user is authenticated
+  const checkAuth = useCallback(async (): Promise<boolean> => {
+    try {
+      const token = await authService.getAccessToken();
+      if (!token) {
+        setCurrentUser(null);
+        setUserRole(null);
+        setIsAuthenticated(false);
+        return false;
+      }
+
+      const user = authService.getCurrentUser();
+      if (!user) {
+        setCurrentUser(null);
+        setUserRole(null);
+        setIsAuthenticated(false);
+        return false;
+      }
+
+      setCurrentUser(user);
+      setUserRole(user.user_type);
+      setIsAuthenticated(true);
+      return true;
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setCurrentUser(null);
+      setUserRole(null);
+      setIsAuthenticated(false);
+      return false;
+    }
+  }, []);
 
   // Logout function
   const logout = useCallback(async (): Promise<void> => {
@@ -208,7 +215,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {isLoading ? <LoadingSpinner /> : children}
+      {isLoading ? <Loader message="Loading..." size="large" fullScreen /> : children}
     </AuthContext.Provider>
   );
 };
