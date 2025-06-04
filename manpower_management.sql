@@ -2342,6 +2342,32 @@ ALTER TABLE `system_logs`
   ADD CONSTRAINT `system_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 COMMIT;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `field_mappings`
+--
+
+CREATE TABLE `field_mappings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `company_id` int(11) NOT NULL,
+  `company_field_name` varchar(255) NOT NULL COMMENT 'Excel column name',
+  `supplier_field_name` varchar(255) NOT NULL COMMENT 'System field name',
+  `show_to_rider` tinyint(1) NOT NULL DEFAULT 0,
+  `show_in_invoice` tinyint(1) NOT NULL DEFAULT 0,
+  `show_to_company` tinyint(1) NOT NULL DEFAULT 0,
+  `count_for_commission` tinyint(1) NOT NULL DEFAULT 0,
+  `editable_by_rider` tinyint(1) NOT NULL DEFAULT 0,
+  `editable_by_company` tinyint(1) NOT NULL DEFAULT 0,
+  `is_required` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `company_id` (`company_id`),
+  KEY `company_field_name` (`company_field_name`),
+  KEY `supplier_field_name` (`supplier_field_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

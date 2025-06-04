@@ -126,6 +126,12 @@ db.connect((err) => {
     return;
   }
   console.log('Connected to database.');
+  
+  // Initialize database tables
+  const { initializeDatabase } = require('./src/config/init-db');
+  initializeDatabase().catch(err => {
+    console.error('Failed to initialize database:', err);
+  });
 });
 
 // Import routes
@@ -141,6 +147,7 @@ const ordersRoutes = require('./src/routes/orders');
 const customFieldsRoutes = require('./src/routes/customFields');
 const companyPaymentsRouter = require('./src/routes/company_payments');
 const sliderImagesRoutes = require('./src/routes/sliderImages');
+const fieldMappingsRouter = require('./src/routes/field_mappings');
 
 // Public routes
 app.use('/api/login', loginRoute);
@@ -158,6 +165,7 @@ app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api', companyPaymentsRouter);
 app.use('/api/company_payments', companyPaymentsRouter);
 app.use('/api/slider-images', sliderImagesRoutes);
+app.use('/api/field_mappings', fieldMappingsRouter);
 
 // Image proxy endpoint to help with CORS issues
 app.get('/api/image-proxy', (req, res) => {
