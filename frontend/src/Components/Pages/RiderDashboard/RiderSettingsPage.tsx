@@ -1,12 +1,54 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
+import { Snackbar, Alert } from "@mui/material";
+import { ThemeContext } from "../../../context/ThemeContext";
 
 interface SettingsProps {
-    themeColor: string;
-    onThemeChange: (color: string) => void;
+    onThemeChange?: (color: string) => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
-    const [notifications, setNotifications] = useState({
+interface ReferralData {
+    code: string;
+    totalReferrals: number;
+    pendingReferrals: number;
+    completedReferrals: number;
+    earnings: number;
+}
+
+interface NotificationSettings {
+    orderAlerts: boolean;
+    paymentUpdates: boolean;
+    promotionalOffers: boolean;
+    systemUpdates: boolean;
+    deliveryReminders: boolean;
+    emergencyAlerts: boolean;
+}
+
+interface Preferences {
+    language: string;
+    currency: string;
+    distanceUnit: string;
+    workingHours: string;
+    autoAcceptOrders: boolean;
+    showEarningsPublic: boolean;
+}
+
+interface SettingItem {
+    icon: string;
+    title: string;
+    subtitle: string;
+    action: () => void;
+    showCurrentColor?: boolean;
+    showCopyButton?: boolean;
+}
+
+interface SettingSection {
+    title: string;
+    items: SettingItem[];
+}
+
+const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
+    const { isDarkMode, toggleDarkMode, themeColor, setThemeColor } = useContext(ThemeContext);
+    const [notifications, setNotifications] = useState<NotificationSettings>({
         orderAlerts: true,
         paymentUpdates: true,
         promotionalOffers: false,
@@ -15,7 +57,7 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
         emergencyAlerts: true
     });
 
-    const [preferences, setPreferences] = useState({
+    const [preferences, setPreferences] = useState<Preferences>({
         language: 'english',
         currency: 'INR',
         distanceUnit: 'km',
@@ -24,12 +66,29 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
         showEarningsPublic: false
     });
 
+    const [referralData] = useState<ReferralData>({
+        code: 'RDR001234',
+        totalReferrals: 5,
+        pendingReferrals: 2,
+        completedReferrals: 3,
+        earnings: 1500
+    });
+
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
+    });
+
+    const [referralInput, setReferralInput] = useState('');
+    const [showReferralInput, setShowReferralInput] = useState(false);
+
+    const [toast, setToast] = useState({
+        open: false,
+        message: '',
+        severity: 'success' as 'success' | 'error' | 'warning' | 'info'
     });
 
     const predefinedColors = [
@@ -43,43 +102,123 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
         { name: 'Pink', color: '#e91e63' }
     ];
 
-    const handleNotificationToggle = (key) => {
+    const handleNotificationToggle = (key: keyof NotificationSettings) => {
         setNotifications(prev => ({
             ...prev,
             [key]: !prev[key]
         }));
     };
 
-    const handlePreferenceChange = (key, value) => {
+    const handlePreferenceChange = (key: keyof Preferences, value: string | boolean) => {
         setPreferences(prev => ({
             ...prev,
             [key]: value
         }));
     };
 
+    const showToast = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setToast({
+            open: true,
+            message,
+            severity
+        });
+    };
+
+    const handleCloseToast = () => {
+        setToast(prev => ({ ...prev, open: false }));
+    };
+
     const handlePasswordChange = () => {
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            alert('New passwords do not match!');
+            showToast('New passwords do not match!', 'error');
             return;
         }
         if (passwordData.newPassword.length < 6) {
-            alert('Password must be at least 6 characters long!');
+            showToast('Password must be at least 6 characters long!', 'error');
             return;
         }
         console.log('Password change requested');
         setShowChangePasswordModal(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        alert('Password changed successfully!');
+        showToast('Password changed successfully!', 'success');
     };
 
-    const handleColorChange = (color) => {
+    const handleColorChange = (color: string) => {
+        setThemeColor(color);
         if (onThemeChange) {
             onThemeChange(color);
         }
         setShowColorPicker(false);
+        showToast('Theme color updated successfully!', 'success');
     };
 
-    const settingSections = [
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Referral code copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            showToast('Failed to copy to clipboard', 'error');
+        });
+    };
+
+    const shareReferral = () => {
+        const shareText = `Join me as a rider! Use my referral code ${referralData.code} to sign up and get ₹500 bonus on your first delivery!`;
+        if (navigator.share) {
+            navigator.share({
+                title: 'Join as a Rider',
+                text: shareText,
+                url: 'https://your-app-url.com/referral'
+            }).catch(err => {
+                console.error('Error sharing:', err);
+            });
+        } else {
+            copyToClipboard(shareText);
+        }
+    };
+
+    const handleReferralInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        // Only allow digits
+        if (!/^\d*$/.test(value)) {
+            return;
+        }
+        // If first digit is entered, validate it's 6-9
+        if (value.length === 1 && !/[6-9]/.test(value)) {
+            showToast('Referral number must start with 6, 7, 8, or 9', 'error');
+            return;
+        }
+        // Limit to 10 digits
+        if (value.length <= 10) {
+            setReferralInput(value);
+        }
+    };
+
+    const handleReferralSubmit = () => {
+        if (!referralInput.trim()) {
+            showToast('Please enter a referral number', 'error');
+            return;
+        }
+        if (referralInput.length !== 10) {
+            showToast('Referral number must be 10 digits', 'error');
+            return;
+        }
+        if (!/^[6-9]\d{9}$/.test(referralInput)) {
+            showToast('Invalid referral number format', 'error');
+            return;
+        }
+        console.log('Referral number submitted:', referralInput);
+        // Here you would typically make an API call to validate and process the referral
+        showToast('Referral number submitted successfully!', 'success');
+        setReferralInput('');
+        setShowReferralInput(false);
+    };
+
+    const handleDarkModeToggle = () => {
+        toggleDarkMode();
+        showToast(`Dark mode ${isDarkMode ? 'disabled' : 'enabled'}`, 'success');
+    };
+
+    const settingSections: SettingSection[] = [
         {
             title: 'Theme & Appearance',
             items: [
@@ -93,8 +232,56 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                 {
                     icon: '🌙',
                     title: 'Dark Mode',
-                    subtitle: 'Coming soon',
-                    action: () => console.log('Dark mode toggle')
+                    subtitle: isDarkMode ? 'Enabled' : 'Disabled',
+                    action: handleDarkModeToggle
+                }
+            ]
+        },
+        {
+            title: 'Referral Program',
+            items: [
+                {
+                    icon: '🎁',
+                    title: 'Your Referral Code',
+                    subtitle: referralData.code,
+                    action: () => copyToClipboard(referralData.code),
+                    showCopyButton: true
+                },
+                {
+                    icon: '🔑',
+                    title: 'Enter Referral Number',
+                    subtitle: 'Have a referral Number? Enter it here',
+                    action: () => setShowReferralInput(true)
+                },
+                {
+                    icon: '👥',
+                    title: 'Total Referrals',
+                    subtitle: `${referralData.totalReferrals} riders joined`,
+                    action: () => console.log('View referrals')
+                },
+                {
+                    icon: '⏳',
+                    title: 'Pending Referrals',
+                    subtitle: `${referralData.pendingReferrals} riders pending`,
+                    action: () => console.log('View pending referrals')
+                },
+                {
+                    icon: '✅',
+                    title: 'Completed Referrals',
+                    subtitle: `${referralData.completedReferrals} riders completed`,
+                    action: () => console.log('View completed referrals')
+                },
+                {
+                    icon: '💰',
+                    title: 'Referral Earnings',
+                    subtitle: `₹${referralData.earnings} earned`,
+                    action: () => console.log('View earnings')
+                },
+                {
+                    icon: '📱',
+                    title: 'Share Referral',
+                    subtitle: 'Invite friends to join',
+                    action: shareReferral
                 }
             ]
         },
@@ -192,35 +379,6 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
             ]
         },
         {
-            title: 'Company & Delivery Management',
-            items: [
-                {
-                    icon: '🏢',
-                    title: 'Company Portal',
-                    subtitle: 'Access management dashboard',
-                    action: () => console.log('Company portal')
-                },
-                {
-                    icon: '📊',
-                    title: 'Performance Analytics',
-                    subtitle: 'View delivery statistics',
-                    action: () => console.log('Performance analytics')
-                },
-                {
-                    icon: '🎯',
-                    title: 'Target & Goals',
-                    subtitle: 'Monthly delivery targets',
-                    action: () => console.log('Targets')
-                },
-                {
-                    icon: '💼',
-                    title: 'Supplier Network',
-                    subtitle: 'Connected suppliers: 15',
-                    action: () => console.log('Supplier network')
-                }
-            ]
-        },
-        {
             title: 'Support & Help',
             items: [
                 {
@@ -264,12 +422,21 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
     ];
 
     return (
-        <div style={{ padding: '16px', paddingBottom: '32px' }}>
-            <h3 style={{ marginBottom: '24px', fontWeight: 'bold', color: '#333' }}>
+        <div style={{ 
+            padding: '16px', 
+            paddingBottom: '32px',
+            backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5',
+            minHeight: '100vh'
+        }}>
+            <h3 style={{ 
+                marginBottom: '24px', 
+                fontWeight: 'bold', 
+                color: isDarkMode ? '#fff' : '#333' 
+            }}>
                 Settings
             </h3>
 
-            {/* Notification Settings */}
+            {/* Notification Settings - Commented out
             <div style={{
                 backgroundColor: 'white',
                 borderRadius: '12px',
@@ -295,7 +462,7 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                             </div>
                         </div>
                         <div
-                            onClick={() => handleNotificationToggle(key)}
+                            onClick={() => handleNotificationToggle(key as keyof NotificationSettings)}
                             style={{
                                 width: '32px',
                                 height: '16px',
@@ -322,11 +489,12 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                     </div>
                 ))}
             </div>
+            */}
 
             {/* Settings Sections */}
             {settingSections.map((section, sectionIndex) => (
                 <div key={sectionIndex} style={{
-                    backgroundColor: 'white',
+                    backgroundColor: isDarkMode ? '#2d2d2d' : 'white',
                     borderRadius: '12px',
                     overflow: 'hidden',
                     marginBottom: '16px',
@@ -334,10 +502,15 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                 }}>
                     <div style={{
                         padding: '16px 20px 12px 20px',
-                        borderBottom: '1px solid #f0f0f0',
-                        backgroundColor: '#f8f9fa'
+                        borderBottom: `1px solid ${isDarkMode ? '#404040' : '#f0f0f0'}`,
+                        backgroundColor: isDarkMode ? '#363636' : '#f8f9fa'
                     }}>
-                        <h4 style={{ margin: 0, color: '#333', fontSize: '14px', fontWeight: '600' }}>
+                        <h4 style={{ 
+                            margin: 0, 
+                            color: isDarkMode ? '#fff' : '#333', 
+                            fontSize: '14px', 
+                            fontWeight: '600' 
+                        }}>
                             {section.title}
                         </h4>
                     </div>
@@ -352,18 +525,28 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                                 alignItems: 'center',
                                 gap: '16px',
                                 cursor: 'pointer',
-                                borderBottom: itemIndex < section.items.length - 1 ? '1px solid #f0f0f0' : 'none',
-                                transition: 'background-color 0.2s ease'
+                                borderBottom: itemIndex < section.items.length - 1 ? 
+                                    `1px solid ${isDarkMode ? '#404040' : '#f0f0f0'}` : 'none',
+                                transition: 'background-color 0.2s ease',
+                                backgroundColor: isDarkMode ? '#2d2d2d' : 'white'
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? '#363636' : '#f5f5f5'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? '#2d2d2d' : 'white'}
                         >
                             <span style={{ fontSize: '20px' }}>{item.icon}</span>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: '500', color: '#333', fontSize: '14px' }}>
+                                <div style={{ 
+                                    fontWeight: '500', 
+                                    color: isDarkMode ? '#fff' : '#333', 
+                                    fontSize: '14px' 
+                                }}>
                                     {item.title}
                                 </div>
-                                <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                                <div style={{ 
+                                    fontSize: '12px', 
+                                    color: isDarkMode ? '#aaa' : '#666', 
+                                    marginTop: '2px' 
+                                }}>
                                     {item.subtitle}
                                 </div>
                             </div>
@@ -378,7 +561,27 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                                     boxShadow: '0 0 0 1px #ddd'
                                 }} />
                             )}
-                            <span style={{ color: '#ccc', fontSize: '16px' }}>›</span>
+                            {item.showCopyButton && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        copyToClipboard(item.subtitle);
+                                    }}
+                                    style={{
+                                        padding: '6px 12px',
+                                        backgroundColor: isDarkMode ? '#404040' : '#f0f0f0',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        color: isDarkMode ? '#fff' : '#666',
+                                        cursor: 'pointer',
+                                        marginRight: '8px'
+                                    }}
+                                >
+                                    Copy
+                                </button>
+                            )}
+                            <span style={{ color: isDarkMode ? '#666' : '#ccc', fontSize: '16px' }}>›</span>
                         </div>
                     ))}
                 </div>
@@ -386,19 +589,19 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
 
             {/* App Info */}
             <div style={{
-                backgroundColor: 'white',
+                backgroundColor: isDarkMode ? '#2d2d2d' : 'white',
                 borderRadius: '12px',
                 padding: '20px',
                 textAlign: 'center',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
-                <div style={{ color: '#666', fontSize: '12px', marginBottom: '8px' }}>
+                <div style={{ color: isDarkMode ? '#aaa' : '#666', fontSize: '12px', marginBottom: '8px' }}>
                     Manpower Delivery Management System
                 </div>
-                <div style={{ color: '#999', fontSize: '11px', marginBottom: '4px' }}>
+                <div style={{ color: isDarkMode ? '#888' : '#999', fontSize: '11px', marginBottom: '4px' }}>
                     Rider Dashboard App • Version 2.0.0
                 </div>
-                <div style={{ color: '#999', fontSize: '11px' }}>
+                <div style={{ color: isDarkMode ? '#888' : '#999', fontSize: '11px' }}>
                     Build 2024.06.02 • Supplier Network Connected
                 </div>
             </div>
@@ -420,14 +623,18 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                         padding: '20px'
                     }}>
                         <div style={{
-                            backgroundColor: 'white',
+                            backgroundColor: isDarkMode ? '#2d2d2d' : 'white',
                             borderRadius: '12px',
                             padding: '24px',
                             width: '100%',
                             maxWidth: '320px',
                             boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
                         }}>
-                            <h4 style={{ margin: '0 0 20px 0', color: '#333', textAlign: 'center' }}>
+                            <h4 style={{ 
+                                margin: '0 0 20px 0', 
+                                color: isDarkMode ? '#fff' : '#333', 
+                                textAlign: 'center' 
+                            }}>
                                 Choose Theme Color
                             </h4>
 
@@ -469,8 +676,8 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                                     onClick={() => setShowColorPicker(false)}
                                     style={{
                                         padding: '10px 24px',
-                                        backgroundColor: '#f5f5f5',
-                                        color: '#666',
+                                        backgroundColor: isDarkMode ? '#404040' : '#f5f5f5',
+                                        color: isDarkMode ? '#fff' : '#666',
                                         border: 'none',
                                         borderRadius: '8px',
                                         fontSize: '14px',
@@ -617,6 +824,125 @@ const Settings: React.FC<SettingsProps> = ({ themeColor, onThemeChange }) => {
                     </div>
                 </>
             )}
+
+            {/* Referral Input Modal */}
+            {showReferralInput && (
+                <>
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        zIndex: 1001,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            width: '100%',
+                            maxWidth: '400px',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                        }}>
+                            <h4 style={{ margin: '0 0 20px 0', color: '#333' }}>
+                                Enter Referral Number
+                            </h4>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <input
+                                    type="tel"
+                                    value={referralInput}
+                                    onChange={handleReferralInputChange}
+                                    placeholder="Enter 10-digit referral number"
+                                    maxLength={10}
+                                    inputMode="numeric"
+                                    pattern="[6-9][0-9]{9}"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        outline: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                                <div style={{ 
+                                    fontSize: '12px', 
+                                    color: '#666', 
+                                    marginTop: '8px',
+                                    textAlign: 'left'
+                                }}>
+                                    Must be a 10-digit number starting with 6, 7, 8, or 9
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    onClick={() => {
+                                        setShowReferralInput(false);
+                                        setReferralInput('');
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        backgroundColor: '#f5f5f5',
+                                        color: '#666',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleReferralSubmit}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        backgroundColor: themeColor,
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Submit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Toast Message */}
+            <Snackbar
+                open={toast.open}
+                autoHideDuration={3000}
+                onClose={handleCloseToast}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert 
+                    onClose={handleCloseToast} 
+                    severity={toast.severity}
+                    sx={{ 
+                        width: '100%',
+                        backgroundColor: isDarkMode ? '#2d2d2d' : 'white',
+                        color: isDarkMode ? '#fff' : 'inherit'
+                    }}
+                >
+                    {toast.message}
+                </Alert>
+            </Snackbar>
         </div>
     );
 };
