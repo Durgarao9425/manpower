@@ -23,7 +23,7 @@ import {
   keyframes,
 } from "@mui/material";
 import { useTheme } from "../../../context/ThemeContext";
-import { ArrowForward, LocationOn, CheckCircle, DirectionsBike } from "@mui/icons-material";
+import { ArrowForward, LocationOn, CheckCircle, DirectionsBike, Refresh } from "@mui/icons-material";
 import useUserData from "../../Common/loginInformation"; // Assuming this path is correct
 import axios from "axios";
 import apiService from "../../../services/apiService"; // Assuming this is configured for POST or not used for POSTs
@@ -121,8 +121,8 @@ const RiderLoader: React.FC = () => {
       }}
     >
       <Fade in={true} timeout={1000}>
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             textAlign: 'center',
             position: 'relative',
             width: '120px',
@@ -143,7 +143,7 @@ const RiderLoader: React.FC = () => {
               animation: `${spin} 1s linear infinite`,
             }}
           />
-          
+
           {/* Rider icon with bounce animation */}
           <Box
             sx={{
@@ -154,30 +154,30 @@ const RiderLoader: React.FC = () => {
               animation: `${bounce} 1s ease-in-out infinite`,
             }}
           >
-            <DirectionsBike 
-              sx={{ 
+            <DirectionsBike
+              sx={{
                 fontSize: 40,
                 color: 'primary.main',
-              }} 
+              }}
             />
           </Box>
         </Box>
       </Fade>
-      
-      <Typography 
-        variant="h6" 
-        sx={{ 
-          mt: 4, 
+
+      <Typography
+        variant="h6"
+        sx={{
+          mt: 4,
           color: 'text.primary',
           fontWeight: 500,
         }}
       >
         Loading Rider Data...
       </Typography>
-      <Typography 
-        variant="body2" 
-        sx={{ 
-          mt: 1, 
+      <Typography
+        variant="body2"
+        sx={{
+          mt: 1,
           color: 'text.secondary',
           maxWidth: '300px',
           textAlign: 'center',
@@ -189,10 +189,73 @@ const RiderLoader: React.FC = () => {
   );
 };
 
+// Add these utility functions after the interfaces
+const STORAGE_KEYS = {
+  RIDER_ASSIGNMENTS: 'rider_assignments',
+  TODAY_ATTENDANCE: 'today_attendance',
+  LAST_ATTENDANCE_DATE: 'last_attendance_date',
+  RIDER_DATA: 'rider_data'
+};
+
+const getStoredRiderData = () => {
+  const stored = localStorage.getItem(STORAGE_KEYS.RIDER_DATA);
+  return stored ? JSON.parse(stored) : null;
+};
+
+const setStoredRiderData = (data: any) => {
+  localStorage.setItem(STORAGE_KEYS.RIDER_DATA, JSON.stringify(data));
+};
+
+const getStoredRiderAssignments = () => {
+  const stored = localStorage.getItem(STORAGE_KEYS.RIDER_ASSIGNMENTS);
+  return stored ? JSON.parse(stored) : null;
+};
+
+const setStoredRiderAssignments = (assignments: any[]) => {
+  localStorage.setItem(STORAGE_KEYS.RIDER_ASSIGNMENTS, JSON.stringify(assignments));
+};
+
+const getStoredTodayAttendance = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.TODAY_ATTENDANCE);
+    if (!stored) return null;
+
+    const parsedData = JSON.parse(stored);
+    // Ensure we're returning an array
+    return Array.isArray(parsedData) ? parsedData : [parsedData];
+  } catch (error) {
+    console.error("Error parsing stored attendance:", error);
+    return null;
+  }
+};
+
+const setStoredTodayAttendance = (attendance: any) => {
+  try {
+    // Ensure we're storing an array
+    const dataToStore = Array.isArray(attendance) ? attendance : [attendance];
+    localStorage.setItem(STORAGE_KEYS.TODAY_ATTENDANCE, JSON.stringify(dataToStore));
+    console.log("Attendance data stored in localStorage");
+  } catch (error) {
+    console.error("Error storing attendance data:", error);
+  }
+};
+
+const getLastAttendanceDate = () => {
+  return localStorage.getItem(STORAGE_KEYS.LAST_ATTENDANCE_DATE);
+};
+
+const setLastAttendanceDate = (date: string) => {
+  localStorage.setItem(STORAGE_KEYS.LAST_ATTENDANCE_DATE, date);
+};
+
 const Attendance: React.FC = () => {
-  // Add a ref to track mounted state
+  // Add refs at the top level of the component
   const isMounted = useRef(true);
-  
+  const isLoadingRef = useRef(false); // Add this ref at the top level
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef(0);
+  const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // States
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -206,7 +269,7 @@ const Attendance: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastSeverity, setToastSeverity] = useState<
-    "success" | "error" | "warning"
+    "success" | "error" | "warning" | "info"
   >("success");
   const [loading, setLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
@@ -244,11 +307,7 @@ const Attendance: React.FC = () => {
   const muiTheme = useMuiTheme();
   const { themeColor } = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
-
-  const buttonRef = useRef<HTMLDivElement>(null);
-  const startXRef = useRef(0);
-  const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const maxDragDistance = isMobile ? 240 : 280;
+  const maxDragDistance = isMobile ? 200 : 280; // Reduced for mobile
 
   // Add new state for rider data loading
   const [isRiderDataLoading, setIsRiderDataLoading] = useState(true);
@@ -256,7 +315,7 @@ const Attendance: React.FC = () => {
 
   const showToastMessage = (
     message: string,
-    severity: "success" | "error" | "warning" = "success"
+    severity: "success" | "error" | "warning" | "info" = "success"
   ) => {
     setToastMessage(message);
     setToastSeverity(severity);
@@ -294,7 +353,7 @@ const Attendance: React.FC = () => {
       ALLOWED_LOCATION.latitude,
       ALLOWED_LOCATION.longitude
     );
-    
+
     console.log('Location Validation:', {
       userLocation: {
         latitude: location.latitude,
@@ -319,13 +378,19 @@ const Attendance: React.FC = () => {
     };
   }, []);
 
-  // Modify fetchRiderDataAndActiveAssignment to return data instead of setting state
+  // Modify fetchRiderDataAndActiveAssignment to use localStorage
   const fetchRiderDataAndActiveAssignment = async (): Promise<RiderData | null> => {
     if (!userData?.user?.id) {
       return null;
     }
 
     try {
+      // Check if we have stored rider data
+      const storedRiderData = getStoredRiderData();
+      if (storedRiderData) {
+        return storedRiderData;
+      }
+
       const token = await authService.getAccessToken();
       if (!token) {
         showToastMessage("Authorization token is missing", "error");
@@ -343,7 +408,7 @@ const Attendance: React.FC = () => {
       );
 
       if (!response.ok) throw new Error("Failed to fetch rider data");
-      
+
       const riderResponse = await response.json();
       if (Array.isArray(riderResponse) && riderResponse.length > 0) {
         const fetchedRiderId = riderResponse[0].id;
@@ -360,8 +425,10 @@ const Attendance: React.FC = () => {
         );
 
         if (!assignmentResponse.ok) throw new Error("Failed to fetch assignments");
-        
+
         const assignments = await assignmentResponse.json();
+        setStoredRiderAssignments(assignments);
+
         let companyId = 0;
         let storeId = 0;
 
@@ -371,12 +438,16 @@ const Attendance: React.FC = () => {
           storeId = activeAssignment.store_id;
         }
 
-        return {
+        const riderData = {
           id: fetchedRiderId,
           name: riderName,
           company_id: companyId,
           store_id: storeId,
         };
+
+        // Store rider data
+        setStoredRiderData(riderData);
+        return riderData;
       }
       return null;
     } catch (error) {
@@ -386,42 +457,155 @@ const Attendance: React.FC = () => {
     }
   };
 
-  // Modify fetchAllData to return data instead of setting state
+  // Improved fetchAllData with better localStorage management and state handling
   const fetchAllData = async (riderId: number) => {
     try {
+      console.log("Fetching all data for rider:", riderId);
       const token = await authService.getAccessToken();
       if (!token) {
         showToastMessage("Authorization token is missing", "error");
         return null;
       }
 
-      const [attendanceResponse, assignmentsResponse] = await Promise.all([
-        fetch(`${API_BASE}/attendance?rider_id=${riderId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }),
-        fetch(`${API_BASE}/rider-assignments?rider_id=${riderId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        })
-      ]);
+      // Check if we have stored attendance data for today
+      const storedAttendance = getStoredTodayAttendance();
+      const lastAttendanceDate = getLastAttendanceDate();
+      const today = new Date().toISOString().split('T')[0];
 
-      if (!attendanceResponse.ok || !assignmentsResponse.ok) {
-        throw new Error("Failed to fetch data");
+      // Check if we have a valid record for today in localStorage
+      if (storedAttendance && lastAttendanceDate === today) {
+        // Find today's record
+        const todayRecord = storedAttendance.find(
+          (record: AttendanceRecord) =>
+            record.attendance_date.split('T')[0] === today &&
+            record.status === "present"
+        );
+
+        // If we have a completed record for today, set completed state
+        if (todayRecord && todayRecord.check_in_time && todayRecord.check_out_time) {
+          console.log("Found completed record for today in localStorage");
+          setAttendanceState("completed");
+          setIsDayCompleted(true);
+          setTodayRecord(todayRecord);
+          setPunchInTime(new Date(todayRecord.check_in_time));
+          setPunchOutTime(new Date(todayRecord.check_out_time));
+          setCompletedDayData({
+            punchIn: new Date(todayRecord.check_in_time).toLocaleTimeString(),
+            punchOut: new Date(todayRecord.check_out_time).toLocaleTimeString(),
+            workingHours: formatDuration(
+              Math.floor(
+                (new Date(todayRecord.check_out_time).getTime() -
+                  new Date(todayRecord.check_in_time).getTime()) /
+                1000
+              )
+            )
+          });
+        }
+        // If we have a punch-in record for today, set punch-out state
+        else if (todayRecord && todayRecord.check_in_time) {
+          console.log("Found punch-in record for today in localStorage");
+          setAttendanceState("punch-out");
+          setTodayRecord(todayRecord);
+          setPunchInTime(new Date(todayRecord.check_in_time));
+        }
       }
 
-      const [attendanceData, assignmentsData] = await Promise.all([
-        attendanceResponse.json(),
-        assignmentsResponse.json()
-      ]);
+      // Only fetch if we don't have today's data or it's a new day
+      if (!storedAttendance || lastAttendanceDate !== today) {
+        console.log("Fetching fresh data from API");
 
-      return { attendanceData, assignmentsData };
+        try {
+          const [attendanceResponse, assignmentsResponse] = await Promise.all([
+            fetch(`${API_BASE}/attendance?rider_id=${riderId}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }),
+            fetch(`${API_BASE}/rider-assignments?rider_id=${riderId}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            })
+          ]);
+
+          if (!attendanceResponse.ok || !assignmentsResponse.ok) {
+            throw new Error("Failed to fetch data");
+          }
+
+          const [attendanceData, assignmentsData] = await Promise.all([
+            attendanceResponse.json(),
+            assignmentsResponse.json()
+          ]);
+
+          // Store the data
+          setStoredRiderAssignments(assignmentsData);
+          setStoredTodayAttendance(attendanceData);
+          setLastAttendanceDate(today);
+
+          // Find today's record from API response
+          const todayRecord = attendanceData.find(
+            (record: AttendanceRecord) =>
+              record.attendance_date.split('T')[0] === today &&
+              record.status === "present"
+          );
+
+          // Update state based on today's record from API
+          if (todayRecord) {
+            setTodayRecord(todayRecord);
+
+            if (todayRecord.check_in_time && todayRecord.check_out_time) {
+              // Day is completed
+              setAttendanceState("completed");
+              setIsDayCompleted(true);
+              setPunchInTime(new Date(todayRecord.check_in_time));
+              setPunchOutTime(new Date(todayRecord.check_out_time));
+              setCompletedDayData({
+                punchIn: new Date(todayRecord.check_in_time).toLocaleTimeString(),
+                punchOut: new Date(todayRecord.check_out_time).toLocaleTimeString(),
+                workingHours: formatDuration(
+                  Math.floor(
+                    (new Date(todayRecord.check_out_time).getTime() -
+                      new Date(todayRecord.check_in_time).getTime()) /
+                    1000
+                  )
+                )
+              });
+            } else if (todayRecord.check_in_time) {
+              // Only punched in
+              setAttendanceState("punch-out");
+              setPunchInTime(new Date(todayRecord.check_in_time));
+            }
+          }
+
+          console.log("Data fetched and stored successfully");
+          return { attendanceData, assignmentsData };
+        } catch (fetchError) {
+          console.error("Error fetching from API:", fetchError);
+
+          // If we have any stored data, use it as fallback
+          if (storedAttendance) {
+            console.log("Using stored data as fallback");
+            return {
+              attendanceData: storedAttendance,
+              assignmentsData: getStoredRiderAssignments() || []
+            };
+          }
+
+          // Re-throw if we don't have fallback data
+          throw fetchError;
+        }
+      }
+
+      // Return stored data
+      console.log("Using stored data from localStorage");
+      return {
+        attendanceData: storedAttendance,
+        assignmentsData: getStoredRiderAssignments() || []
+      };
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error in fetchAllData:", error);
       showToastMessage("Failed to load data", "error");
       return null;
     }
@@ -448,22 +632,22 @@ const Attendance: React.FC = () => {
 
       if (todayRecord) {
         setTodayRecord(todayRecord);
-        
+
         if (todayRecord.check_in_time && todayRecord.check_out_time) {
           setIsDayCompleted(true);
           setAttendanceState("completed");
           // Add null checks for date strings
           const checkInTime = todayRecord.check_in_time ? new Date(todayRecord.check_in_time) : null;
           const checkOutTime = todayRecord.check_out_time ? new Date(todayRecord.check_out_time) : null;
-          
+
           setPunchInTime(checkInTime);
           setPunchOutTime(checkOutTime);
-          
+
           if (checkInTime && checkOutTime) {
             const workingSeconds = Math.floor(
               (checkOutTime.getTime() - checkInTime.getTime()) / 1000
             );
-            
+
             setCompletedDayData({
               punchIn: checkInTime.toLocaleTimeString(),
               punchOut: checkOutTime.toLocaleTimeString(),
@@ -486,28 +670,153 @@ const Attendance: React.FC = () => {
     requestAnimationFrame(updates);
   };
 
-  // Modify the initial data loading useEffect
+  // Improved initial data loading useEffect with better state management
   useEffect(() => {
-    let isInitialLoad = true;
     const initializeData = async () => {
-      if (!isInitialLoad) return;
+      // If already loading or no user ID, don't proceed
+      if (isLoadingRef.current || !userData?.user?.id) return;
+
+      // Set loading flag to prevent multiple calls
+      isLoadingRef.current = true;
       setIsRiderDataLoading(true);
+
       try {
-        const riderData = await fetchRiderDataAndActiveAssignment();
-        if (riderData) {
-          const allData = await fetchAllData(riderData.id);
-          if (allData) {
-            const completeData = {
-              riderData,
-              ...allData
-            };
-            setInitialData(completeData);
-            processAndSetStates(completeData);
-            // Add a small delay before showing the content
-            setTimeout(() => {
-              setIsDataReady(true);
-              setIsRiderDataLoading(false);
-            }, 500);
+        console.log("Initializing attendance data...");
+
+        // Check if we have today's data in localStorage first
+        const today = new Date().toISOString().split('T')[0];
+        const lastAttendanceDate = getLastAttendanceDate();
+        const storedAttendance = getStoredTodayAttendance();
+        const storedRiderData = getStoredRiderData();
+
+        // If we have valid data for today in localStorage, use it
+        if (storedRiderData && storedAttendance && lastAttendanceDate === today) {
+          console.log("Using stored attendance data for today");
+
+          // Find today's record
+          const todayRecord = storedAttendance.find(
+            (record: AttendanceRecord) =>
+              record.attendance_date.split('T')[0] === today &&
+              record.status === "present"
+          );
+
+          const completeData = {
+            riderData: storedRiderData,
+            attendanceData: storedAttendance,
+            assignmentsData: getStoredRiderAssignments() || []
+          };
+
+          // Set states based on today's record
+          if (todayRecord) {
+            if (todayRecord.check_out_time) {
+              // Day is completed
+              setAttendanceState("completed");
+              setIsDayCompleted(true);
+              setTodayRecord(todayRecord);
+              setPunchInTime(new Date(todayRecord.check_in_time));
+              setPunchOutTime(new Date(todayRecord.check_out_time));
+              setCompletedDayData({
+                punchIn: new Date(todayRecord.check_in_time).toLocaleTimeString(),
+                punchOut: new Date(todayRecord.check_out_time).toLocaleTimeString(),
+                workingHours: formatDuration(
+                  Math.floor(
+                    (new Date(todayRecord.check_out_time).getTime() -
+                      new Date(todayRecord.check_in_time).getTime()) /
+                    1000
+                  )
+                )
+              });
+            } else if (todayRecord.check_in_time) {
+              // Only punched in
+              setAttendanceState("punch-out");
+              setTodayRecord(todayRecord);
+              setPunchInTime(new Date(todayRecord.check_in_time));
+            }
+          } else {
+            // No attendance for today
+            setAttendanceState("punch-in");
+            setTodayRecord(null);
+            setPunchInTime(null);
+            setPunchOutTime(null);
+            setIsDayCompleted(false);
+            setCompletedDayData(null);
+          }
+
+          setInitialData(completeData);
+          setRiderData(storedRiderData);
+          setRiderAssignments(completeData.assignmentsData);
+          setAttendanceHistory(completeData.attendanceData);
+
+          // Finish loading
+          setTimeout(() => {
+            setIsDataReady(true);
+            setIsRiderDataLoading(false);
+          }, 500);
+        } else {
+          // Need to fetch fresh data
+          console.log("Fetching fresh attendance data");
+          const riderData = await fetchRiderDataAndActiveAssignment();
+
+          if (riderData) {
+            const allData = await fetchAllData(riderData.id);
+
+            if (allData) {
+              const completeData = {
+                riderData,
+                ...allData
+              };
+
+              // Find today's record
+              const todayRecord = allData.attendanceData.find(
+                (record: AttendanceRecord) =>
+                  record.attendance_date.split('T')[0] === today &&
+                  record.status === "present"
+              );
+
+              if (todayRecord) {
+                if (todayRecord.check_out_time) {
+                  // Day is completed
+                  setAttendanceState("completed");
+                  setIsDayCompleted(true);
+                  setTodayRecord(todayRecord);
+                  setPunchInTime(new Date(todayRecord.check_in_time));
+                  setPunchOutTime(new Date(todayRecord.check_out_time));
+                  setCompletedDayData({
+                    punchIn: new Date(todayRecord.check_in_time).toLocaleTimeString(),
+                    punchOut: new Date(todayRecord.check_out_time).toLocaleTimeString(),
+                    workingHours: formatDuration(
+                      Math.floor(
+                        (new Date(todayRecord.check_out_time).getTime() -
+                          new Date(todayRecord.check_in_time).getTime()) /
+                        1000
+                      )
+                    )
+                  });
+                } else if (todayRecord.check_in_time) {
+                  // Only punched in
+                  setAttendanceState("punch-out");
+                  setTodayRecord(todayRecord);
+                  setPunchInTime(new Date(todayRecord.check_in_time));
+                }
+              } else {
+                // No attendance for today
+                setAttendanceState("punch-in");
+                setTodayRecord(null);
+                setPunchInTime(null);
+                setPunchOutTime(null);
+                setIsDayCompleted(false);
+                setCompletedDayData(null);
+              }
+
+              setInitialData(completeData);
+              processAndSetStates(completeData);
+
+              // Finish loading
+              setTimeout(() => {
+                setIsDataReady(true);
+                setIsRiderDataLoading(false);
+              }, 500);
+            }
           }
         }
       } catch (error) {
@@ -515,17 +824,186 @@ const Attendance: React.FC = () => {
         showToastMessage("Failed to load initial data", "error");
         setIsRiderDataLoading(false);
       } finally {
-        isInitialLoad = false;
+        isLoadingRef.current = false;
       }
     };
 
     initializeData();
+
+    // Cleanup function
+    return () => {
+      isLoadingRef.current = false;
+    };
   }, [userData?.user?.id]);
 
-  // Modify executePunchIn to use the new data fetching approach
+  // Add updateTodayAttendanceStatus before fetchAttendanceHistory
+  const updateTodayAttendanceStatus = useCallback((attendanceData: AttendanceRecord[]) => {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find today's record in the attendance data
+    const todayRecord = attendanceData.find(
+      (record: AttendanceRecord) =>
+        record.attendance_date.split('T')[0] === today &&
+        record.status === "present"
+    );
+
+    console.log("Updating today's attendance status:", todayRecord);
+
+    // Update local storage with the latest attendance data
+    setStoredTodayAttendance(attendanceData);
+    setLastAttendanceDate(today);
+
+    // Update the state based on the latest data
+    if (todayRecord) {
+      setTodayRecord(todayRecord);
+
+      if (todayRecord.check_in_time && todayRecord.check_out_time) {
+        // Day is completed
+        console.log("Day is completed based on latest data");
+        setAttendanceState("completed");
+        setIsDayCompleted(true);
+        setPunchInTime(new Date(todayRecord.check_in_time));
+        setPunchOutTime(new Date(todayRecord.check_out_time));
+        setCompletedDayData({
+          punchIn: new Date(todayRecord.check_in_time).toLocaleTimeString(),
+          punchOut: new Date(todayRecord.check_out_time).toLocaleTimeString(),
+          workingHours: formatDuration(
+            Math.floor(
+              (new Date(todayRecord.check_out_time).getTime() -
+                new Date(todayRecord.check_in_time).getTime()) /
+              1000
+            )
+          )
+        });
+      } else if (todayRecord.check_in_time) {
+        // Only punched in
+        console.log("Only punched in based on latest data");
+        setAttendanceState("punch-out");
+        setPunchInTime(new Date(todayRecord.check_in_time));
+        setIsDayCompleted(false);
+        setPunchOutTime(null);
+        setCompletedDayData(null);
+      }
+    } else {
+      // No attendance for today
+      console.log("No attendance for today based on latest data");
+      setAttendanceState("punch-in");
+      setTodayRecord(null);
+      setPunchInTime(null);
+      setPunchOutTime(null);
+      setIsDayCompleted(false);
+      setCompletedDayData(null);
+    }
+  }, []);
+
+  // Move fetchAttendanceHistory before the useEffect
+  const fetchAttendanceHistory = useCallback(async () => {
+    if (!riderData.id) return;
+
+    try {
+      const token = await authService.getAccessToken();
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE}/attendance?rider_id=${riderData.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch attendance history");
+
+      const data = await response.json();
+      setAttendanceHistory(data);
+
+      // Update today's record based on the latest data from the database
+      updateTodayAttendanceStatus(data);
+    } catch (error) {
+      console.error("Error fetching attendance history:", error);
+      showToastMessage("Failed to load attendance history", "error");
+    }
+  }, [riderData.id, API_BASE, updateTodayAttendanceStatus]);
+
+  // Add an effect to periodically check for attendance status changes
+  useEffect(() => {
+    // Only run if we have rider data
+    if (!riderData.id) return;
+
+    // Check for attendance status changes every 5 minutes
+    const checkInterval = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+    console.log("Setting up periodic attendance status check");
+
+    const checkAttendanceStatus = () => {
+      console.log("Checking for attendance status changes...");
+      fetchAttendanceHistory();
+    };
+
+    // Initial check
+    checkAttendanceStatus();
+
+    // Set up interval for periodic checks
+    const intervalId = setInterval(checkAttendanceStatus, checkInterval);
+
+    // Handle visibility changes (when user switches tabs or returns to the app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("App became visible, checking attendance status...");
+        checkAttendanceStatus();
+      }
+    };
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Clean up interval and event listener on unmount
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [riderData.id, fetchAttendanceHistory]);
+
+  // Improved executePunchIn with better localStorage management
   const executePunchIn = async (location: LocationData, currentRiderData: PunchInData) => {
     const now = new Date();
-    console.log(currentRiderData, "currentRiderData-----------------------------------------");
+    const today = now.toISOString().split('T')[0];
+
+    // Check if already punched in today
+    if (todayRecord && todayRecord.attendance_date.split('T')[0] === today) {
+      console.log("Already punched in today, checking status...");
+
+      // If already punched out, show completed state
+      if (todayRecord.check_out_time) {
+        console.log("User has already punched out, showing completed state");
+        setAttendanceState("completed");
+        setIsDayCompleted(true);
+        setPunchInTime(new Date(todayRecord.check_in_time));
+        setPunchOutTime(new Date(todayRecord.check_out_time));
+        setCompletedDayData({
+          punchIn: new Date(todayRecord.check_in_time).toLocaleTimeString(),
+          punchOut: new Date(todayRecord.check_out_time).toLocaleTimeString(),
+          workingHours: formatDuration(
+            Math.floor(
+              (new Date(todayRecord.check_out_time).getTime() -
+                new Date(todayRecord.check_in_time).getTime()) /
+              1000
+            )
+          )
+        });
+        showToastMessage("You've already completed your attendance for today", "warning");
+        return null;
+      } else {
+        // If only punched in, show punch out state
+        console.log("User has already punched in, showing punch out state");
+        setAttendanceState("punch-out");
+        setPunchInTime(new Date(todayRecord.check_in_time));
+        showToastMessage("You've already punched in today. Please punch out when your shift ends.", "warning");
+        return null;
+      }
+    }
 
     if (!isWithinAllowedRadius(location)) {
       showToastMessage(
@@ -556,6 +1034,7 @@ const Attendance: React.FC = () => {
     };
 
     try {
+      console.log("Executing punch in...");
       const result = await fetch(`${API_BASE}/attendance/punch-in`, {
         method: "POST",
         headers: {
@@ -566,22 +1045,52 @@ const Attendance: React.FC = () => {
       });
 
       if (!result.ok) {
-        throw new Error("Failed to punch in");
+        const errorData = await result.json();
+        throw new Error(errorData.error || "Failed to punch in");
       }
 
       const data = await result.json();
-      
-      // Refresh data using the new approach
-      const allData = await fetchAllData(currentRiderData.id);
-      if (allData) {
-        const completeData = {
-          riderData: currentRiderData,
-          ...allData
-        };
-        setInitialData(completeData);
-        processAndSetStates(completeData);
-      }
-      
+
+      // Create a complete record with all necessary fields
+      const newRecord = {
+        ...data,
+        check_in_time: formatDateForAPI(now),
+        check_in_latitude: location.latitude,
+        check_in_longitude: location.longitude,
+        check_in_accuracy: location.accuracy,
+        attendance_date: today,
+        status: "present" as "present"
+      };
+
+      // Update local state immediately after successful punch-in
+      setAttendanceState("punch-out");
+      setPunchInTime(now);
+      setTodayRecord(newRecord);
+
+      // Update stored attendance properly
+      // First get the current attendance records
+      const currentAttendance = getStoredTodayAttendance() || [];
+
+      // Filter out any existing records for today (should not happen, but just in case)
+      const filteredAttendance = currentAttendance.filter((record: AttendanceRecord) =>
+        !(record.attendance_date.split('T')[0] === today &&
+          record.rider_id === currentRiderData.id &&
+          record.status === "present")
+      );
+
+      // Add the new record
+      const updatedAttendance = [...filteredAttendance, newRecord];
+
+      // Store the updated attendance
+      setStoredTodayAttendance(updatedAttendance);
+
+      // Update the last attendance date
+      setLastAttendanceDate(today);
+
+      // Also update the attendance history
+      setAttendanceHistory(updatedAttendance);
+
+      console.log("Punch in successful, localStorage updated");
       return data;
     } catch (error) {
       console.error("Error in punch-in:", error);
@@ -589,14 +1098,14 @@ const Attendance: React.FC = () => {
     }
   };
 
-  // Modify executePunchOut to use the new data fetching approach
+  // Improved executePunchOut with better localStorage management
   const executePunchOut = async (location: LocationData) => {
-    if (!riderData.id || riderData.id === 0 || !todayRecord) {
+    if (!todayRecord) {
       showToastMessage(
-        "Cannot punch out. No active punch-in record found or rider info missing.",
+        "Cannot punch out. No active punch-in record found.",
         "error"
       );
-      throw new Error("Punch out prerequisites not met.");
+      throw new Error("No active punch-in record found");
     }
 
     if (!isWithinAllowedRadius(location)) {
@@ -608,6 +1117,7 @@ const Attendance: React.FC = () => {
     }
 
     const now = new Date();
+    const today = now.toISOString().split('T')[0];
     const token = await authService.getAccessToken();
     if (!token) {
       showToastMessage(
@@ -618,7 +1128,7 @@ const Attendance: React.FC = () => {
     }
 
     const payload = {
-      rider_id: riderData.id,
+      rider_id: todayRecord.rider_id,
       attendance_date: todayRecord.attendance_date,
       marked_by: userData?.user?.id || 0,
       remarks: "Punched Out",
@@ -629,6 +1139,7 @@ const Attendance: React.FC = () => {
     };
 
     try {
+      console.log("Executing punch out...");
       const result = await fetch(`${API_BASE}/attendance/punch-out`, {
         method: "POST",
         headers: {
@@ -643,18 +1154,56 @@ const Attendance: React.FC = () => {
       }
 
       const data = await result.json();
-      
-      // Refresh data using the new approach
-      const allData = await fetchAllData(riderData.id);
-      if (allData) {
-        const completeData = {
-          riderData,
-          ...allData
-        };
-        setInitialData(completeData);
-        processAndSetStates(completeData);
+
+      // Calculate working time
+      const workingTimeSeconds = punchInTime ?
+        Math.floor((now.getTime() - punchInTime.getTime()) / 1000) :
+        workingTime;
+
+      // Update local state immediately after successful punch-out
+      setAttendanceState("completed");
+      setPunchOutTime(now);
+      setIsDayCompleted(true);
+      setCompletedDayData({
+        punchIn: punchInTime ? punchInTime.toLocaleTimeString() : "",
+        punchOut: now.toLocaleTimeString(),
+        workingHours: formatDuration(workingTimeSeconds)
+      });
+
+      // Create updated record with all necessary fields
+      const updatedRecord = {
+        ...todayRecord,
+        ...data,
+        check_out_time: formatDateForAPI(now),
+        check_out_latitude: location.latitude,
+        check_out_longitude: location.longitude,
+        check_out_accuracy: location.accuracy
+      };
+
+      // Update stored attendance
+      const currentAttendance = getStoredTodayAttendance() || [];
+
+      // Replace the existing record with the updated one
+      const updatedAttendance = currentAttendance.map((record: AttendanceRecord) =>
+        record.id === todayRecord.id ? updatedRecord : record
+      );
+
+      // If for some reason the record wasn't found, add it
+      if (!updatedAttendance.some((record: AttendanceRecord) => record.id === todayRecord.id)) {
+        updatedAttendance.push(updatedRecord);
       }
-      
+
+      // Store the updated attendance
+      setStoredTodayAttendance(updatedAttendance);
+
+      // Update the last attendance date
+      setLastAttendanceDate(today);
+
+      // Also update the attendance history and today's record
+      setAttendanceHistory(updatedAttendance);
+      setTodayRecord(updatedRecord);
+
+      console.log("Punch out successful, localStorage updated");
       return data;
     } catch (error) {
       console.error("Error in punch-out:", error);
@@ -663,12 +1212,7 @@ const Attendance: React.FC = () => {
   };
 
   const handleStart = (clientX: number) => {
-    if (
-      attendanceState === "completed" ||
-      loading ||
-      (riderData.id === 0 && attendanceState === "punch-in")
-    )
-      return;
+    if (attendanceState === "completed" || loading) return;
     setIsDragging(true);
     startXRef.current = clientX - dragX;
   };
@@ -684,25 +1228,33 @@ const Attendance: React.FC = () => {
   );
 
   const handleEnd = async () => {
+    // Don't proceed if not dragging, already completed, or loading
     if (!isDragging || attendanceState === "completed" || loading) {
       if (isDragging) setIsDragging(false);
       return;
     }
     setIsDragging(false);
 
+    // Check if dragged far enough
     if (dragX > maxDragDistance * 0.85) {
       setDragX(maxDragDistance);
       setLoading(true);
 
       try {
+        // Get current location
         const location = await getCurrentLocation();
-        
+
+        // Process based on current state
         if (attendanceState === "punch-in") {
-          await executePunchIn(location, riderData);
+          const result = await executePunchIn(location, riderData);
+          if (result !== null) {
+            showToastMessage("Successfully punched in!", "success");
+          }
         } else if (attendanceState === "punch-out") {
           await executePunchOut(location);
+          showToastMessage("Successfully punched out!", "success");
         }
-        
+
         setDragX(0);
       } catch (error: any) {
         console.error("Error during punch operation:", error);
@@ -724,6 +1276,7 @@ const Attendance: React.FC = () => {
     handleStart(e.touches[0].clientX);
   };
 
+  // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -814,35 +1367,7 @@ const Attendance: React.FC = () => {
     // }
   };
 
-  // Add this function to fetch attendance history
-  const fetchAttendanceHistory = async () => {
-    if (!riderData.id) return;
-    
-    try {
-      const token = await authService.getAccessToken();
-      if (!token) return;
-
-      const response = await fetch(
-        `${API_BASE}/attendance?rider_id=${riderData.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to fetch attendance history");
-      
-      const data = await response.json();
-      setAttendanceHistory(data);
-    } catch (error) {
-      console.error("Error fetching attendance history:", error);
-      showToastMessage("Failed to load attendance history", "error");
-    }
-  };
-
-  // Add function to handle absent marking
+  // Add a function to handle absent marking
   const handleMarkAbsent = async () => {
     if (!absentReason.trim()) {
       showToastMessage("Please provide a reason for absence", "error");
@@ -929,7 +1454,7 @@ const Attendance: React.FC = () => {
               ALLOWED_LOCATION.latitude,
               ALLOWED_LOCATION.longitude
             );
-            
+
             showToastMessage(
               `You are ${Math.round(distance)}m away from the office. Please come within ${ALLOWED_LOCATION.radius}m.`,
               "error"
@@ -948,9 +1473,9 @@ const Attendance: React.FC = () => {
           );
           reject(error);
         },
-        { 
-          enableHighAccuracy: true, 
-          timeout: 10000, 
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
           maximumAge: 0
         }
       );
@@ -981,12 +1506,12 @@ const Attendance: React.FC = () => {
       <Container
         maxWidth="sm"
         sx={{
-          py: { xs: 2, sm: 4 },
+          py: { xs: 1, sm: 4 },
           px: { xs: 1, sm: 2 },
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
-          gap: 2,
+          gap: { xs: 1, sm: 2 },
         }}
       >
         <Snackbar
@@ -1015,9 +1540,34 @@ const Attendance: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Time Card */}
+        {/* Time Card with Refresh Button */}
         <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
-          <CardContent sx={{ p: 2, textAlign: "center" }}>
+          <CardContent sx={{ p: 2, textAlign: "center", position: "relative" }}>
+            {/* Refresh Button */}
+            <Box
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.04)"
+                }
+              }}
+              onClick={() => {
+                showToastMessage("Refreshing attendance status...", "info");
+                fetchAttendanceHistory();
+              }}
+            >
+              <Refresh color="primary" />
+            </Box>
+
             <Typography variant="body2" color="text.secondary" gutterBottom>
               Today, {formatDate(currentTime)}
             </Typography>
@@ -1064,25 +1614,27 @@ const Attendance: React.FC = () => {
           </Card>
         )}
 
-        {/* Punch In/Out Card - Only show if day is not completed */}
-        {!isDayCompleted && attendanceState !== "completed" && (
+        {/* Punch In/Out Card - Only show if day is not completed and we're not in completed state */}
+        {!isDayCompleted && attendanceState !== "completed" && !completedDayData && (
           <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
-            <CardContent sx={{ p: 2 }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Paper
                 elevation={0}
                 sx={{
                   position: "relative",
-                  height: { xs: 56, sm: 64 },
+                  height: { xs: 48, sm: 64 }, // Reduced height for mobile
                   bgcolor: loading
                     ? "grey.500"
                     : attendanceState === "punch-in"
-                    ? themeColor
-                    : "#f44336",
-                  borderRadius: { xs: 6, sm: 8 },
+                      ? themeColor
+                      : "#f44336",
+                  borderRadius: { xs: 24, sm: 32 }, // Adjusted for new height
                   overflow: "hidden",
                   cursor: loading ? "not-allowed" : "pointer",
                   userSelect: "none",
                   opacity: loading ? 0.7 : 1,
+                  maxWidth: "100%", // Ensure it doesn't overflow
+                  margin: "0 auto", // Center the button
                 }}
               >
                 <Box
@@ -1105,23 +1657,26 @@ const Attendance: React.FC = () => {
                   zIndex={1}
                 >
                   {loading ? (
-                    <CircularProgress size={24} sx={{ color: "white" }} />
+                    <CircularProgress size={20} sx={{ color: "white" }} />
                   ) : (
                     <Typography
                       variant="body1"
                       fontWeight="bold"
                       sx={{
                         color: "white",
-                        fontSize: { xs: "0.875rem", sm: "1rem" },
+                        fontSize: { xs: "0.75rem", sm: "1rem" },
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        px: 1,
                       }}
                     >
-                      {riderData.id === 0 && attendanceState === "punch-in"
-                        ? "Loading Rider Data..."
-                        : `Swipe to ${
-                            attendanceState === "punch-in"
-                              ? "Punch In"
-                              : "Punch Out"
-                          }`}
+                      {loading
+                        ? "Loading..."
+                        : `Swipe to ${attendanceState === "punch-in"
+                          ? "Punch In"
+                          : "Punch Out"
+                        }`}
                     </Typography>
                   )}
                 </Box>
@@ -1129,10 +1684,10 @@ const Attendance: React.FC = () => {
                   ref={buttonRef}
                   sx={{
                     position: "absolute",
-                    left: 4,
-                    top: 4,
-                    width: { xs: 48, sm: 56 },
-                    height: { xs: 48, sm: 56 },
+                    left: 2,
+                    top: 2,
+                    width: { xs: 44, sm: 56 }, // Reduced size for mobile
+                    height: { xs: 44, sm: 56 }, // Reduced size for mobile
                     bgcolor: "white",
                     borderRadius: "50%",
                     display: "flex",
@@ -1140,14 +1695,13 @@ const Attendance: React.FC = () => {
                     justifyContent: "center",
                     cursor:
                       loading ||
-                      (riderData.id === 0 && attendanceState === "punch-in")
+                        (riderData.id === 0 && attendanceState === "punch-in")
                         ? "not-allowed"
                         : isDragging
-                        ? "grabbing"
-                        : "grab",
-                    transform: `translateX(${dragX}px) ${
-                      isDragging ? "scale(1.1)" : "scale(1)"
-                    }`,
+                          ? "grabbing"
+                          : "grab",
+                    transform: `translateX(${dragX}px) ${isDragging ? "scale(1.1)" : "scale(1)"
+                      }`,
                     transition: isDragging
                       ? "none"
                       : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -1156,7 +1710,7 @@ const Attendance: React.FC = () => {
                     "&:hover": {
                       transform:
                         loading ||
-                        (riderData.id === 0 && attendanceState === "punch-in")
+                          (riderData.id === 0 && attendanceState === "punch-in")
                           ? `translateX(${dragX}px) scale(1)`
                           : `translateX(${dragX}px) scale(1.05)`,
                     },
@@ -1168,24 +1722,14 @@ const Attendance: React.FC = () => {
                     sx={{
                       color:
                         attendanceState === "punch-in" ? themeColor : "#f44336",
-                      fontSize: { xs: 20, sm: 24 },
+                      fontSize: { xs: 18, sm: 24 }, // Reduced size for mobile
                     }}
                   />
                 </Box>
               </Paper>
 
               {/* Mark Absent Button */}
-              {attendanceState === "punch-in" && (
-                <Button
-                  variant="outlined"
-                  color="error"
-                  fullWidth
-                  sx={{ mt: 2 }}
-                  onClick={() => setShowAbsentModal(true)}
-                >
-                  Mark as Absent
-                </Button>
-              )}
+
             </CardContent>
           </Card>
         )}
@@ -1193,11 +1737,21 @@ const Attendance: React.FC = () => {
         {/* Working Time Card - Only show if day is not completed */}
         {!isDayCompleted && attendanceState === "punch-out" && (
           <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
-            <CardContent sx={{ p: 2, textAlign: "center" }}>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center" }}>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+              >
                 Working Time
               </Typography>
-              <Typography variant="h4" color="primary.main" fontWeight="bold">
+              <Typography
+                variant="h4"
+                color="primary.main"
+                fontWeight="bold"
+                sx={{ fontSize: { xs: "1.5rem", sm: "2.125rem" } }}
+              >
                 {formatDuration(workingTime)}
               </Typography>
             </CardContent>
@@ -1206,8 +1760,12 @@ const Attendance: React.FC = () => {
 
         {/* Attendance History Card */}
         <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
-          <CardContent sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
+          <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}
+            >
               Attendance History
             </Typography>
 
@@ -1216,17 +1774,17 @@ const Attendance: React.FC = () => {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ backgroundColor: "#f5f5f5" }}>
-                      <th style={{ padding: "8px", textAlign: "left" }}>Date</th>
-                      <th style={{ padding: "8px", textAlign: "left" }}>Status</th>
-                      <th style={{ padding: "8px", textAlign: "left" }}>Punch In</th>
-                      <th style={{ padding: "8px", textAlign: "left" }}>Punch Out</th>
-                      <th style={{ padding: "8px", textAlign: "left" }}>Working Time</th>
+                      <th style={{ padding: "8px", textAlign: "left", fontSize: "0.875rem" }}>Date</th>
+                      <th style={{ padding: "8px", textAlign: "left", fontSize: "0.875rem" }}>Status</th>
+                      <th style={{ padding: "8px", textAlign: "left", fontSize: "0.875rem" }}>Punch In</th>
+                      <th style={{ padding: "8px", textAlign: "left", fontSize: "0.875rem" }}>Punch Out</th>
+                      <th style={{ padding: "8px", textAlign: "left", fontSize: "0.875rem" }}>Working Time</th>
                     </tr>
                   </thead>
                   <tbody>
                     {attendanceHistory.map((record) => (
                       <tr key={record.id}>
-                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd", fontSize: "0.875rem" }}>
                           {new Date(record.attendance_date).toLocaleDateString()}
                         </td>
                         <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
@@ -1234,27 +1792,28 @@ const Attendance: React.FC = () => {
                             label={record.status}
                             size="small"
                             color={record.status === "present" ? "success" : "error"}
+                            sx={{ fontSize: "0.75rem" }}
                           />
                         </td>
-                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd", fontSize: "0.875rem" }}>
                           {record.check_in_time
                             ? new Date(record.check_in_time).toLocaleTimeString()
                             : "-"}
                         </td>
-                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd", fontSize: "0.875rem" }}>
                           {record.check_out_time
                             ? new Date(record.check_out_time).toLocaleTimeString()
                             : "-"}
                         </td>
-                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd", fontSize: "0.875rem" }}>
                           {record.check_in_time && record.check_out_time
                             ? formatDuration(
-                                Math.floor(
-                                  (new Date(record.check_out_time).getTime() -
-                                    new Date(record.check_in_time).getTime()) /
-                                    1000
-                                )
+                              Math.floor(
+                                (new Date(record.check_out_time).getTime() -
+                                  new Date(record.check_in_time).getTime()) /
+                                1000
                               )
+                            )
                             : "-"}
                         </td>
                       </tr>

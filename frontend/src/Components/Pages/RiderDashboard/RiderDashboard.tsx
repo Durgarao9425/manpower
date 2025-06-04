@@ -1,6 +1,6 @@
 import { Alert, alpha, Box, Button, Card, CardContent, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton, InputLabel, List, ListItem, ListItemIcon, ListItemText, MenuItem, Modal, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { useTheme as useMuiTheme } from '@mui/material';
-import React, { Suspense, lazy, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import durgarao from '../../../Images/durgarao.jpeg';
 import {
@@ -8,13 +8,327 @@ import {
     Close as CloseIcon,
     AccessTime as TimeIcon,
 } from '@mui/icons-material';
-import { CircularProgress } from '@mui/material';
+import Attendance from './Attendance';
 import { useState } from "react";
 import { InfoCard, TabPanel } from "./TablePannel";
 import { ThemeProvider, useTheme } from '../../../context/ThemeContext';
-import Loader from '../../Common/Loaders';
+import Certificate from './RiderCertificatePage';
+import Dashboard from './DashboardReusable';
+import Orders from './RiderOrdersPage';
+import Profile from './RiderProfilePage';
+import Settings from './RiderSettingsPage';
+import { ThemeContext } from '../../../context/ThemeContext';
+// Logout Component
+const Logout: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavigate }) => {
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const navigate = useNavigate();
+    const [openSnackbar, setOpenSnackbar] = useState(false);
+    const { themeColor } = useTheme();
 
-// Update CardData interface to make icon optional
+
+    const handleLogout = () => {
+        console.log('User logged out');
+        setShowConfirmModal(false);
+        setOpenSnackbar(true); // Show the toast
+        navigate('/login');
+    };
+
+
+    return (
+        <div style={{
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60vh'
+        }}>
+            <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '32px',
+                textAlign: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                maxWidth: '300px',
+                width: '100%'
+            }}>
+                <div style={{
+                    fontSize: '48px',
+                    marginBottom: '16px'
+                }}>
+                    👋
+                </div>
+
+                <h3 style={{
+                    margin: '0 0 8px 0',
+                    color: '#333',
+                    fontSize: '20px'
+                }}>
+                    Ready to Logout?
+                </h3>
+
+                <p style={{
+                    margin: '0 0 24px 0',
+                    color: '#666',
+                    fontSize: '14px',
+                    lineHeight: '1.4'
+                }}>
+                    You will be signed out of your account and redirected to the login page.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <button
+                        onClick={() => setShowConfirmModal(true)}
+                        style={{
+                            padding: '12px 24px',
+                            backgroundColor: themeColor,
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = `${themeColor}dd`}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = themeColor}
+                    >
+                        Yes, Logout
+                    </button>
+
+                    <button
+                        onClick={() => onNavigate(0)}
+                        style={{
+                            padding: '12px 24px',
+                            backgroundColor: '#f5f5f5',
+                            color: '#666',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+
+            <Snackbar
+                open={openSnackbar}
+                autoHideDuration={3000}
+                onClose={() => setOpenSnackbar(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={() => setOpenSnackbar(false)} severity="error" variant="filled" sx={{ width: '100%' }}>
+                    Logout successfully!
+                </Alert>
+            </Snackbar>
+
+
+            {/* Quick Actions */}
+            <div style={{
+                marginTop: '32px',
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '20px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                width: '100%',
+                maxWidth: '300px'
+            }}>
+                <h4 style={{ margin: '0 0 16px 0', color: '#333', fontSize: '16px' }}>
+                    Before you go...
+                </h4>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div
+                        onClick={() => onNavigate(5)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        <span style={{ fontSize: '18px' }}>👤</span>
+                        <span style={{ fontSize: '14px', color: '#333' }}>Update Profile</span>
+                    </div>
+
+                    <div
+                        onClick={() => onNavigate(6)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        <span style={{ fontSize: '18px' }}>⚙️</span>
+                        <span style={{ fontSize: '14px', color: '#333' }}>Check Settings</span>
+                    </div>
+                </div>
+            </div>
+
+            {showConfirmModal && (
+                <>
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        zIndex: 1001,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            width: '100%',
+                            maxWidth: '300px',
+                            textAlign: 'center',
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+                        }}>
+                            <div style={{ fontSize: '32px', marginBottom: '16px' }}>⚠️</div>
+
+                            <h4 style={{ margin: '0 0 8px 0', color: '#333' }}>
+                                Confirm Logout
+                            </h4>
+
+                            <p style={{ margin: '0 0 20px 0', color: '#666', fontSize: '14px' }}>
+                                Are you sure you want to logout?
+                            </p>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    onClick={() => setShowConfirmModal(false)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        backgroundColor: '#f5f5f5',
+                                        color: '#666',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        backgroundColor: themeColor,
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+const More: React.FC<{ onNavigate: (pageIndex: number) => void }> = ({ onNavigate }) => {
+    const moreMenuItems = [
+        {
+            icon: '📊',
+            text: 'Dashboard',
+            action: () => onNavigate(0)
+        },
+        {
+            icon: '👤',
+            text: 'Profile',
+            action: () => onNavigate(5)
+        },
+        {
+            icon: '💳',
+            text: 'Payments',
+            action: () => onNavigate(2)
+        },
+        {
+            icon: '📜',
+            text: 'Certificate',
+            action: () => onNavigate(7)  // Navigate to Certificate page
+        },
+
+        {
+            icon: '⚙️',  // Added Settings
+            text: 'Settings',
+            action: () => onNavigate(6)  // Navigate to Settings page
+        },
+        {
+            icon: '🚪',
+            text: 'Logout',
+            action: () => onNavigate(8)  // Navigate to Logout page
+        }
+    ];
+
+    return (
+        <div style={{ padding: '16px' }}>
+            <h3 style={{ marginBottom: '24px', fontWeight: 'bold', color: '#333' }}>
+                More Options
+            </h3>
+
+            <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+                {moreMenuItems.map((item, index) => (
+                    <div
+                        key={index}
+                        onClick={item.action}
+                        style={{
+                            padding: '20px 24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            cursor: 'pointer',
+                            borderBottom: index < moreMenuItems.length - 1 ? '1px solid #f0f0f0' : 'none',
+                            transition: 'background-color 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        <span style={{ fontSize: '24px' }}>{item.icon}</span>
+                        <span style={{ fontSize: '16px', color: '#333', fontWeight: '500' }}>{item.text}</span>
+                        <span style={{ marginLeft: 'auto', color: '#ccc', fontSize: '18px' }}>›</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
+
+
 interface CardData {
     title: string;
     value: string | number;
@@ -22,28 +336,17 @@ interface CardData {
     color?: string;
     icon?: string;
 }
-
-// Lazy load components
-const Attendance = lazy(() => import('./Attendance'));
-const Orders = lazy(() => import('./RiderOrdersPage'));
-const Profile = lazy(() => import('./RiderProfilePage'));
-const Settings = lazy(() => import('./RiderSettingsPage'));
-const Certificate = lazy(() => import('./RiderCertificatePage'));
-const Dashboard = lazy(() => import('./DashboardReusable'));
-const Logout = lazy(() => import('./Logout'));
-const More = lazy(() => import('./More'));
-
 const Payments: React.FC = () => {
     const [activeTab, setActiveTab] = useState(0);
     const { themeColor } = useTheme();
 
     const paymentCards: CardData[] = [
-        { title: 'Statement Earnings', value: '₹12,500', color: themeColor, icon: '💰' },
-        { title: 'Weekly Gross Earning', value: '₹8,750', color: themeColor, icon: '💵' },
-        { title: 'Advance Request', value: '₹2,000', color: themeColor, icon: '🏦' },
-        { title: 'TDS 1.0%', value: '₹125', color: themeColor, icon: '📊' },
-        { title: 'Net Paid Amount', value: '₹11,125', color: themeColor, icon: '💸' },
-        { title: 'Payment Status', value: 'Paid', color: themeColor, icon: '✅' },
+        { title: 'Statement Earnings', value: '₹12,500', color: themeColor },
+        { title: 'Weekly Gross Earning', value: '₹8,750', color: themeColor },
+        { title: 'Advance Request', value: '₹2,000', color: themeColor },
+        { title: 'TDS 1.0%', value: '₹125', color: themeColor },
+        { title: 'Net Paid Amount', value: '₹11,125', color: themeColor },
+        { title: 'Payment Status', value: 'Paid', color: themeColor },
     ];
 
     return (
@@ -64,13 +367,13 @@ const Payments: React.FC = () => {
         </div>
     );
 };
-
 const RiderDashboardContent: React.FC = () => {
     const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(0);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
     const { themeColor, setThemeColor } = useTheme();
+    const { themeColor: contextThemeColor } = useContext(ThemeContext);
 
     const navItems = [
         { label: 'Dashboard', icon: '🏠' },
@@ -80,63 +383,39 @@ const RiderDashboardContent: React.FC = () => {
         { label: 'More', icon: '⋯' },
     ];
 
-    // Preload essential data
-    useEffect(() => {
-        const preloadData = async () => {
-            try {
-                // Add any initial data loading here
-                setIsLoading(false);
-            } catch (error) {
-                console.error('Error preloading data:', error);
-                setIsLoading(false);
-            }
-        };
-
-        preloadData();
-    }, []);
-
     const handleThemeChange = (color: string) => {
-        setThemeColor(color);
+        // Theme color is now handled by the ThemeContext
+        console.log('Theme color changed to:', color);
     };
 
     const renderCurrentPage = () => {
-        if (isLoading) {
-            return <Loader message="Loading dashboard..." size="large" fullScreen />;
+        switch (currentPage) {
+            case 0:
+                return <Dashboard />;
+            case 1:
+                return <Orders />;
+            case 2:
+                return <Payments />;
+            case 3:
+                return <Attendance />;
+            case 4:
+                return <More onNavigate={setCurrentPage} />;
+            case 5:
+                return <Profile />;
+            case 6:
+                return <Settings onThemeChange={handleThemeChange} />;
+            case 7:  // Certificate page
+                return <Certificate />;
+            case 8:  // Logout page
+                return <Logout onNavigate={setCurrentPage} />;
+            default:
+                return <Dashboard />;
         }
-
-        return (
-            <Suspense fallback={<Loader message="Loading page..." size="medium" />}>
-                {(() => {
-                    switch (currentPage) {
-                        case 0:
-                            return <Dashboard />;
-                        case 1:
-                            return <Orders />;
-                        case 2:
-                            return <Payments />;
-                        case 3:
-                            return <Attendance />;
-                        case 4:
-                            return <More onNavigate={setCurrentPage} />;
-                        case 5:
-                            return <Profile />;
-                        case 6:
-                            return <Settings themeColor={themeColor} onThemeChange={handleThemeChange} />;
-                        case 7:
-                            return <Certificate />;
-                        case 8:
-                            return <Logout onNavigate={setCurrentPage} />;
-                        default:
-                            return <Dashboard />;
-                    }
-                })()}
-            </Suspense>
-        );
     };
 
     const handleNavClick = (index: number) => {
         setCurrentPage(index);
-        setShowProfileMenu(false);
+        setShowMoreMenu(false);
     };
 
     return (
@@ -276,6 +555,7 @@ const RiderDashboardContent: React.FC = () => {
                 </div>
             </div>
         </div>
+
     );
 };
 
