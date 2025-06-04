@@ -24,7 +24,6 @@ import {
   TablePagination,
   Tooltip,
   CircularProgress,
-  Modal,
   FormControl,
   InputLabel,
   Select,
@@ -39,7 +38,6 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Edit as EditIcon,
-  Assessment as AssessmentIcon,
   Person as PersonIcon,
   DirectionsCar as DirectionsCarIcon,
   AttachMoney as AttachMoneyIcon,
@@ -47,8 +45,6 @@ import {
   Add as AddIcon,
   Download as DownloadIcon
 } from '@mui/icons-material';
-import OrderFormModal from './OrderForm';
-import OrderViewModal from './OrderView';
 import apiService from '../../../services/apiService';
 import { useNavigate } from 'react-router-dom';
 
@@ -99,9 +95,6 @@ const OrdersList = () => {
   const [endDateFilter, setEndDateFilter] = useState('');
 
   // Modal states
-  const [formModalOpen, setFormModalOpen] = useState(false);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<OrderStatement | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   
   // New modal states for mapping status
@@ -243,15 +236,6 @@ const OrdersList = () => {
     }
   };
 
-  const openViewModal = (order: OrderStatement) => {
-    navigate(`/weekly-order-view?uploadId=${order.id}`);
-  };
-
-  const openAddModal = () => {
-    setSelectedOrder(null);
-    setFormModalOpen(true);
-  };
-
   // Modified delete functions
   const handleDeleteSelected = () => {
     if (selectedOrders.length === 0) return;
@@ -355,10 +339,6 @@ const OrdersList = () => {
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-  };
-
-  const handleFormSuccess = () => {
-    fetchOrders();
   };
 
   // Fixed download function
@@ -558,14 +538,6 @@ const OrdersList = () => {
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={6}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={openAddModal}
-                  sx={{ minWidth: 120 }}
-                >
-                  Add
-                </Button>
                 {selectedOrders.length > 0 && (
                   <Tooltip title={`Delete ${selectedOrders.length} selected`}>
                     <IconButton 
@@ -581,6 +553,14 @@ const OrdersList = () => {
                     </IconButton>
                   </Tooltip>
                 )}
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />} 
+                  onClick={() => navigate('/weekly-order-view')}
+                  sx={{ minWidth: 120 }}
+                >
+                  Add
+                </Button>
               </Box>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -733,25 +713,6 @@ const OrdersList = () => {
           />
         </Box>
       </Paper>
-
-      {/* Add Order Modal */}
-      <OrderFormModal
-        open={formModalOpen}
-        onClose={() => setFormModalOpen(false)}
-        onSuccess={handleFormSuccess}
-        order={null}
-        companies={companies}
-        isEditing={false}
-      />
-
-      {/* View Order Modal */}
-      {/* <OrderViewModal
-        open={viewModalOpen}
-        onClose={() => setViewModalOpen(false)}
-        order={selectedOrder}
-        onEdit={openEditModal}
-        onDownload={handleDownload}
-      /> */}
 
       {/* Mapping Status Edit Modal */}
       <Dialog 

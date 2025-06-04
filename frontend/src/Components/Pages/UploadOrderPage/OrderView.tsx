@@ -4,7 +4,6 @@ import {
     Container,
     Typography,
     Card,
-    CardContent,
     Button,
     Grid,
     Table,
@@ -16,908 +15,711 @@ import {
     Paper,
     Checkbox,
     FormControlLabel,
-    Switch,
+    Switch, // Keep if used elsewhere, not directly in this refactor's focus
     Divider,
-    // Stack, // Not used
-    IconButton,
     FormControl,
-    InputLabel, // Added for completeness, though not explicitly used in provided step components
+    InputLabel,
     Select,
     MenuItem,
+    TextField,
+    IconButton, // Keep if used elsewhere
+    Alert,
+    CircularProgress,
+    Chip,
+    Autocomplete,
+    Dialog, // Keep if used elsewhere
+    DialogTitle, // Keep if used elsewhere
+    DialogContent, // Keep if used elsewhere
+    DialogActions, // Keep if used elsewhere
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    CircularProgress,
-    Alert,
-    Snackbar
 } from '@mui/material';
 import {
-    ArrowBack as ArrowBackIcon,
-    ArrowForward as ArrowForwardIcon,
-    Visibility as VisibilityIcon,
-    // CheckCircle as CheckCircleIcon, // Not used
-    // Cancel as CancelIcon, // Not used
+    CloudUpload as CloudUploadIcon,
+    AttachFile as AttachFileIcon,
+    TableChart as TableChartIcon, // Keep if used elsewhere
+    Close as CloseIcon, 
+    Save as SaveIcon,
     Publish as PublishIcon,
-    FileDownload as FileDownloadIcon,
-    // Done as DoneIcon, // Not used
-    ExpandMore as ExpandMoreIcon, // For Accordion
-    CloudUpload as CloudUploadIcon, // Icon for Step 1
-    SettingsApplications as SettingsApplicationsIcon, // Icon for Step 2
-    Preview as PreviewIcon, // Icon for Step 3
-    Edit as EditIcon, // Example, if needed
-    Assessment as AssessmentIcon // Example, if needed
+    Preview as PreviewIcon,
+    Delete as DeleteIcon, // Keep if used elsewhere
+    Edit as EditIcon, // Keep if used elsewhere
+    ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
-import orderStatementService from '../../../services/orderStatementService';
-import type { FieldMapping, OrderStatementPreview, SystemField } from '../../../services/orderStatementService';
-import { useLocation } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import apiService from '../../../services/apiService'; // Assuming this path is correct
 
-// Default Excel data for initial UI rendering
-const defaultExcelData: {
-    fileName: string;
-    uploadDate: string;
-    fileSize: string;
-    totalRows: number;
-    headers: string[];
-    rows: any[][];
-} = {
-    fileName: '',
-    uploadDate: '',
-    fileSize: '',
-    totalRows: 0,
-    headers: [],
-    rows: []
-};
-
-// System field options for mapping with colors
-// These will be populated from the API but we define defaults with colors
-const defaultSystemFields = [
-    { value: 'none', label: '-- Select Field --', color: '#757575' },
-    { value: 'rider_id', label: 'Rider ID', color: '#1976d2' },
-    { value: 'rider_name', label: 'Rider Name', color: '#388e3c' },
-    { value: 'store_name', label: 'Store Name', color: '#f57c00' },
-    { value: 'delivered_orders', label: 'Delivered Orders', color: '#7b1fa2' },
-    { value: 'cancelled_orders', label: 'Cancelled Orders', color: '#d32f2f' },
-    { value: 'pickup_orders', label: 'Pickup Orders', color: '#0288d1' },
-    { value: 'attendance', label: 'Attendance', color: '#689f38' },
-    { value: 'total_earnings', label: 'Total Earnings', color: '#f9a825' },
-    { value: 'commission', label: 'Commission', color: '#e64a19' },
-    { value: 'tax_deduction', label: 'Tax Deduction', color: '#5d4037' },
-    { value: 'gst', label: 'GST', color: '#455a64' }
-];
-
-// Field type options
-const fieldTypes = [
-    { value: 'text', label: 'Text', icon: '📝' },
-    { value: 'number', label: 'Number', icon: '🔢' },
-    { value: 'currency', label: 'Currency', icon: '💰' },
-    { value: 'percentage', label: 'Percentage', icon: '📊' },
-    { value: 'date', label: 'Date', icon: '📅' },
-];
-
-interface FieldMapping {
-    companyColumn: string;
-    systemField: string;
-    fieldType: string;
-    showToRiders: boolean;
-    showInInvoice: boolean;
-    useForCommission: boolean;
-    isSelected: boolean;
+// --- Interfaces ---
+export interface OrderStatement {
+    id: number;
+    company_id: string;
+    payment_date: string;
+    month_value: string;
+    week_value: string;
+    amount: number;
+    status: 'pending' | 'processing' | 'completed' | 'rejected';
+    file_path: string;
+    notes: string;
+    mapping_status: string;
+    row_reference?: string;
 }
 
-// Step 1: File Preview & Column Selection Combined
-const FilePreviewAndSelection: React.FC<{
-    excelData: typeof defaultExcelData;
-    selectedColumns: string[];
-    onColumnChange: (column: string, checked: boolean) => void;
-    onSelectAll: () => void;
-    onDeselectAll: () => void;
-    onNext: () => void;
-    onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-    loading: boolean;
-    fileInputRef: React.RefObject<HTMLInputElement>;
-}> = ({ 
-    excelData, 
-    selectedColumns, 
-    onColumnChange, 
-    onSelectAll, 
-    onDeselectAll, 
-    onNext, 
-    onFileUpload, 
-    loading,
-    fileInputRef 
-}) => {
-    return (
-        <Box sx={{ py: 1 }}> {/* Reduced padding for accordion content */}
-            <Card sx={{ borderRadius: 2, p: 2, bgcolor: '#fff', mb: 2 }}>
-                <Typography variant="h6" fontWeight={600} gutterBottom color="primary.dark">
-                    📊 File Upload & Column Selection
-                </Typography>
-                
-                {/* File Upload Section */}
-                {!excelData.fileName ? (
-                    <Box 
-                        sx={{ 
-                            border: '2px dashed #ccc', 
-                            borderRadius: 2, 
-                            p: 3, 
-                            textAlign: 'center',
-                            mb: 2,
-                            bgcolor: 'background.paper'
-                        }}
-                    >
-                        <input
-                            type="file"
-                            accept=".xlsx,.xls,.csv"
-                            onChange={onFileUpload}
-                            style={{ display: 'none' }}
-                            ref={fileInputRef}
-                        />
-                        <CloudUploadIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                        <Typography variant="h6" gutterBottom>
-                            Upload Excel File
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            Supported formats: .xlsx, .xls, .csv
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            onClick={() => fileInputRef.current?.click()}
-                            startIcon={<CloudUploadIcon />}
-                            disabled={loading}
-                            sx={{ borderRadius: 2 }}
-                        >
-                            {loading ? <CircularProgress size={24} /> : 'Select File'}
-                        </Button>
-                    </Box>
-                ) : (
-                    <>
-                        <Grid container spacing={2} sx={{ mb: 2 }}>
-                            <Grid item xs={6} sm={3}>
-                                <Typography variant="caption" color="text.secondary">File Name</Typography>
-                                <Typography fontWeight={500}>{excelData.fileName}</Typography>
-                            </Grid>
-                            <Grid item xs={6} sm={3}>
-                                <Typography variant="caption" color="text.secondary">Upload Date</Typography>
-                                <Typography fontWeight={500}>
-                                    {excelData.uploadDate ? new Date(excelData.uploadDate).toLocaleDateString() : ''}
-                                </Typography>
-                            </Grid>
-                            <Grid item xs={6} sm={3}>
-                                <Typography variant="caption" color="text.secondary">File Size</Typography>
-                                <Typography fontWeight={500}>{excelData.fileSize}</Typography>
-                            </Grid>
-                            <Grid item xs={6} sm={3}>
-                                <Typography variant="caption" color="text.secondary">Total Records</Typography>
-                                <Typography fontWeight={500}>{excelData.totalRows} rows</Typography>
-                            </Grid>
-                        </Grid>
-                        <Divider sx={{ my: 2 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                            <Typography variant="subtitle1" fontWeight={600}>
-                                File Preview ({excelData.headers.length} Columns)
-                            </Typography>
-                            <Button 
-                                size="small" 
-                                startIcon={<CloudUploadIcon />} 
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={loading}
-                            >
-                                Upload New File
-                            </Button>
-                        </Box>
-                        <TableContainer
-                            component={Paper}
-                            variant="outlined"
-                            sx={{ maxHeight: 180, overflow: 'auto', borderRadius: 1, mb: 2 }}
-                        >
-                            <Table size="small" stickyHeader>
-                                <TableHead>
-                                    <TableRow>
-                                        {excelData.headers.map((header) => (
-                                            <TableCell key={header} sx={{ fontWeight: 'bold', bgcolor: 'grey.100', fontSize: '0.75rem' }}>
-                                                {header}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {excelData.rows.slice(0, 3).map((row, idx) => (
-                                        <TableRow key={idx} sx={{ '&:nth-of-type(odd)': { bgcolor: 'action.hover' } }}>
-                                            {row.map((cell, cellIdx) => (
-                                                <TableCell key={cellIdx} sx={{ fontSize: '0.75rem' }}>
-                                                    {cell}
-                                                </TableCell>
-                                            ))}
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <Divider sx={{ my: 2 }} />
-                        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                            Select Columns to Include
-                        </Typography>
-                        <Box sx={{ mb: 2 }}>
-                            <Button variant="outlined" size="small" onClick={onSelectAll} sx={{ mr: 1 }}>
-                                Select All
-                            </Button>
-                            <Button variant="outlined" size="small" onClick={onDeselectAll}>
-                                Deselect All
-                            </Button>
-                        </Box>
-                        <Grid container spacing={1} sx={{ mb: 2 }}>
-                            {excelData.headers.map((column) => (
-                                <Grid item xs={12} sm={6} md={4} lg={3} key={column}>
-                                    <FormControlLabel
-                                        control={
-                                            <Checkbox
-                                                size="small"
-                                                checked={selectedColumns.includes(column)}
-                                                onChange={(e) => onColumnChange(column, e.target.checked)}
-                                            />
-                                        }
-                                        label={<Typography variant="body2">{column}</Typography>}
-                                    />
-                                </Grid>
-                            ))}
-                        </Grid>
-                        <Box textAlign="right">
-                            <Button
-                                variant="contained"
-                                onClick={onNext}
-                                endIcon={<ArrowForwardIcon />}
-                                disabled={selectedColumns.length === 0 || loading}
-                                sx={{ borderRadius: 2, textTransform: 'none' }}
-                            >
-                                {loading ? <CircularProgress size={24} /> : `Configure Fields (${selectedColumns.length} selected)`}
-                            </Button>
-                        </Box>
-                    </>
-                )}
-            </Card>
-        </Box>
-    );
+export interface OrderStatementData {
+    id?: number; // For storing ID after save
+    company_id: string;
+    payment_date: string;
+    month_value: string;
+    week_value: string;
+    amount: string;
+    status: 'pending' | 'processing' | 'completed' | 'rejected';
+    file_path?: string;
+    notes: string;
+    mapping_status: string;
+    row_reference?: string; // To store the header name of the amount column from Excel
+}
+
+export interface Company {
+    id: string;
+    name: string;
+}
+
+interface ExcelSourceData {
+    uploadId?: string;
+    fileName: string;
+    fileSize: number;
+    headers: string[];
+    previewRows: any[][];
+    fullData: any[][];
+}
+
+interface ExcelColumnOption {
+    label: string;
+    value: string;
+    sampleData?: string;
+}
+
+export interface FieldMappingConfig {
+    companyColumn: string;
+    systemField: string;
+    isSelected: boolean;
+    sampleData?: string;
+}
+
+interface SystemFieldOption {
+    value: string;
+    label: string;
+    color?: string;
+    description?: string;
+}
+
+// Constants
+const MONTHS = [
+    { value: 'jan-2025', label: 'January 2025' }, 
+    { value: 'feb-2025', label: 'February 2025' },
+    { value: 'mar-2025', label: 'March 2025' },
+    { value: 'apr-2025', label: 'April 2025' },
+    { value: 'may-2025', label: 'May 2025' },
+    { value: 'jun-2025', label: 'June 2025' },
+    { value: 'jul-2025', label: 'July 2025' },
+    { value: 'aug-2025', label: 'August 2025' },
+    { value: 'sep-2025', label: 'September 2025' },
+    { value: 'oct-2025', label: 'October 2025' },
+    { value: 'nov-2025', label: 'November 2025' },
+    { value: 'dec-2025', label: 'December 2025' }
+];
+
+const WEEKS = [
+    { value: '1', label: 'Week 1 (1-7)' },
+    { value: '2', label: 'Week 2 (8-14)' },
+    { value: '3', label: 'Week 3 (15-21)' },
+    { value: '4', label: 'Week 4 (22-28)' },
+];
+
+const orderStatementService = {
+    uploadAndParseFile: async (file: File): Promise<ExcelSourceData> => { 
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                    if (jsonData.length > 0) {
+                        const headers = jsonData[0] as string[];
+                        const previewRows = (jsonData.slice(1) as any[][]).slice(0, 5);
+                        resolve({
+                            uploadId: 'temp-' + Date.now(), 
+                            fileName: file.name,
+                            fileSize: file.size,
+                            headers,
+                            previewRows,
+                            fullData: jsonData.slice(1) as any[][]
+                        });
+                    } else {
+                        reject(new Error('No data found in the Excel file'));
+                    }
+                } catch (err) {
+                    console.error("Error parsing Excel file:", err);
+                    reject(new Error('Failed to process Excel file. Ensure it is a valid Excel format.'));
+                }
+            };
+            reader.onerror = () => reject(new Error('Error reading file'));
+            reader.readAsArrayBuffer(file);
+        });
+    },
+    exportMappedDataPreview: async (headers: string[], data: any[][], mappings: FieldMappingConfig[], systemFieldsForMapping: SystemFieldOption[]): Promise<Blob> => {
+        const activeMappings = mappings.filter(m => m.isSelected && m.systemField !== 'none');
+        if (activeMappings.length === 0) {
+            return new Blob(["No columns selected or mapped for export."], { type: 'text/plain;charset=utf-8;' });
+        }
+        const exportHeaders = activeMappings.map(m => {
+            const systemField = systemFieldsForMapping.find(sf => sf.value === m.systemField) || { label: m.systemField };
+            return systemField.label;
+        });
+        const exportedRows: string[][] = [];
+        data.forEach(row => {
+            const newRow: string[] = [];
+            activeMappings.forEach(mapping => {
+                const headerIndex = headers.indexOf(mapping.companyColumn);
+                newRow.push(headerIndex !== -1 ? (row[headerIndex]?.toString() || '') : '');
+            });
+            exportedRows.push(newRow);
+        });
+        let csvContent = exportHeaders.join(",") + "\n";
+        exportedRows.forEach(row => {
+            csvContent += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",") + "\n"; 
+        });
+        return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    }
 };
 
-// Step 2: Field Mapping & Configuration
-const FieldMappingStep: React.FC<{
-    mappings: FieldMapping[];
-    onMappingChange: (index: number, field: keyof FieldMapping, value: any) => void;
-    onNext: () => void;
-    onBack: () => void;
-    systemFields: typeof defaultSystemFields;
-}> = ({ mappings, onMappingChange, onNext, onBack, systemFields }) => {
-    const selectedMappings = mappings.filter(m => m.isSelected);
-    return (
-        <Box sx={{ py: 1 }}> {/* Reduced padding */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, justifyContent: 'space-between' }}>
-                 {/* Back button is now primarily handled by Accordion, but can be kept for explicit step control if needed */}
-                {/* <IconButton onClick={onBack} sx={{ mr: 2, bgcolor: '#f5f5f5' }}>
-                    <ArrowBackIcon />
-                </IconButton> */}
-                <Box>
-                    <Typography variant="h6" fontWeight={700} color="primary.dark">
-                        Field Mapping & Configuration
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Map Excel columns to system fields and configure visibility
-                    </Typography>
-                </Box>
-            </Box>
-            <Card sx={{ borderRadius: 2, overflow: 'hidden', boxShadow: 2 }}>
-                <TableContainer>
-                    <Table size="small">
-                        <TableHead sx={{ bgcolor: 'primary.main' }}>
-                            <TableRow>
-                                {[
-                                    '📋 Excel Column', '🎯 System Field', '📝 Field Type',
-                                    '👁️ Show to Riders', '🧾 Show in Invoice', '💰 Use for Commission',
-                                ].map((label) => (
-                                    <TableCell key={label} sx={{ color: '#fff', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                        {label}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {selectedMappings.map((mapping) => {
-                                const actualIndex = mappings.findIndex(m => m.companyColumn === mapping.companyColumn);
-                                if (actualIndex === -1) return null;
-                                return (
-                                    <TableRow key={mapping.companyColumn} hover sx={{ '&:nth-of-type(odd)': { bgcolor: 'action.hover' } }}>
-                                        <TableCell sx={{ fontWeight: 'medium', color: 'primary.dark', fontSize: '0.8rem' }}>{mapping.companyColumn}</TableCell>
-                                        <TableCell sx={{minWidth: 150}}>
-                                            <FormControl fullWidth size="small">
-                                                <Select
-                                                    value={mappings[actualIndex].systemField}
-                                                    onChange={(e) => onMappingChange(actualIndex, 'systemField', e.target.value)}
-                                                    sx={{ borderRadius: 1, fontSize: '0.8rem' }}
-                                                >
-                                                    {systemFields.map(field => (
-                                                        <MenuItem key={field.value} value={field.value} sx={{fontSize: '0.8rem'}}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: field.color, mr: 1 }} />
-                                                                {field.label}
-                                                            </Box>
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </TableCell>
-                                        <TableCell sx={{minWidth: 120}}>
-                                            <FormControl fullWidth size="small">
-                                                <Select
-                                                    value={mappings[actualIndex].fieldType}
-                                                    onChange={(e) => onMappingChange(actualIndex, 'fieldType', e.target.value)}
-                                                    sx={{ borderRadius: 1, fontSize: '0.8rem' }}
-                                                >
-                                                    {fieldTypes.map(type => (
-                                                        <MenuItem key={type.value} value={type.value} sx={{fontSize: '0.8rem'}}>
-                                                            {type.icon} {type.label}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-                                        </TableCell>
-                                        {['showToRiders', 'showInInvoice', 'useForCommission'].map(optionKey => (
-                                            <TableCell key={optionKey} align="center">
-                                                <Switch
-                                                    size="small"
-                                                    checked={mappings[actualIndex][optionKey as keyof FieldMapping] as boolean}
-                                                    onChange={(e) => onMappingChange(actualIndex, optionKey as keyof FieldMapping, e.target.checked)}
-                                                    sx={{
-                                                        '& .MuiSwitch-switchBase.Mui-checked': { color: '#4caf50' },
-                                                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#4caf50' },
-                                                    }}
-                                                    // Default color for unchecked track will be used or can be customized
-                                                />
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Card>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                <Button onClick={onBack} variant="outlined" startIcon={<ArrowBackIcon />}>
-                    Back
-                </Button>
-                <Button
-                    variant="contained"
-                    endIcon={<ArrowForwardIcon />} // Changed icon to ArrowForwardIcon for consistency
-                    onClick={onNext}
-                    sx={{
-                        bgcolor: 'success.main', px: 3, py: 1, fontSize: '0.875rem', fontWeight: 600, borderRadius: 2,
-                        '&:hover': { bgcolor: 'success.dark' }
-                    }}
-                >
-                    Preview & Finish
-                </Button>
-            </Box>
-        </Box>
-    );
+const initialOrderFormData: OrderStatementData = {
+    company_id: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    month_value: '',
+    week_value: '',
+    amount: '',
+    status: 'pending',
+    notes: '',
+    mapping_status: 'pending',
+    file_path: '',
+    row_reference: '',
 };
 
-// Step 3: Final Preview Component
-const FinalPreviewStep: React.FC<{
-    mappings: FieldMapping[];
-    onBack: () => void;
-    onPublish: () => void;
-    onExport: () => void;
-    excelData: typeof defaultExcelData;
-    systemFields: typeof defaultSystemFields;
-}> = ({ mappings, onBack, onPublish, onExport, excelData, systemFields }) => {
-    const selectedMappings = mappings.filter(m => m.isSelected);
-    const unselectedMappings = mappings.filter(m => !m.isSelected);
-
-    return (
-        <Box sx={{ py: 1 }}> {/* Reduced padding */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, justifyContent: 'space-between' }}>
-                {/* <IconButton onClick={onBack} sx={{ mr: 2, bgcolor: '#f5f5f5' }}>
-                    <ArrowBackIcon />
-                </IconButton> */}
-                <Box>
-                    <Typography variant="h6" fontWeight="600" color="primary.dark">
-                        Final Preview
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Review your mapped data before publishing
-                    </Typography>
-                </Box>
-            </Box>
-            <Card sx={{ mb: 2, borderRadius: 2, boxShadow: 2, overflow: 'hidden' }}>
-                <Box sx={{ bgcolor: 'primary.main', color: 'white', p: 2 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                        📊 Mapped Data Preview
-                    </Typography>
-                </Box>
-                <TableContainer sx={{maxHeight: 250}}>
-                    <Table size="small" stickyHeader>
-                        <TableHead>
-                            <TableRow sx={{ bgcolor: 'grey.100' }}>
-                                {selectedMappings.map((mapping) => {
-                                    const systemField = systemFields.find(f => f.value === mapping.systemField);
-                                    return (
-                                        <TableCell
-                                            key={mapping.companyColumn}
-                                            sx={{ fontWeight: 'bold', fontSize: '0.75rem', color: systemField?.color || 'text.primary' }}
-                                        >
-                                            {systemField?.label || mapping.companyColumn}
-                                        </TableCell>
-                                    );
-                                })}
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {excelData.rows.slice(0, 5).map((row, index) => (
-                                <TableRow key={index} sx={{ '&:nth-of-type(odd)': { bgcolor: 'action.hover' } }}>
-                                    {selectedMappings.map((mapping) => {
-                                        const columnIndex = excelData.headers.indexOf(mapping.companyColumn);
-                                        return (
-                                            <TableCell key={mapping.companyColumn} sx={{ fontSize: '0.75rem' }}>
-                                                {columnIndex !== -1 ? row[columnIndex] : ''}
-                                            </TableCell>
-                                        );
-                                    })}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Card>
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
-                        <CardContent sx={{ p: 2 }}>
-                            <Typography variant="subtitle1" fontWeight="bold" color="success.dark" gutterBottom>
-                                ✅ Mapped Fields ({selectedMappings.length})
-                            </Typography>
-                            <Box sx={{ p: 1, bgcolor: 'success.light', borderRadius: 1, maxHeight: 100, overflowY: 'auto' }}>
-                                <Typography variant="caption" color="text.secondary">
-                                    {selectedMappings.length > 0 ? selectedMappings.map(m => m.companyColumn).join(', ') : 'None'}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%', borderRadius: 2, boxShadow: 1 }}>
-                        <CardContent sx={{ p: 2 }}>
-                            <Typography variant="subtitle1" fontWeight="bold" color="warning.dark" gutterBottom>
-                                ⚠️ Ignored Fields ({unselectedMappings.length})
-                            </Typography>
-                            <Box sx={{ p: 1, bgcolor: 'warning.light', borderRadius: 1, maxHeight: 100, overflowY: 'auto' }}>
-                                <Typography variant="caption" color="text.secondary">
-                                    {unselectedMappings.length > 0 ? unselectedMappings.map(m => m.companyColumn).join(', ') : 'None'}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt:3 }}>
-                <Button onClick={onBack} variant="outlined" startIcon={<ArrowBackIcon />}>
-                    Back to Mapping
-                </Button>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button
-                        variant="outlined"
-                        startIcon={<FileDownloadIcon />}
-                        onClick={onExport}
-                        sx={{ borderRadius: 2, fontWeight: 600 }}
-                    >
-                        Export Excel
-                    </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<PublishIcon />}
-                        onClick={onPublish}
-                        sx={{ bgcolor: 'success.main', px: 3, py: 1, borderRadius: 2, fontWeight: 600, '&:hover': { bgcolor: 'success.dark' }}}
-                    >
-                        Publish Data
-                    </Button>
-                </Box>
-            </Box>
-        </Box>
-    );
+const defaultExcelSourceDataState: ExcelSourceData = {
+    fileName: '',
+    fileSize: 0,
+    headers: [],
+    previewRows: [],
+    fullData: []
 };
 
-// Main Component
-const ExcelFieldMapper: React.FC = () => {
-    const [expandedPanel, setExpandedPanel] = useState<string | false>('panel1'); // For accordion control
-    const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-    const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([]);
-    const [excelData, setExcelData] = useState<typeof defaultExcelData>(defaultExcelData);
-    const [uploadId, setUploadId] = useState<number | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+const MergedOrderPage: React.FC = () => {
+    const [orderFormData, setOrderFormData] = useState<OrderStatementData>(initialOrderFormData);
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [excelSourceData, setExcelSourceData] = useState<ExcelSourceData>(defaultExcelSourceDataState);
+    const [excelColumnOptionsForAmount, setExcelColumnOptionsForAmount] = useState<ExcelColumnOption[]>([]);
+    const [selectedAmountColumn, setSelectedAmountColumn] = useState<ExcelColumnOption | null>(null);
+    const [isAmountFromExcel, setIsAmountFromExcel] = useState(false);
+    const [fieldMappings, setFieldMappings] = useState<FieldMappingConfig[]>([]);
+    const [systemFieldsForMapping, setSystemFieldsForMapping] = useState<SystemFieldOption[]>([]);
+    const [pageLoading, setPageLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState<'order' | 'publish' | 'export' | 'file_process' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const [systemFields, setSystemFields] = useState(defaultSystemFields);
-    
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const location = useLocation();
-
-    // Handle file upload
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        setLoading(true);
-        setError(null);
-        
-        try {
-            const response = await orderStatementService.uploadOrderStatement(file);
-            
-            setUploadId(response.uploadId);
-            setExcelData({
-                fileName: response.fileName,
-                uploadDate: response.uploadDate,
-                fileSize: response.fileSize || `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-                totalRows: response.totalRows,
-                headers: response.headers,
-                rows: response.previewRows
-            });
-            
-            // Initialize field mappings
-            const initialMappings: FieldMapping[] = response.headers.map((header, index) => ({
-                companyColumn: header,
-                systemField: 'none', // Default to none, user will map
-                fieldType: 'text',
-                showToRiders: true,
-                showInInvoice: true,
-                useForCommission: false,
-                isSelected: false // No columns are initially selected for mapping
-            }));
-            
-            setFieldMappings(initialMappings);
-            setSuccess('File uploaded successfully!');
-            
-            // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-        } catch (err) {
-            console.error('Error uploading file:', err);
-            setError('Failed to upload file. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Load system fields from API
-    useEffect(() => {
-        const loadSystemFields = async () => {
-            try {
-                // This would normally come from the API
-                // For now, we'll use our default fields
-                // In a real implementation, you would fetch from the API:
-                // const response = await orderStatementService.getSystemFields();
-                // setSystemFields([
-                //   { value: 'none', label: '-- Select Field --', color: '#757575' },
-                //   ...response.map((field, index) => ({
-                //     value: field.field_key,
-                //     label: field.field_label,
-                //     color: defaultSystemFields[index % defaultSystemFields.length]?.color || '#000000'
-                //   }))
-                // ]);
-            } catch (err) {
-                console.error('Error loading system fields:', err);
-            }
-        };
-        
-        loadSystemFields();
-    }, []);
-
-    // Get uploadId from query string
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const uploadIdParam = params.get('uploadId');
-        if (uploadIdParam && !excelData.fileName) {
-            setLoading(true);
-            orderStatementService.getOrderStatementPreview(Number(uploadIdParam))
-                .then(response => {
-                    setUploadId(Number(uploadIdParam));
-                    setExcelData({
-                        fileName: response.fileName,
-                        uploadDate: response.uploadDate,
-                        fileSize: response.fileSize,
-                        totalRows: response.totalRows,
-                        headers: response.headers,
-                        rows: response.previewRows
-                    });
-                    // Initialize field mappings
-                    const initialMappings: FieldMapping[] = response.headers.map((header: string) => ({
-                        companyColumn: header,
-                        systemField: 'none',
-                        fieldType: 'text',
-                        showToRiders: true,
-                        showInInvoice: true,
-                        useForCommission: false,
-                        isSelected: false
-                    }));
-                    setFieldMappings(initialMappings);
-                })
-                .catch(() => setError('Failed to load uploaded file data.'))
-                .finally(() => setLoading(false));
-        }
-    }, [location.search]);
+    const [expandedAccordion, setExpandedAccordion] = useState<string | false>('orderDetailsSection');
 
     const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-        setExpandedPanel(isExpanded ? panel : false);
+        setExpandedAccordion(isExpanded ? panel : false);
     };
+    
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            console.log("Attempting to fetch initial data...");
+            setPageLoading(true);
+            try {
+                console.log("Fetching companies from /companies...");
+                const compsResponse = await apiService.get('/companies');
+                console.log("Response from /companies:", JSON.stringify(compsResponse, null, 2));
 
-    const navigateToPanel = (panelId: string) => {
-        setExpandedPanel(panelId);
-    };
+                // It's safer to check if compsResponse is an array and then map.
+                // Assuming compsResponse is the array of companies directly or compsResponse.data
+                let rawComps: any[] = [];
+                if (Array.isArray(compsResponse)) {
+                    rawComps = compsResponse;
+                } else if (compsResponse && Array.isArray(compsResponse.data)) { // Common structure for axios
+                    rawComps = compsResponse.data;
+                } else {
+                    console.warn("/companies response was not an array or in expected structure:", compsResponse);
+                }
+                
+                const transformedComps = rawComps.map((c: any) => ({ ...c, id: String(c.id), name: c.name || c.company_name || 'Unnamed Company' } as Company));
+                setCompanies(transformedComps);
+                console.log("Transformed companies set in state:", transformedComps);
+                
+                // Fetch system fields from backend
+                const systemFields = await apiService.get('/orders/system_fields');
+                setSystemFieldsForMapping(systemFields.map((f: any) => ({ value: f.value || f.field_key, label: f.label || f.field_label, color: '#1976d2', description: f.field_type })));
+                console.log("System fields set.");
 
-    const handleColumnSelection = (column: string, checked: boolean) => {
-        let newSelectedColumns;
-        if (checked) {
-            newSelectedColumns = [...selectedColumns, column];
-        } else {
-            newSelectedColumns = selectedColumns.filter(col => col !== column);
+            } catch (err: any) {
+                console.error('Failed to load initial data. Full error object:', err);
+                console.error('Error response data (if available):', err.response?.data);
+                console.error('Error message:', err.message);
+                setError(`Failed to load initial company data: ${err.message}. Please check console and network tab for details.`);
+            } finally {
+                setPageLoading(false);
+                console.log("Initial data fetching finished.");
+            }
+        };
+        fetchInitialData();
+    }, []);
+    
+    const handleOrderInputChange = (field: keyof OrderStatementData, value: string) => {
+        setOrderFormData(prev => ({ ...prev, [field]: value }));
+        if (field === 'amount' && isAmountFromExcel) {
+            setIsAmountFromExcel(false);
+            setSelectedAmountColumn(null);
         }
-        setSelectedColumns(newSelectedColumns);
-
-        setFieldMappings(prev =>
-            prev.map(mapping =>
-                mapping.companyColumn === column
-                    ? { ...mapping, isSelected: checked }
-                    : mapping
-            )
-        );
+    };
+    
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'];
+        if (!allowedTypes.includes(file.type) && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
+            setError('Please select a valid Excel (.xlsx, .xls) or CSV (.csv) file.');
+            if (fileInputRef.current) fileInputRef.current.value = ""; return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            setError('File size must be less than 10MB');
+            if (fileInputRef.current) fileInputRef.current.value = ""; return;
+        }
+        setSelectedFile(file);
+        setActionLoading('file_process');
+        setError(null); setSuccess(null);
+        try {
+            const response = await orderStatementService.uploadAndParseFile(file);
+            setExcelSourceData(response);
+            setOrderFormData(prev => ({ ...prev, file_path: file.name }));
+            const colOptsForAmount: ExcelColumnOption[] = response.headers.map((header: string) => ({
+                label: header, value: header,
+                sampleData: response.previewRows[0]?.[response.headers.indexOf(header)] !== undefined ? String(response.previewRows[0]?.[response.headers.indexOf(header)]).substring(0, 30) : 'N/A'
+            }));
+            setExcelColumnOptionsForAmount(colOptsForAmount);
+            const initialMappings: FieldMappingConfig[] = response.headers.map((header: string) => ({
+                companyColumn: header, systemField: 'none', isSelected: false,
+                sampleData: response.previewRows[0]?.[response.headers.indexOf(header)]
+            }));
+            setFieldMappings(initialMappings);
+            setSuccess(`File "${file.name}" processed. Select amount column or save details.`);
+            const commonAmountHeaders = ['amount', 'total', 'total amount', 'total_amount', 'totalearnings', 'total_earnings'];
+            const foundAmountCol = colOptsForAmount.find(opt => commonAmountHeaders.includes(opt.value.toLowerCase()));
+            if (foundAmountCol) handleAmountColumnSelect(foundAmountCol);
+        } catch (err: any) {
+            setError(err.message || 'Failed to process file. Ensure valid format.');
+            setExcelSourceData(defaultExcelSourceDataState);
+            setExcelColumnOptionsForAmount([]); setSelectedAmountColumn(null);
+            setFieldMappings([]); setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        } finally {
+            setActionLoading(null);
+        }
+    };
+    
+    const handleAmountColumnSelect = (column: ExcelColumnOption | null) => {
+        setSelectedAmountColumn(column);
+        if (column && excelSourceData && excelSourceData.fullData.length > 0) {
+            const headerIndex = excelSourceData.headers.indexOf(column.value);
+            let amountFound = false;
+            for (const row of excelSourceData.fullData) {
+                if (headerIndex >= 0 && row.length > headerIndex) {
+                    const cellValue = row[headerIndex];
+                    if (cellValue !== undefined && cellValue !== null && String(cellValue).trim() !== '') {
+                        try {
+                            const potentialAmount = parseFloat(String(cellValue).replace(/[^0-9.-]+/g,""));
+                            if (!isNaN(potentialAmount)) {
+                                setOrderFormData(prev => ({ ...prev, amount: potentialAmount.toString(), row_reference: column.value }));
+                                setIsAmountFromExcel(true); setError(null); amountFound = true; break; 
+                            }
+                        } catch (e) { /* continue */ }
+                    }
+                }
+            }
+            if (!amountFound) {
+                setError(`No valid numeric data in column "${column.label}". Enter manually.`);
+                setOrderFormData(prev => ({ ...prev, amount: '', row_reference: column.value }));
+                setIsAmountFromExcel(false);
+            }
+        } else {
+            setOrderFormData(prev => ({ ...prev, amount: '', row_reference: '' }));
+            setIsAmountFromExcel(false);
+        }
+    };
+    
+    const validateOrderDetails = () => {
+        if (!orderFormData.company_id) { setError('Please select a company.'); return false; }
+        if (!orderFormData.month_value && !orderFormData.week_value) { setError('Please select a period (Month and/or Week).'); return false; }
+        if (!orderFormData.payment_date) { setError('Please select a payment date.'); return false; }
+        if (!orderFormData.amount || parseFloat(orderFormData.amount) <= 0) { setError('Please enter a valid positive amount, or select a valid amount column.'); return false; }
+        if (!selectedFile) { setError('Please upload an Excel statement file.'); return false; }
+        setError(null); return true;
     };
 
-    const handleSelectAll = () => {
-        setSelectedColumns(excelData.headers);
-        setFieldMappings(prev => prev.map(mapping => ({ ...mapping, isSelected: true })));
-    };
+    const handleSaveOrderDetails = async () => {
+        if (!validateOrderDetails()) {
+            setExpandedAccordion('orderDetailsSection'); return;
+        }
+        setActionLoading('order');
+        console.log("Attempting to save order details...");
+        try {
+            const amountNum = parseFloat(orderFormData.amount);
+            const orderPayloadObject = {
+                ...orderFormData, 
+                amount: amountNum,
+                total_amount: amountNum, 
+                commission_amount: amountNum * 0.05, 
+                net_amount: amountNum + (amountNum * 0.05), 
+                published_at: new Date().toISOString(), 
+                published_by: 1, 
+                file_path: selectedFile ? selectedFile.name : '', 
+                row_reference: selectedAmountColumn ? selectedAmountColumn.value : orderFormData.row_reference || '', 
+                // Add year field for backend requirement
+                year: orderFormData.month_value ? (orderFormData.month_value.split('-')[1]) : (orderFormData.payment_date ? (new Date(orderFormData.payment_date).getFullYear()) : new Date().getFullYear()),
+                status:'pending',
+                remarks: orderFormData.notes,
+             
+            };
+            const { id, ...payloadToSendForPost } = orderPayloadObject; // Exclude 'id' for POST
 
-    const handleDeselectAll = () => {
-        setSelectedColumns([]);
-        setFieldMappings(prev => prev.map(mapping => ({ ...mapping, isSelected: false })));
-    };
+            const formDataApi = new FormData();
+            console.log("Payload being prepared for /company_payments (before FormData):", JSON.stringify(payloadToSendForPost, null, 2));
+            Object.entries(payloadToSendForPost).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    formDataApi.append(key, String(value));
+                }
+            });
+            // console.log("FormData entries to be sent to /company_payments:");
+            // for (let pair of formDataApi.entries()) {
+            //    console.log(pair[0]+ ': '+ pair[1]); 
+            // }
+            
+            const response = await apiService.post('/company_payments', formDataApi);
+            console.log("Response from POST /company_payments:", JSON.stringify(response, null, 2));
+            
+            // IMPORTANT: Adjust based on your actual API response structure for the ID
+            const newOrderId = response?.id || response?.data?.id || response?.data?.company_payment?.id; 
+            if (!newOrderId) {
+                console.warn("New Order ID not found in response from /company_payments. Response:", response);
+                setError("Order saved, but couldn't retrieve new Order ID. Please check console. Proceed with caution.");
+            }
+            setOrderFormData(prev => ({ ...prev, id: newOrderId })); 
+            setSuccess('Order details saved successfully! Proceed to map fields.');
+            setExpandedAccordion('filePreviewMappingSection');
 
-    const handleMappingChange = (index: number, field: keyof FieldMapping, value: any) => {
+        } catch (err: any) {
+            console.error("Error saving order details. Full error object:", err);
+            console.error("Error response data (if available):", err.response?.data);
+            console.error("Error message:", err.message);
+            setError(err.response?.data?.message || err.message || 'Failed to save order details. Check console.');
+            setExpandedAccordion('orderDetailsSection'); 
+        } finally {
+            setActionLoading(null);
+            console.log("Order details save attempt finished.");
+        }
+    };
+    
+    const handleColumnSelectionForMapping = (columnName: string, checked: boolean) => {
+        setFieldMappings(prev => prev.map(mapping => 
+            mapping.companyColumn === columnName 
+            ? { ...mapping, isSelected: checked, systemField: checked ? mapping.systemField : 'none' } 
+            : mapping
+        ));
+    };
+    
+    const handleSelectAllColumnsForMapping = (selectAll: boolean) => {
+        setFieldMappings(prev => prev.map(mapping => ({
+            ...mapping, isSelected: selectAll,
+            systemField: selectAll ? mapping.systemField : 'none' 
+        })));
+    };
+    
+    const handleMappingConfigChange = (index: number, field: keyof FieldMappingConfig, value: any) => {
         setFieldMappings(prev => {
             const updated = [...prev];
             updated[index] = { ...updated[index], [field]: value };
             return updated;
         });
     };
-
-    const handleExport = async () => {
-        if (!uploadId) {
-            setError('No file has been uploaded');
-            return;
+    
+    const handleSaveMappingsAndPublish = async () => {
+        console.log("Attempting to save mappings and publish...");
+        if (!excelSourceData || !excelSourceData.uploadId) { 
+            setError('No file processed or upload session found.'); return;
         }
-        
+        if (!orderFormData.id) {
+            setError('Order ID is missing. Save order details first.');
+            setExpandedAccordion('orderDetailsSection'); return;
+        }
         const activeMappings = fieldMappings.filter(m => m.isSelected);
         if (activeMappings.length === 0) {
-            setError("No fields selected for export.");
-            return;
+            setError('No columns selected for mapping.'); return;
+        }
+        const incompleteMapping = activeMappings.find(m => m.systemField === 'none');
+        if (incompleteMapping) {
+            setError(`Column "${incompleteMapping.companyColumn}" is selected but not mapped.`); return;
+        }
+        const systemFieldCounts = activeMappings.reduce((acc, m) => {
+            acc[m.systemField] = (acc[m.systemField] || 0) + 1; return acc;
+        }, {} as Record<string, number>);
+        const duplicateSystemFields = Object.entries(systemFieldCounts).filter(([, count]) => count > 1);
+        if (duplicateSystemFields.length > 0) {
+            const duplicates = duplicateSystemFields.map(([fieldKey]) => systemFieldsForMapping.find(sf => sf.value === fieldKey)?.label || fieldKey).join(', ');
+            setError(`Duplicate system field mappings: ${duplicates}.`); return;
         }
         
-        setLoading(true);
-        
+        setActionLoading('publish');
         try {
-            // In a real implementation, you would use the API:
-            // const blob = await orderStatementService.exportMappedData(uploadId);
-            // const url = window.URL.createObjectURL(blob);
-            // const a = document.createElement('a');
-            // a.href = url;
-            // a.download = `mapped_data_${uploadId}.xlsx`;
-            // document.body.appendChild(a);
-            // a.click();
-            // document.body.removeChild(a);
-            // window.URL.revokeObjectURL(url);
+            const payload = {
+                uploadId: excelSourceData.uploadId, 
+                orderId: orderFormData.id, 
+                mappings: activeMappings.map(m => ({ companyColumn: m.companyColumn, systemField: m.systemField }))
+            };
+            console.log("Payload for /map_and_publish_statement:", JSON.stringify(payload, null, 2));
             
-            // For now, we'll simulate with client-side export
-            const headers = activeMappings.map(m => {
-                const systemField = systemFields.find(f => f.value === m.systemField);
-                return systemField?.label || m.companyColumn;
-            });
+            // const response = await apiService.post('/map_and_publish_statement', payload); // UNCOMMENT FOR ACTUAL API
+            // console.log("Response from /map_and_publish_statement:", response); // UNCOMMENT FOR ACTUAL API
+            
+            // Mocking publish for now
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            console.log("Mock publish successful.");
 
-            const csvContent = [
-                headers.join(','),
-                ...excelData.rows.map(row =>
-                    activeMappings.map(mapping => {
-                        const columnIndex = excelData.headers.indexOf(mapping.companyColumn);
-                        return columnIndex !== -1 ? row[columnIndex] : '';
-                    }).join(',')
-                )
-            ].join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            setOrderFormData(prev => ({ ...prev, mapping_status: 'completed', status: 'processing' }));
+            setSuccess('Mappings saved and data published successfully!');
+        } catch (err: any) {
+            console.error("Error saving mappings/publishing. Full error:", err);
+            console.error("Error response data (if available):", err.response?.data);
+            setError(err.response?.data?.message || err.message || 'Failed to save mappings/publish. Check console.');
+        } finally {
+            setActionLoading(null);
+            console.log("Save mappings/publish attempt finished.");
+        }
+    };
+    
+    const handleExportMappedDataPreview = async () => {
+        if (!excelSourceData || excelSourceData.headers.length === 0) {
+            setError('No file processed to export preview from.'); return;
+        }
+        const activeMappings = fieldMappings.filter(m => m.isSelected && m.systemField !== 'none');
+        if (activeMappings.length === 0) {
+            setError('No columns selected and mapped for preview.'); return;
+        }
+        setActionLoading('export');
+        try {
+            const blob = await orderStatementService.exportMappedDataPreview(excelSourceData.headers, excelSourceData.fullData, activeMappings, systemFieldsForMapping);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'mapped_data.csv';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            setSuccess('Data exported successfully!');
-        } catch (err) {
-            console.error('Error exporting data:', err);
-            setError('Failed to export data. Please try again.');
+            a.download = `mapped_data_preview_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a); a.click();
+            window.URL.revokeObjectURL(url); document.body.removeChild(a);
+            setSuccess('Mapped data preview exported.');
+        } catch (err: any) {
+            setError(err.message || 'Failed to export data preview.');
         } finally {
-            setLoading(false);
+            setActionLoading(null);
         }
     };
 
-    const handlePublish = async () => {
-        if (!uploadId) {
-            setError('No file has been uploaded');
-            return;
-        }
-        
-        const activeMappings = fieldMappings.filter(m => m.isSelected);
-        if (activeMappings.length === 0) {
-            setError("No fields selected for publishing.");
-            return;
-        }
-        
-        setLoading(true);
-        
-        try {
-            // In a real implementation, you would use the API:
-            await orderStatementService.mapOrderStatement(uploadId, fieldMappings);
-            
-            setSuccess('Data published successfully!');
-            
-            // Reset to the first step
-            navigateToPanel('panel1');
-            setSelectedColumns([]);
-            setUploadId(null);
-            setExcelData(defaultExcelData);
-            
-            // Reset mappings
-            setFieldMappings([]);
-        } catch (err) {
-            console.error('Error publishing data:', err);
-            setError('Failed to publish data. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const accordionData = [
-        {
-            id: 'panel1',
-            title: 'Step 1: File Upload & Column Selection',
-            icon: <CloudUploadIcon />,
-            content: (
-                <FilePreviewAndSelection
-                    excelData={excelData}
-                    selectedColumns={selectedColumns}
-                    onColumnChange={handleColumnSelection}
-                    onSelectAll={handleSelectAll}
-                    onDeselectAll={handleDeselectAll}
-                    onNext={() => navigateToPanel('panel2')}
-                    onFileUpload={handleFileUpload}
-                    loading={loading}
-                    fileInputRef={fileInputRef}
-                />
-            ),
-            disabled: false, // Step 1 is always enabled
-        },
-        {
-            id: 'panel2',
-            title: 'Step 2: Field Mapping & Configuration',
-            icon: <SettingsApplicationsIcon />,
-            content: (
-                <FieldMappingStep
-                    mappings={fieldMappings}
-                    onMappingChange={handleMappingChange}
-                    onNext={() => navigateToPanel('panel3')}
-                    onBack={() => navigateToPanel('panel1')}
-                    systemFields={systemFields}
-                />
-            ),
-            disabled: selectedColumns.length === 0 || loading, // Disable if no columns selected from step 1
-        },
-        {
-            id: 'panel3',
-            title: 'Step 3: Final Preview & Publish',
-            icon: <PreviewIcon />,
-            content: (
-                <FinalPreviewStep
-                    mappings={fieldMappings}
-                    onBack={() => navigateToPanel('panel2')}
-                    onPublish={handlePublish}
-                    onExport={handleExport}
-                    excelData={excelData}
-                    systemFields={systemFields}
-                />
-            ),
-            disabled: !fieldMappings.some(m => m.isSelected) || loading, // Disable if no fields are actually mapped
-        }
-    ];
-
-    // Handle notification close
-    const handleCloseError = () => {
-        setError(null);
-    };
-
-    const handleCloseSuccess = () => {
-        setSuccess(null);
-    };
-
-    return (
-        <Container maxWidth="lg" sx={{ py: 3, bgcolor: 'grey.50', minHeight: '100vh' }}>
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" color="primary" textAlign="center" sx={{mb:3}}>
-                Excel Data Field Mapper
-            </Typography>
-            
-            {/* Error Notification */}
-            <Snackbar 
-                open={!!error} 
-                autoHideDuration={6000} 
-                onClose={handleCloseError}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-                <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
-                    {error}
-                </Alert>
-            </Snackbar>
-            
-            {/* Success Notification */}
-            <Snackbar 
-                open={!!success} 
-                autoHideDuration={6000} 
-                onClose={handleCloseSuccess}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-                <Alert onClose={handleCloseSuccess} severity="success" sx={{ width: '100%' }}>
-                    {success}
-                </Alert>
-            </Snackbar>
-            
-            {accordionData.map((item) => (
-                <Accordion
-                    key={item.id}
-                    expanded={expandedPanel === item.id}
-                    onChange={handleAccordionChange(item.id)}
-                    disabled={item.disabled}
-                    sx={{ 
-                        mb: 1.5, 
-                        '&.Mui-expanded': { margin: '12px 0' },
-                        boxShadow: expandedPanel === item.id ? 5 : 1,
-                        '&:before': { display: 'none' } 
-                    }}
-                >
-                    <AccordionSummary
-                        expandIcon={<ExpandMoreIcon />}
-                        aria-controls={`${item.id}-content`}
-                        id={`${item.id}-header`}
-                        sx={{ 
-                            bgcolor: expandedPanel === item.id ? 'primary.main' : 'grey.100',
-                            color: expandedPanel === item.id ? 'primary.contrastText' : 'text.primary',
-                            borderTopLeftRadius: 'inherit',
-                            borderTopRightRadius: 'inherit',
-                            minHeight: 56,
-                            '& .MuiAccordionSummary-content': { 
-                                alignItems: 'center',
-                                gap: 1.5 
-                            },
-                            '& .MuiSvgIcon-root': { 
-                                color: expandedPanel === item.id ? 'primary.contrastText' : 'action.active',
-                            }
+    const renderOrderDetailsContent = () => (
+        <Card sx={{ p: 2, boxShadow: 'none', border: 'none' }}>
+            <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                    <FormControl fullWidth error={!!(error && orderFormData.company_id === '')}>
+                        <InputLabel id="company-select-label">Company *</InputLabel>
+                        <Select labelId="company-select-label" value={orderFormData.company_id} label="Company *" onChange={(e) => handleOrderInputChange('company_id', e.target.value)}>
+                            {companies.map((company) => (<MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <TextField fullWidth label="Payment Date *" type="date" value={orderFormData.payment_date} onChange={(e) => handleOrderInputChange('payment_date', e.target.value)} InputLabelProps={{ shrink: true }} error={!!(error && orderFormData.payment_date === '')}/>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <FormControl fullWidth><InputLabel id="month-select-label">Month</InputLabel>
+                        <Select labelId="month-select-label" value={orderFormData.month_value} label="Month" onChange={(e) => handleOrderInputChange('month_value', e.target.value)}>
+                            {MONTHS.map((month) => (<MenuItem key={month.value} value={month.value}>{month.label}</MenuItem>))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <FormControl fullWidth><InputLabel id="week-select-label">Week</InputLabel>
+                        <Select labelId="week-select-label" value={orderFormData.week_value} label="Week" onChange={(e) => handleOrderInputChange('week_value', e.target.value)}>
+                            {WEEKS.map((week) => (<MenuItem key={week.value} value={week.value}>{week.label}</MenuItem>))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                     <Typography variant="subtitle1" gutterBottom sx={{mb:1}}>Upload Statement File *</Typography>
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={handleFileChange}/>
+                    <Button variant="outlined" startIcon={<CloudUploadIcon />} onClick={() => fileInputRef.current?.click()} disabled={actionLoading === 'file_process'} fullWidth sx={{py: 1.5}}>
+                        {actionLoading === 'file_process' ? <CircularProgress size={24} /> : selectedFile ? `Change File: ${selectedFile.name}` : 'Select Statement File (.xlsx, .xls, .csv)'}
+                    </Button>
+                    {selectedFile && !actionLoading && (
+                        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center'}}>
+                                <AttachFileIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">{selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)</Typography>
+                            </Box>
+                            <IconButton size="small" onClick={() => {
+                                setSelectedFile(null); setExcelSourceData(defaultExcelSourceDataState);
+                                setExcelColumnOptionsForAmount([]); setSelectedAmountColumn(null); setFieldMappings([]);
+                                setOrderFormData(prev => ({...prev, amount: '', file_path: '', row_reference: ''}));
+                                setIsAmountFromExcel(false); if(fileInputRef.current) fileInputRef.current.value = ""; setSuccess(null);
+                            }}><CloseIcon fontSize="small" /></IconButton>
+                        </Box>
+                    )}
+                </Grid>
+                {excelSourceData && excelSourceData.headers.length > 0 && (
+                    <Grid item xs={12} md={6}>
+                        <Autocomplete options={excelColumnOptionsForAmount} value={selectedAmountColumn} onChange={(_, newValue) => handleAmountColumnSelect(newValue)}
+                            getOptionLabel={(option) => `${option.label}${option.sampleData ? ` (e.g., ${option.sampleData})` : ''}`}
+                            renderInput={(params) => (<TextField {...params} label="Select Amount Column from File (Optional)" fullWidth helperText="First valid numeric value will populate Amount." />)}
+                            sx={{mb: isAmountFromExcel ? 0 : 2}} />
+                    </Grid>
+                )}
+                 <Grid item xs={12} md={excelSourceData && excelSourceData.headers.length > 0 ? 6 : 12}>
+                    <TextField fullWidth label="Total Amount *" type="number" value={orderFormData.amount} onChange={(e) => handleOrderInputChange('amount', e.target.value)}
+                        disabled={isAmountFromExcel && selectedAmountColumn !== null}
+                        InputProps={{
+                            startAdornment: isAmountFromExcel && selectedAmountColumn ? (
+                                <Chip label={`From: ${selectedAmountColumn.label}`} color="primary" size="small" 
+                                    onDelete={() => { setIsAmountFromExcel(false); setSelectedAmountColumn(null); setOrderFormData(prev => ({...prev, amount: '', row_reference: ''})); }}
+                                    sx={{ mr: 1 }}/>
+                            ) : null
                         }}
-                    >
-                        {item.icon}
-                        <Typography fontWeight="medium">{item.title}</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ p: {xs: 1, sm: 2}, bgcolor: 'background.paper' }}>
-                        {item.content}
-                    </AccordionDetails>
-                </Accordion>
-            ))}
+                        error={!!(error && (!orderFormData.amount || parseFloat(orderFormData.amount) <= 0))} />
+                </Grid>
+                <Grid item xs={12}>
+                    <TextField fullWidth label="Notes / Remarks" multiline rows={3} value={orderFormData.notes} onChange={(e) => handleOrderInputChange('notes', e.target.value)}/>
+                </Grid>
+            </Grid>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="contained" color="primary" onClick={handleSaveOrderDetails} disabled={actionLoading === 'order' || actionLoading === 'file_process'}
+                    startIcon={actionLoading === 'order' ? <CircularProgress size={20} color="inherit"/> : <SaveIcon />} size="large">
+                    Save Order Details & Proceed
+                </Button>
+            </Box>
+        </Card>
+    );
+
+    const renderFilePreviewAndMappingContent = () => {
+        if (!excelSourceData || excelSourceData.headers.length === 0) {
+            return (
+                <Card sx={{ p: 2, boxShadow: 'none', border: 'none' }}>
+                    <Typography variant="body1" color="text.secondary" textAlign="center">
+                        Complete "Order Details", upload file, and save. <br/> Preview & mapping will appear here.
+                    </Typography>
+                </Card>
+            );
+        }
+        const selectedForMappingCount = fieldMappings.filter(m => m.isSelected).length;
+        const allSelectedHaveSystemField = !fieldMappings.some(m => m.isSelected && m.systemField === 'none');
+        return (
+            <Card sx={{ p: 2, boxShadow: 'none', border: 'none' }}>
+                <Typography variant="h6" gutterBottom>Data Preview (First 5 Rows)</Typography>
+                <TableContainer component={Paper} sx={{ maxHeight: 300, mb: 3 }} variant="outlined">
+                    <Table stickyHeader size="small"><TableHead><TableRow>
+                        {excelSourceData.headers.map((header, index) => (<TableCell key={index} sx={{fontWeight: 'bold', backgroundColor: 'grey.100'}}>{header}</TableCell>))}
+                    </TableRow></TableHead><TableBody>
+                        {excelSourceData.previewRows.map((row, rowIndex) => (<TableRow key={rowIndex} hover>
+                            {excelSourceData.headers.map((_, cellIndex) => (<TableCell key={cellIndex}>{row[cellIndex] !== undefined ? String(row[cellIndex]) : ''}</TableCell>))}
+                        </TableRow>))}
+                        {excelSourceData.previewRows.length === 0 && (<TableRow><TableCell colSpan={excelSourceData.headers.length} align="center">No data to preview.</TableCell></TableRow>)}
+                    </TableBody></Table>
+                </TableContainer>
+                <Typography variant="h6" gutterBottom>Field Mapping Configuration</Typography><Divider sx={{ mb: 2 }} />
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', p:1, backgroundColor: 'grey.50', borderRadius:1 }}>
+                    <FormControlLabel control={
+                        <Checkbox checked={fieldMappings.length > 0 && fieldMappings.every(m => m.isSelected)}
+                            indeterminate={selectedForMappingCount > 0 && selectedForMappingCount < fieldMappings.length}
+                            onChange={(e) => handleSelectAllColumnsForMapping(e.target.checked)} disabled={fieldMappings.length === 0}/>
+                    } label={`Select All Columns for Mapping (${selectedForMappingCount} / ${fieldMappings.length})`}/>
+                </Box>
+                <TableContainer component={Paper} sx={{ maxHeight: 400 }} variant="outlined">
+                    <Table stickyHeader size="small"><TableHead><TableRow>
+                        <TableCell padding="checkbox" sx={{width: '5%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Map</TableCell>
+                        <TableCell sx={{width: '30%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Excel Column</TableCell>
+                        <TableCell sx={{width: '20%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Sample Data</TableCell>
+                        <TableCell sx={{width: '45%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Map to System Field *</TableCell>
+                    </TableRow></TableHead><TableBody>
+                        {fieldMappings.map((mapping, index) => (<TableRow key={index} hover selected={mapping.isSelected}>
+                            <TableCell padding="checkbox"><Checkbox checked={mapping.isSelected} onChange={(e) => handleColumnSelectionForMapping(mapping.companyColumn, e.target.checked)}/></TableCell>
+                            <TableCell>{mapping.companyColumn}</TableCell>
+                            <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 150, color: 'text.secondary' }}>{mapping.sampleData !== undefined ? String(mapping.sampleData).substring(0, 25) : 'N/A'}</Typography></TableCell>
+                            <TableCell>
+                                <FormControl fullWidth size="small" disabled={!mapping.isSelected} error={mapping.isSelected && mapping.systemField === 'none'}>
+                                    <Select value={mapping.systemField} onChange={(e) => handleMappingConfigChange(index, 'systemField', e.target.value)} displayEmpty
+                                        renderValue={(selectedValue) => {
+                                            if (selectedValue === 'none') return <em>-- Select --</em>;
+                                            const field = systemFieldsForMapping.find(f => f.value === selectedValue);
+                                            return field ? field.label : selectedValue;
+                                        }}>
+                                        {systemFieldsForMapping.map((field) => {
+                                            const isAlreadySelected = fieldMappings.some((m, i) => i !== index && m.isSelected && m.systemField === field.value && field.value !== 'none');
+                                            return (<MenuItem key={field.value} value={field.value} disabled={isAlreadySelected} sx={{ color: field.color, fontWeight: field.value === 'none' ? 'normal' : 'medium' }}>
+                                                {field.label}
+                                                {field.description && <Typography variant="caption" sx={{ml:1, color: 'text.secondary'}}>({field.description})</Typography>}
+                                                {isAlreadySelected && <Chip label="Mapped" size="small" sx={{ml:1}}/>}
+                                            </MenuItem>);
+                                        })}
+                                    </Select>
+                                </FormControl>
+                            </TableCell>
+                        </TableRow>))}
+                        {fieldMappings.length === 0 && (<TableRow><TableCell colSpan={4} align="center">No columns found to map.</TableCell></TableRow>)}
+                    </TableBody></Table>
+                </TableContainer>
+                {selectedForMappingCount > 0 && !allSelectedHaveSystemField && (<Alert severity="warning" sx={{ mt: 2 }}>One or more selected columns lack a System Field assignment.</Alert>)}
+                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Button variant="outlined" startIcon={<PreviewIcon />} onClick={handleExportMappedDataPreview} disabled={actionLoading !== null || !allSelectedHaveSystemField || selectedForMappingCount === 0}
+                        title={!allSelectedHaveSystemField ? "Assign system fields to all selected columns" : "Export CSV preview"}>Export Preview</Button>
+                    <Button variant="contained" color="primary" size="large" startIcon={actionLoading === 'publish' ? <CircularProgress size={20} color="inherit" /> : <PublishIcon />}
+                        onClick={handleSaveMappingsAndPublish} disabled={actionLoading !== null || !allSelectedHaveSystemField || selectedForMappingCount === 0 || !orderFormData.id}
+                        title={!orderFormData.id ? "Save Order Details first" : (!allSelectedHaveSystemField ? "Assign system fields" : "Save mappings & publish")}>Save Mappings & Publish</Button>
+                </Box>
+            </Card>
+        );
+    };
+    
+    return (
+        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+            <Typography variant="h4" component="h1" gutterBottom sx={{mb:3}}>Order Statement Processing</Typography>
+            {pageLoading ? (<Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}><CircularProgress size={50} /></Box>) : (
+                <>
+                    {error && (<Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>)}
+                    {success && (<Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>{success}</Alert>)}
+                    <Accordion expanded={expandedAccordion === 'orderDetailsSection'} onChange={handleAccordionChange('orderDetailsSection')} TransitionProps={{ unmountOnExit: true }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="order-details-content" id="order-details-header">
+                            <Typography variant="h6">1. Order & File Details</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails sx={{backgroundColor: '#fcfcfc'}}>{renderOrderDetailsContent()}</AccordionDetails>
+                    </Accordion>
+                    <Accordion expanded={expandedAccordion === 'filePreviewMappingSection'} onChange={handleAccordionChange('filePreviewMappingSection')} disabled={!selectedFile || !orderFormData.id} TransitionProps={{ unmountOnExit: true }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="file-preview-mapping-content" id="file-preview-mapping-header">
+                             <Typography variant="h6">2. File Preview & Field Mapping</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails sx={{backgroundColor: '#fcfcfc'}}>{renderFilePreviewAndMappingContent()}</AccordionDetails>
+                    </Accordion>
+                </>
+            )}
         </Container>
     );
 };
-export default ExcelFieldMapper;
+
+export default MergedOrderPage;
