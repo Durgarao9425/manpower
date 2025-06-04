@@ -2,12 +2,37 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const authService = require('../services/authService');
+const { auth } = require('../middleware/auth');
 
-// Middleware to get rider_id from session (placeholder, replace with real auth)
-function getRiderId(req) {
-    // Example: return req.session.rider_id;
-    // For now, get from body for testing
-    return req.body.rider_id;
+// Middleware to get rider_id from session
+async function getRiderId(req) {
+    try {
+        // If rider_id is directly provided in the request body, use it
+        if (req.body.rider_id) {
+            return req.body.rider_id;
+        }
+
+        // If we have a user ID from the session, get the corresponding rider_id
+        if (req.user?.id) {
+            const [rows] = await db.query(
+                'SELECT id FROM riders WHERE user_id = ?',
+                [req.user.id]
+            );
+            
+            if (rows.length > 0) {
+                return rows[0].id;
+            }
+            
+            console.error(`No rider found for user_id: ${req.user.id}`);
+            return null;
+        }
+
+        console.error('No user ID or rider ID found in request');
+        return null;
+    } catch (error) {
+        console.error('Error in getRiderId:', error);
+        return null;
+    }
 }
 
 // Helper: Get company_id and store_id from rider_assignments
@@ -20,30 +45,33 @@ async function getAssignment(rider_id) {
     return rows[0] || {};
 }
 
-// Middleware to validate token
-function validateToken(req, res, next) {
-    const token = req.headers['x-auth-token'];
-    if (!token) {
-        return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
-    }
-
-    try {
-        const decoded = authService.verifyToken(token);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        return res.status(400).json({ success: false, message: 'Invalid token.' });
-    }
+// Helper: Verify if rider exists
+async function verifyRider(rider_id) {
+    const [rows] = await db.query(
+        'SELECT id FROM riders WHERE id = ?',
+        [rider_id]
+    );
+    return rows.length > 0;
 }
 
 // Apply token validation middleware to all routes
-router.use(validateToken);
+router.use(auth);
 
 // Punch In
 router.post('/punch-in', async (req, res) => {
     try {
-        const rider_id = getRiderId(req); // FIXED: get rider_id from request
-        if (!rider_id) return res.status(401).json({ error: 'Unauthorized' });
+        const rider_id = await getRiderId(req);
+        if (!rider_id) {
+            console.error('Failed to get rider_id from request');
+            return res.status(401).json({ error: 'Unauthorized - No valid rider ID found' });
+        }
+        
+        // First verify if the rider exists
+        const riderExists = await verifyRider(rider_id);
+        if (!riderExists) {
+            console.error(`Rider with ID ${rider_id} does not exist`);
+            return res.status(404).json({ error: 'Rider not found' });
+        }
         
         // Try to get assignment from database
         let { company_id, store_id } = await getAssignment(rider_id);
@@ -72,11 +100,15 @@ router.post('/punch-in', async (req, res) => {
         const marked_by = 1; // Using admin user ID
         
         // Insert attendance record
-        await db.query(
+        const [result] = await db.query(
             `INSERT INTO rider_attendance (rider_id, company_id, store_id, attendance_date, status, marked_by, remarks, created_at, updated_at, check_in_time)
              VALUES (?, ?, ?, ?, 'present', ?, NULL, ?, ?, ?)` ,
             [rider_id, company_id, store_id, today, marked_by, now, now, now]
         );
+        
+        if (!result.insertId) {
+            throw new Error('Failed to insert attendance record');
+        }
         
         // Generate token for response
         const token = authService.generateToken({ rider_id, company_id, store_id });
@@ -100,8 +132,11 @@ router.post('/punch-in', async (req, res) => {
 // Punch Out
 router.post('/punch-out', async (req, res) => {
     try {
-        const rider_id = getRiderId(req);
-        if (!rider_id) return res.status(401).json({ error: 'Unauthorized' });
+        const rider_id = await getRiderId(req);
+        if (!rider_id) {
+            console.error('Failed to get rider_id from request');
+            return res.status(401).json({ error: 'Unauthorized - No valid rider ID found' });
+        }
         
         const today = new Date().toISOString().slice(0, 10);
         // Find today's present record
@@ -149,8 +184,11 @@ router.post('/punch-out', async (req, res) => {
 // Mark Absent
 router.post('/absent', async (req, res) => {
     try {
-        const rider_id = getRiderId(req);
-        if (!rider_id) return res.status(401).json({ error: 'Unauthorized' });
+        const rider_id = await getRiderId(req);
+        if (!rider_id) {
+            console.error('Failed to get rider_id from request');
+            return res.status(401).json({ error: 'Unauthorized - No valid rider ID found' });
+        }
         
         // Try to get assignment from database
         let { company_id, store_id } = await getAssignment(rider_id);

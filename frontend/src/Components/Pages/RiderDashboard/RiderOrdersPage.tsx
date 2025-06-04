@@ -39,7 +39,7 @@ interface AdvanceRequestData {
     remainingEligible: number;
 }
 
-export const Orders: React.FC = () => {
+const Orders: React.FC = () => {
     const muiTheme = useMuiTheme();
     const { themeColor } = useTheme();
     const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
@@ -304,3 +304,5 @@ export const Orders: React.FC = () => {
         </div>
     );
 };
+
+export default Orders;

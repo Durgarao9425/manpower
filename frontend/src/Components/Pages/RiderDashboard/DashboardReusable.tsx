@@ -12,7 +12,7 @@ interface SliderImage {
     display_order?: number;
 }
 
-export const Dashboard: React.FC = () => {
+const Dashboard: React.FC = () => {
     const [sliders, setSliders] = useState<SliderImage[]>([]);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -248,3 +248,5 @@ export const Dashboard: React.FC = () => {
         </div>
     );
 };
+
+export default Dashboard;

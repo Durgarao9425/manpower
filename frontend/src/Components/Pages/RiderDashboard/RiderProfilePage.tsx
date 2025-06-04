@@ -1,5 +1,6 @@
 import durgarao from "../../../Images/durgarao.jpeg"
-export const Profile: React.FC = () => (
+
+const Profile: React.FC = () => (
     <div style={{ padding: '16px' }}>
         <div style={{
             backgroundColor: 'white',
@@ -60,3 +61,5 @@ export const Profile: React.FC = () => (
         </div>
     </div>
 );
+
+export default Profile;
