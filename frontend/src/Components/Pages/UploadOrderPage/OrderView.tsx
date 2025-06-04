@@ -104,6 +104,18 @@ export interface FieldMappingConfig {
     systemField: string;
     isSelected: boolean;
     sampleData?: string;
+    // Fields for update/insert logic
+    id?: number;
+    show_to_rider?: number;
+    show_in_invoice?: number;
+    // Additional fields that might be in the database but not needed for this feature
+    show_to_company?: number;
+    count_for_commission?: number;
+    editable_by_rider?: number;
+    editable_by_company?: number;
+    is_required?: number;
+    // Original values for detecting changes
+    _original?: Partial<FieldMappingConfig>;
 }
 
 interface SystemFieldOption {
@@ -217,6 +229,11 @@ const defaultExcelSourceDataState: ExcelSourceData = {
     fullData: []
 };
 
+const MAPPING_TOGGLES = [
+    { label: 'Show to Rider', field: 'show_to_rider' },
+    { label: 'Show in Invoice', field: 'show_in_invoice' }
+];
+
 const MergedOrderPage: React.FC = () => {
     const [orderFormData, setOrderFormData] = useState<OrderStatementData>(initialOrderFormData);
     const [companies, setCompanies] = useState<Company[]>([]);
@@ -312,10 +329,63 @@ const MergedOrderPage: React.FC = () => {
                 sampleData: response.previewRows[0]?.[response.headers.indexOf(header)] !== undefined ? String(response.previewRows[0]?.[response.headers.indexOf(header)]).substring(0, 30) : 'N/A'
             }));
             setExcelColumnOptionsForAmount(colOptsForAmount);
-            const initialMappings: FieldMappingConfig[] = response.headers.map((header: string) => ({
-                companyColumn: header, systemField: 'none', isSelected: false,
-                sampleData: response.previewRows[0]?.[response.headers.indexOf(header)]
+            // --- Smart auto-mapping ---
+            let initialMappings: FieldMappingConfig[] = response.headers.map((header: string) => ({
+                companyColumn: header, systemField: 'none', isSelected: false, sampleData: response.previewRows[0]?.[response.headers.indexOf(header)]
             }));
+            if (orderFormData.company_id) {
+                const mappingHistory = await fetchAndApplyFieldMappings(orderFormData.company_id, response.headers);
+                if (mappingHistory.length > 0) {
+                    // For each header, if mapping exists, auto-map
+                    initialMappings = response.headers.map((header: string) => {
+                        // Find mapping where company_field_name (Excel column name) matches the header
+                        const found = mappingHistory.find((m: any) => m.company_field_name === header);
+                        if (found) {
+                            return {
+                                companyColumn: header,
+                                systemField: found.supplier_field_name, // System field name
+                                isSelected: true,
+                                sampleData: response.previewRows[0]?.[response.headers.indexOf(header)],
+                                id: found.id,
+                                show_to_rider: found.show_to_rider ?? 0,
+                                show_in_invoice: found.show_in_invoice ?? 0,
+                                // Keep other fields for backward compatibility
+                                show_to_company: found.show_to_company ?? 0,
+                                count_for_commission: found.count_for_commission ?? 0,
+                                editable_by_rider: found.editable_by_rider ?? 0,
+                                editable_by_company: found.editable_by_company ?? 0,
+                                is_required: found.is_required ?? 0,
+                                _original: {
+                                    systemField: found.supplier_field_name,
+                                    show_to_rider: found.show_to_rider ?? 0,
+                                    show_in_invoice: found.show_in_invoice ?? 0,
+                                    // Keep other fields for backward compatibility
+                                    show_to_company: found.show_to_company ?? 0,
+                                    count_for_commission: found.count_for_commission ?? 0,
+                                    editable_by_rider: found.editable_by_rider ?? 0,
+                                    editable_by_company: found.editable_by_company ?? 0,
+                                    is_required: found.is_required ?? 0,
+                                }
+                            };
+                        } else {
+                            return {
+                                companyColumn: header,
+                                systemField: 'none',
+                                isSelected: false,
+                                sampleData: response.previewRows[0]?.[response.headers.indexOf(header)],
+                                show_to_rider: 0,
+                                show_in_invoice: 0,
+                                // Keep other fields for backward compatibility
+                                show_to_company: 0,
+                                count_for_commission: 0,
+                                editable_by_rider: 0,
+                                editable_by_company: 0,
+                                is_required: 0,
+                            };
+                        }
+                    });
+                }
+            }
             setFieldMappings(initialMappings);
             setSuccess(`File "${file.name}" processed. Select amount column or save details.`);
             const commonAmountHeaders = ['amount', 'total', 'total amount', 'total_amount', 'totalearnings', 'total_earnings'];
@@ -482,28 +552,50 @@ const MergedOrderPage: React.FC = () => {
             const duplicates = duplicateSystemFields.map(([fieldKey]) => systemFieldsForMapping.find(sf => sf.value === fieldKey)?.label || fieldKey).join(', ');
             setError(`Duplicate system field mappings: ${duplicates}.`); return;
         }
-        
         setActionLoading('publish');
         try {
+            // Only send changed or new mappings
+            const mappingsToSave = activeMappings.filter(m => {
+                if (!m.id) return true; // new mapping
+                // Compare only the fields we care about for this feature
+                const orig = m._original || {};
+                return (
+                    m.systemField !== orig.systemField ||
+                    m.show_to_rider !== orig.show_to_rider ||
+                    m.show_in_invoice !== orig.show_in_invoice
+                );
+            });
+            if (mappingsToSave.length === 0) {
+                setSuccess('No mapping changes to save.');
+                setActionLoading(null);
+                return;
+            }
             const payload = {
-                uploadId: excelSourceData.uploadId, 
-                orderId: orderFormData.id, 
-                mappings: activeMappings.map(m => ({ companyColumn: m.companyColumn, systemField: m.systemField }))
+                company_id: orderFormData.company_id,
+                order_id: orderFormData.id,
+                uploadId: excelSourceData.uploadId,
+                mappings: mappingsToSave.map(m => ({
+                    id: m.id,
+                    company_field_name: m.companyColumn, // Excel column name
+                    supplier_field_name: m.systemField, // System field name
+                    show_to_rider: m.show_to_rider ?? 0,
+                    show_in_invoice: m.show_in_invoice ?? 0,
+                    // Keep other fields for backward compatibility
+                    show_to_company: m.show_to_company ?? 0,
+                    count_for_commission: m.count_for_commission ?? 0,
+                    editable_by_rider: m.editable_by_rider ?? 0,
+                    editable_by_company: m.editable_by_company ?? 0,
+                    is_required: m.is_required ?? 0,
+                }))
             };
-            console.log("Payload for /map_and_publish_statement:", JSON.stringify(payload, null, 2));
-            
-            // const response = await apiService.post('/map_and_publish_statement', payload); // UNCOMMENT FOR ACTUAL API
-            // console.log("Response from /map_and_publish_statement:", response); // UNCOMMENT FOR ACTUAL API
-            
-            // Mocking publish for now
-            await new Promise(resolve => setTimeout(resolve, 1000)); 
-            console.log("Mock publish successful.");
-
+            // Backend will handle insert/update based on id
+            const saveResponse = await apiService.post('/field_mappings/save_batch', payload);
+            console.log('Field mappings saved:', saveResponse);
+            // Continue with publish logic (mocked or real)
+            // ...existing code for publish...
             setOrderFormData(prev => ({ ...prev, mapping_status: 'completed', status: 'processing' }));
             setSuccess('Mappings saved and data published successfully!');
         } catch (err: any) {
-            console.error("Error saving mappings/publishing. Full error:", err);
-            console.error("Error response data (if available):", err.response?.data);
             setError(err.response?.data?.message || err.message || 'Failed to save mappings/publish. Check console.');
         } finally {
             setActionLoading(null);
@@ -635,12 +727,20 @@ const MergedOrderPage: React.FC = () => {
                 <Typography variant="h6" gutterBottom>Data Preview (First 5 Rows)</Typography>
                 <TableContainer component={Paper} sx={{ maxHeight: 300, mb: 3 }} variant="outlined">
                     <Table stickyHeader size="small"><TableHead><TableRow>
-                        {excelSourceData.headers.map((header, index) => (<TableCell key={index} sx={{fontWeight: 'bold', backgroundColor: 'grey.100'}}>{header}</TableCell>))}
+                        {excelSourceData.headers.map((header, idx) => (
+                            <TableCell key={idx} sx={{ fontWeight: 'bold', backgroundColor: 'grey.100' }}>{header}</TableCell>
+                        ))}
                     </TableRow></TableHead><TableBody>
-                        {excelSourceData.previewRows.map((row, rowIndex) => (<TableRow key={rowIndex} hover>
-                            {excelSourceData.headers.map((_, cellIndex) => (<TableCell key={cellIndex}>{row[cellIndex] !== undefined ? String(row[cellIndex]) : ''}</TableCell>))}
-                        </TableRow>))}
-                        {excelSourceData.previewRows.length === 0 && (<TableRow><TableCell colSpan={excelSourceData.headers.length} align="center">No data to preview.</TableCell></TableRow>)}
+                        {excelSourceData.previewRows.map((row, rowIndex) => (
+                            <TableRow key={rowIndex}>
+                                {row.map((cell, cellIdx) => (
+                                    <TableCell key={cellIdx}>{cell}</TableCell>
+                                ))}
+                            </TableRow>
+                        ))}
+                        {excelSourceData.previewRows.length === 0 && (
+                            <TableRow><TableCell colSpan={excelSourceData.headers.length} align="center">No preview data.</TableCell></TableRow>
+                        )}
                     </TableBody></Table>
                 </TableContainer>
                 <Typography variant="h6" gutterBottom>Field Mapping Configuration</Typography><Divider sx={{ mb: 2 }} />
@@ -656,33 +756,48 @@ const MergedOrderPage: React.FC = () => {
                         <TableCell padding="checkbox" sx={{width: '5%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Map</TableCell>
                         <TableCell sx={{width: '30%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Excel Column</TableCell>
                         <TableCell sx={{width: '20%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Sample Data</TableCell>
-                        <TableCell sx={{width: '45%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Map to System Field *</TableCell>
+                        <TableCell sx={{width: '25%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Map to System Field *</TableCell>
+                        <TableCell sx={{width: '20%', fontWeight: 'bold', backgroundColor: 'grey.100'}}>Options</TableCell>
                     </TableRow></TableHead><TableBody>
-                        {fieldMappings.map((mapping, index) => (<TableRow key={index} hover selected={mapping.isSelected}>
-                            <TableCell padding="checkbox"><Checkbox checked={mapping.isSelected} onChange={(e) => handleColumnSelectionForMapping(mapping.companyColumn, e.target.checked)}/></TableCell>
-                            <TableCell>{mapping.companyColumn}</TableCell>
-                            <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 150, color: 'text.secondary' }}>{mapping.sampleData !== undefined ? String(mapping.sampleData).substring(0, 25) : 'N/A'}</Typography></TableCell>
-                            <TableCell>
-                                <FormControl fullWidth size="small" disabled={!mapping.isSelected} error={mapping.isSelected && mapping.systemField === 'none'}>
-                                    <Select value={mapping.systemField} onChange={(e) => handleMappingConfigChange(index, 'systemField', e.target.value)} displayEmpty
-                                        renderValue={(selectedValue) => {
-                                            if (selectedValue === 'none') return <em>-- Select --</em>;
-                                            const field = systemFieldsForMapping.find(f => f.value === selectedValue);
-                                            return field ? field.label : selectedValue;
-                                        }}>
-                                        {systemFieldsForMapping.map((field) => {
-                                            const isAlreadySelected = fieldMappings.some((m, i) => i !== index && m.isSelected && m.systemField === field.value && field.value !== 'none');
-                                            return (<MenuItem key={field.value} value={field.value} disabled={isAlreadySelected} sx={{ color: field.color, fontWeight: field.value === 'none' ? 'normal' : 'medium' }}>
-                                                {field.label}
-                                                {field.description && <Typography variant="caption" sx={{ml:1, color: 'text.secondary'}}>({field.description})</Typography>}
-                                                {isAlreadySelected && <Chip label="Mapped" size="small" sx={{ml:1}}/>}
-                                            </MenuItem>);
-                                        })}
-                                    </Select>
-                                </FormControl>
-                            </TableCell>
-                        </TableRow>))}
-                        {fieldMappings.length === 0 && (<TableRow><TableCell colSpan={4} align="center">No columns found to map.</TableCell></TableRow>)}
+                        {fieldMappings.map((mapping, index) => (
+                            <TableRow key={index} hover selected={mapping.isSelected}>
+                                <TableCell padding="checkbox">
+                                    <Checkbox checked={mapping.isSelected} onChange={e => handleMappingConfigChange(index, 'isSelected', e.target.checked)} />
+                                </TableCell>
+                                <TableCell>{mapping.companyColumn}</TableCell>
+                                <TableCell>{mapping.sampleData ?? ''}</TableCell>
+                                <TableCell>
+                                    <FormControl fullWidth size="small" disabled={!mapping.isSelected}>
+                                        <Select value={mapping.systemField} onChange={e => handleMappingConfigChange(index, 'systemField', e.target.value)} displayEmpty>
+                                            <MenuItem value="none" disabled>Select System Field</MenuItem>
+                                            {systemFieldsForMapping.map(sf => (
+                                                <MenuItem key={sf.value} value={sf.value}>{sf.label}</MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </TableCell>
+                                <TableCell>
+                                    {mapping.isSelected && mapping.systemField !== 'none' && (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                            {MAPPING_TOGGLES.map(tog => (
+                                                <FormControlLabel
+                                                    key={tog.field}
+                                                    control={
+                                                        <Switch
+                                                            size="small"
+                                                            checked={!!mapping[tog.field as keyof FieldMappingConfig]}
+                                                            onChange={e => handleMappingConfigChange(index, tog.field as keyof FieldMappingConfig, e.target.checked ? 1 : 0)}
+                                                        />
+                                                    }
+                                                    label={tog.label}
+                                                />
+                                            ))}
+                                        </Box>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                        {fieldMappings.length === 0 && (<TableRow><TableCell colSpan={5} align="center">No columns found.</TableCell></TableRow>)}
                     </TableBody></Table>
                 </TableContainer>
                 {selectedForMappingCount > 0 && !allSelectedHaveSystemField && (<Alert severity="warning" sx={{ mt: 2 }}>One or more selected columns lack a System Field assignment.</Alert>)}
@@ -697,6 +812,26 @@ const MergedOrderPage: React.FC = () => {
         );
     };
     
+    // Fetch mapping history and auto-map after file upload
+    const fetchAndApplyFieldMappings = async (companyId: string, headers: string[]) => {
+        try {
+            // Backend endpoint accepts company_id and company_field_names
+            const resp = await apiService.post('/field_mappings/get_by_company_and_headers', {
+                company_id: companyId,
+                company_field_names: headers,
+            });
+            
+            // resp: array of mappings for this company and these headers
+            if (!Array.isArray(resp)) return [];
+            
+            console.log('Fetched field mappings:', resp);
+            return resp;
+        } catch (err) {
+            console.error('Failed to fetch field mappings:', err);
+            return [];
+        }
+    };
+
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Typography variant="h4" component="h1" gutterBottom sx={{mb:3}}>Order Statement Processing</Typography>
