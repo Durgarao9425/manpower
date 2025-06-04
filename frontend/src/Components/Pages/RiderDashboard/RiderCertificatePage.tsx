@@ -369,3 +369,4 @@ const Certificate: React.FC = () => {
         </div>
     );
 };
+export default Certificate;
