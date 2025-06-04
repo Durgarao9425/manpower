@@ -335,7 +335,7 @@ const OrderFormModal: React.FC<OrderFormModalProps> = ({
                     formDataToSend.append(key, value.toString());
                 });
                 if (selectedFile) {
-                    formDataToSend.append('file_path', selectedFile.name); // Send file name instead of binary
+                    formDataToSend.append('file_path', 'venkatesh'); // Send file name instead of binary
                 }
     await apiService.post('/company_payments', formDataToSend);
             

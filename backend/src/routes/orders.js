@@ -86,4 +86,7 @@ router.get('/stores', async (req, res) => {
   }
 });
 
+// System fields for mapping order statements
+router.get('/system_fields', ordersController.getSystemFields);
+
 module.exports = router;
