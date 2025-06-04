@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Card,
@@ -12,17 +12,22 @@ import {
   Paper,
   Chip,
   useTheme as useMuiTheme,
-  useMediaQuery
-} from '@mui/material';
-import { useTheme } from '../../../context/ThemeContext';
-import {
-  ArrowForward,
-  LocationOn,
-  CheckCircle
-} from '@mui/icons-material';
-import useUserData from '../../Common/loginInformation'; // Assuming this path is correct
-import axios from 'axios';
-import apiService from '../../../services/apiService'; // Assuming this is configured for POST or not used for POSTs
+  useMediaQuery,
+  Backdrop,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Fade,
+  keyframes,
+} from "@mui/material";
+import { useTheme } from "../../../context/ThemeContext";
+import { ArrowForward, LocationOn, CheckCircle, DirectionsBike } from "@mui/icons-material";
+import useUserData from "../../Common/loginInformation"; // Assuming this path is correct
+import axios from "axios";
+import apiService from "../../../services/apiService"; // Assuming this is configured for POST or not used for POSTs
+import authService from "../../../services/authService"; // Import authService for token management
 
 // Types
 interface AttendanceRecord {
@@ -31,7 +36,7 @@ interface AttendanceRecord {
   company_id: number;
   store_id: number | null;
   attendance_date: string;
-  status: 'present' | 'absent';
+  status: "present" | "absent";
   marked_by: number;
   remarks: string;
   created_at: string;
@@ -56,7 +61,7 @@ interface RiderData {
   id: number; // This will be riders.id (PK of riders table, used as rider_id FK in other tables)
   name: string;
   company_id: number; // This will be rider_assignments.company_id
-  store_id: number;   // This will be rider_assignments.store_id
+  store_id: number; // This will be rider_assignments.store_id
 }
 
 interface UserData {
@@ -68,639 +73,656 @@ interface UserData {
 
 // Props for internal punch functions
 interface PunchInData extends RiderData {
-    // RiderData already contains id, company_id, store_id, name
+  // RiderData already contains id, company_id, store_id, name
 }
 
+// Add these constants at the top of the file after imports
+const ALLOWED_LOCATION = {
+  latitude: 17.4838949,
+  longitude: 78.396821,
+  radius: 2000 // Increased radius to 2km for testing
+};
+
+// Add keyframes for the rider animation
+const bounce = keyframes`
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+`;
+
+const spin = keyframes`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+// Add new RiderLoader component at the top of the file
+const RiderLoader: React.FC = () => {
+  return (
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'white',
+        zIndex: 9999,
+      }}
+    >
+      <Fade in={true} timeout={1000}>
+        <Box 
+          sx={{ 
+            textAlign: 'center',
+            position: 'relative',
+            width: '120px',
+            height: '120px',
+          }}
+        >
+          {/* Outer spinning circle */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              border: '4px solid #e0e0e0',
+              borderTop: '4px solid #1976d2',
+              borderRadius: '50%',
+              animation: `${spin} 1s linear infinite`,
+            }}
+          />
+          
+          {/* Rider icon with bounce animation */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              animation: `${bounce} 1s ease-in-out infinite`,
+            }}
+          >
+            <DirectionsBike 
+              sx={{ 
+                fontSize: 40,
+                color: 'primary.main',
+              }} 
+            />
+          </Box>
+        </Box>
+      </Fade>
+      
+      <Typography 
+        variant="h6" 
+        sx={{ 
+          mt: 4, 
+          color: 'text.primary',
+          fontWeight: 500,
+        }}
+      >
+        Loading Rider Data...
+      </Typography>
+      <Typography 
+        variant="body2" 
+        sx={{ 
+          mt: 1, 
+          color: 'text.secondary',
+          maxWidth: '300px',
+          textAlign: 'center',
+        }}
+      >
+        Please wait while we fetch your attendance information
+      </Typography>
+    </Box>
+  );
+};
 
 const Attendance: React.FC = () => {
+  // Add a ref to track mounted state
+  const isMounted = useRef(true);
+  
   // States
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [attendanceState, setAttendanceState] = useState<'punch-in' | 'punch-out' | 'completed'>('punch-in');
+  const [attendanceState, setAttendanceState] = useState<
+    "punch-in" | "punch-out" | "completed"
+  >("punch-in");
   const [punchInTime, setPunchInTime] = useState<Date | null>(null);
   const [punchOutTime, setPunchOutTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [workingTime, setWorkingTime] = useState(0);
   const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastSeverity, setToastSeverity] = useState<'success' | 'error' | 'warning'>('success');
-  const [loading, setLoading] = useState(false); // Used for punch-in/out and initial data load
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastSeverity, setToastSeverity] = useState<
+    "success" | "error" | "warning"
+  >("success");
+  const [loading, setLoading] = useState(false);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
-  const [riderAssignments, setRiderAssignments] = useState<any[]>([]); // Store rider assignments for display
+  const [riderAssignments, setRiderAssignments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAbsentModal, setShowAbsentModal] = useState(false);
+  const [absentReason, setAbsentReason] = useState("");
+  const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
+  const [isDayCompleted, setIsDayCompleted] = useState(false);
+  const [completedDayData, setCompletedDayData] = useState<{
+    punchIn: string;
+    punchOut: string;
+    workingHours: string;
+  } | null>(null);
 
-  const API_BASE = 'http://localhost:4003/api';
+  // Add state for initial data
+  const [initialData, setInitialData] = useState<{
+    riderData: RiderData;
+    attendanceData: AttendanceRecord[];
+    assignmentsData: any[];
+  } | null>(null);
+
+  // Make sure this URL matches your backend API endpoint
+  const API_BASE = "http://localhost:4003/api";
 
   const [riderData, setRiderData] = useState<RiderData>({
     id: 0,
-    name: 'Rider Name',
+    name: "Rider Name",
     company_id: 0,
-    store_id: 0
+    store_id: 0,
   });
 
-  const { userData } = useUserData() as { userData: UserData };
+  const { userData } = useUserData() as unknown as { userData: UserData };
 
   const muiTheme = useMuiTheme();
   const { themeColor } = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
 
   const buttonRef = useRef<HTMLDivElement>(null);
   const startXRef = useRef(0);
   const workingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const maxDragDistance = isMobile ? 240 : 280;
 
-  const showToastMessage = (message: string, severity: 'success' | 'error' | 'warning' = 'success') => {
+  // Add new state for rider data loading
+  const [isRiderDataLoading, setIsRiderDataLoading] = useState(true);
+  const [isDataReady, setIsDataReady] = useState(false);
+
+  const showToastMessage = (
+    message: string,
+    severity: "success" | "error" | "warning" = "success"
+  ) => {
     setToastMessage(message);
     setToastSeverity(severity);
     setShowToast(true);
   };
 
-  // Effect to fetch rider's details (id, name) and their current active assignment (company_id, store_id)
-  useEffect(() => {
-    const fetchRiderDataAndActiveAssignment = async () => {
-      if (!userData?.user?.id) {
-        setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
-        // setLoading(false); // setLoading is managed per operation, not globally like this for initial state
-        return;
-      }
+  // Add this helper function after the interfaces
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-      setLoading(true); // Indicates loading of initial rider and assignment data
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
 
-      try {
-        const token = userData?.token;
-        console.log('DEBUG: Using token for API call:', token);
-        if (!token) {
-          console.warn('Authorization token is missing. Please ensure the user is logged in and the token is set.');
-          showToastMessage('Authorization token is missing. Please log in again.', 'error');
-          setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
-          setLoading(false);
-          return;
-        }
-
-        // 1. Fetch rider's own details (id from riders table, name ideally from users table via join)
-        const riderResponse = await axios.get<{ id: number; name?: string }[]>(
-          `${API_BASE}/riders?user_id=${userData.user.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('Rider Data Response (from /riders?user_id=...):', riderResponse.data);
-
-        if (Array.isArray(riderResponse.data) && riderResponse.data.length > 0) {
-          const fetchedRiderId = riderResponse.data[0].id; // This is riders.id
-          const riderName = riderResponse.data[0].name || 'Rider Name'; // Uses name from response or defaults
-
-          let finalRiderData: RiderData = {
-            id: fetchedRiderId,
-            name: riderName,
-            company_id: 0 // Initialize, will be updated by active assignment
-            , store_id: 0   // Initialize, will be updated by active assignment
-          };
-
-          // 2. Fetch active assignment for this rider to get company_id and store_id
-          try {
-            const assignmentResponse = await axios.get(`${API_BASE}/rider-assignments?rider_id=${fetchedRiderId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            const assignments = assignmentResponse.data;
-            const activeAssignment = Array.isArray(assignments)
-              ? assignments.filter((a: any) => a.status === 'active')
-                .sort((a: any, b: any) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())[0]
-              : null;
-
-            if (activeAssignment && activeAssignment.company_id && activeAssignment.store_id) {
-              finalRiderData.company_id = activeAssignment.company_id;
-              finalRiderData.store_id = activeAssignment.store_id;
-              console.log('Updated rider data with latest active assignment from initial load:', finalRiderData);
-            } else {
-              console.warn(`Initial load: No active assignment with valid company_id and store_id found for rider ID: ${fetchedRiderId}. Company/Store IDs will be 0.`);
-              
-              // Show a user-friendly message about the missing assignment
-              showToastMessage(
-                'You do not have an active assignment. Please contact your administrator.',
-                'warning'
-              );
-              
-              // Try to get any assignment (even inactive) as a fallback
-              const anyAssignment = Array.isArray(assignments) && assignments.length > 0 
-                ? assignments[0] 
-                : null;
-                
-              if (anyAssignment && anyAssignment.company_id && anyAssignment.store_id) {
-                finalRiderData.company_id = anyAssignment.company_id;
-                finalRiderData.store_id = anyAssignment.store_id;
-                console.log('Using inactive assignment as fallback:', finalRiderData);
-              }
-            }
-          } catch (assignmentError) {
-            console.error('Initial load: Error fetching rider assignments:', assignmentError);
-            // company_id and store_id in finalRiderData remain 0
-          }
-          setRiderData(finalRiderData);
-        } else {
-          console.warn(`Initial load: No rider data found for user_id: ${userData.user.id}`);
-          setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
-        }
-      } catch (error) {
-        console.error('Initial load: Error fetching rider data:', error);
-        setRiderData({ id: 0, name: 'Rider Name', company_id: 0, store_id: 0 });
-      } finally {
-        setLoading(false); // Finished loading initial rider and assignment data
-      }
-    };
-
-    fetchRiderDataAndActiveAssignment();
-  }, [userData?.user?.id, userData?.token]); // Added userData.token as it's used
-
-  // Fetch today's attendance record if riderData.id is valid
-  // Also fetches all assignments for display table
-  useEffect(() => {
-    if (riderData.id && riderData.id !== 0) {
-      fetchTodayAttendance(); // Fetches attendance status based on riderData.id
-      fetchAllRiderAssignmentsForTable(); // Fetches all assignments for display
-    } else {
-      setTodayRecord(null);
-      setAttendanceState('punch-in');
-      setPunchInTime(null);
-      setPunchOutTime(null);
-      setWorkingTime(0);
-      setRiderAssignments([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [riderData.id]); // Depends on riderData.id
-
-  // Function to fetch all rider assignments (for display table)
-  const fetchAllRiderAssignmentsForTable = async () => {
-    if (!riderData.id || riderData.id === 0) return;
-    // setLoading(true); // This loading is for the table, handle separately if needed or rely on main loading
-    try {
-      const token = userData?.token;
-      console.log('DEBUG: Using token for API call:', token);
-      if (!token) {
-        console.warn('Authorization token is missing for fetching all rider assignments.');
-        return;
-      }
-
-      const assignmentsResponse = await axios.get(`${API_BASE}/rider-assignments?rider_id=${riderData.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const assignments = assignmentsResponse.data;
-      
-      const companiesResponse = await axios.get(`${API_BASE}/orders/companies`, { // Assuming this endpoint gives all companies
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const companies = companiesResponse.data;
-      const companyMap = companies.reduce((map: { [key: number]: string }, company: { id: number, company_name: string }) => {
-        map[company.id] = company.company_name;
-        return map;
-      }, {});
-
-      // Fetch all stores to create a comprehensive store map
-      // This is less efficient than fetching stores per company if there are many companies/stores.
-      // Consider if API can provide store names directly with assignments or a more targeted store fetch.
-      let allStores: any[] = [];
-      // Assuming a general store endpoint or iterate unique company IDs from assignments
-      // For simplicity, if apiService.get can fetch all stores or stores by a list of company IDs:
-      try {
-        const storesResponse = await apiService.get(`/stores`, { // Adjust endpoint if needed
-             headers: { Authorization: `Bearer ${token}`},
-        }); // This might be an issue if apiService.get is not set up for this type of call or if it needs company_id
-        if (Array.isArray(storesResponse)) { // Or storesResponse.data depending on apiService
-            allStores = storesResponse;
-        } else if (storesResponse && Array.isArray(storesResponse.data)){
-            allStores = storesResponse.data;
-        } else {
-            console.warn("Could not fetch all stores for assignments table, store names might be missing.");
-        }
-      } catch (e) {
-          console.error("Error fetching all stores for assignment table", e);
-      }
-      
-      const storeMap: { [key: number]: string } = {};
-      allStores.forEach((store: { id: number, store_name: string }) => {
-        storeMap[store.id] = store.store_name;
-      });
-      
-      const enhancedAssignments = assignments.map((assignment: any) => ({
-        ...assignment,
-        company_name: companyMap[assignment.company_id] || `Company ${assignment.company_id}`,
-        store_name: storeMap[assignment.store_id] || `Store ${assignment.store_id}`
-      }));
-      
-      setRiderAssignments(enhancedAssignments);
-    } catch (error) {
-      console.error('Error fetching rider assignments for table:', error);
-      showToastMessage('Failed to load rider assignments history.', 'error');
-    } finally {
-      // setLoading(false);
-    }
-  };
-  
-  const getCurrentLocation = (): Promise<LocationData> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        console.warn('Geolocation is not supported. Using mock location.');
-        resolve({ latitude: 17.4837225, longitude: 78.3968131, accuracy: 10 });
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (position) => resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        }),
-        (error) => {
-          console.error('Error getting location:', error, '. Using mock location.');
-          resolve({ latitude: 17.4837225, longitude: 78.3968131, accuracy: 10 });
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
+    console.log('Distance Calculation:', {
+      from: { lat: lat1, lon: lon1 },
+      to: { lat: lat2, lon: lon2 },
+      distanceInMeters: distance,
+      distanceInKm: distance / 1000
     });
+
+    return distance; // Returns distance in meters
   };
 
-  // Format a date object to ISO string for API
-  const formatDateForAPI = (date: Date): string => {
-    // Ensure we're using a valid date
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
-      console.warn('Invalid date provided to formatDateForAPI, using current date instead');
-      date = new Date();
-    }
-    return date.toISOString();
-  };
-  
-  // Get today's date in ISO format for API
-  const getTodayDateForAPI = (): string => {
-    const now = new Date();
-    console.log('getTodayDateForAPI returning:', now.toISOString());
-    return now.toISOString();
+  const isWithinAllowedRadius = (location: LocationData): boolean => {
+    const distance = calculateDistance(
+      location.latitude,
+      location.longitude,
+      ALLOWED_LOCATION.latitude,
+      ALLOWED_LOCATION.longitude
+    );
+    
+    console.log('Location Validation:', {
+      userLocation: {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy
+      },
+      allowedLocation: ALLOWED_LOCATION,
+      distanceInMeters: distance,
+      isWithinRadius: distance <= ALLOWED_LOCATION.radius,
+      accuracyInMeters: location.accuracy
+    });
+
+    // Add a small buffer to account for GPS accuracy
+    const buffer = location.accuracy || 50; // Use location accuracy or default to 50m
+    return distance <= (ALLOWED_LOCATION.radius + buffer);
   };
 
-  const fetchTodayAttendance = async () => {
-    if (!riderData.id || riderData.id === 0) {
-      console.log("fetchTodayAttendance skipped: riderData.id is not set or is 0.");
-      return;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Modify fetchRiderDataAndActiveAssignment to return data instead of setting state
+  const fetchRiderDataAndActiveAssignment = async (): Promise<RiderData | null> => {
+    if (!userData?.user?.id) {
+      return null;
     }
-    // setLoading(true); // This loading is for attendance status, rely on main loading or separate
+
     try {
-      const token = userData?.token;
-      console.log('DEBUG: Using token for API call:', token);
+      const token = await authService.getAccessToken();
       if (!token) {
-        showToastMessage('Authorization token is missing for fetching attendance.', 'error');
-        return;
+        showToastMessage("Authorization token is missing", "error");
+        return null;
       }
-      // Get today's date in YYYY-MM-DD format
-      let today = new Date();
-      
-      // Debug the date object
-      console.log('Today date object:', today);
-      console.log('Today date toString:', today.toString());
-      console.log('Today date toISOString:', today.toISOString());
-      
-      // Check if system date might be incorrect (future date)
-      const currentYear = today.getFullYear();
-      if (currentYear > 2024) {
-        console.warn(`System date appears to be in the future (year: ${currentYear}). Using hardcoded current date.`);
-        // Use a hardcoded current date to avoid future date issues
-        const currentDate = new Date();
-        currentDate.setFullYear(2024);
-        currentDate.setMonth(4); // May (0-based)
-        currentDate.setDate(31);
-        today = currentDate;
-        console.log('Adjusted date:', today);
-      }
-      
-      // Force the date to be today (in case system date is wrong)
-      const todayDateString = today.toISOString().split('T')[0];
-      
-      // Log the URL that will be used
-      const requestUrl = `${API_BASE}/attendance?rider_id=${riderData.id}&date=${todayDateString}`;
-      console.log(`Fetching attendance from URL: ${requestUrl}`);
-      
-      // Make the API call
-      const response = await fetch(requestUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-auth-token': token
-        },
-      });
 
-      if (!response.ok) {
-        let errorMessage = `Failed to fetch attendance (status: ${response.status})`;
-        let errorData;
-        
-        try {
-          errorData = await response.json();
-          if (errorData && errorData.error) {
-            errorMessage = `Error: ${errorData.error}`;
-            console.error('Attendance API error details:', errorData);
-          }
-        } catch (parseError) {
-          console.error('Could not parse error response:', parseError);
+      const response = await fetch(
+        `${API_BASE}/riders?user_id=${userData.user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-        
-        // If we get a 400 error with a future date message, try again with a hardcoded date
-        if (response.status === 400 && 
-            errorData && 
-            (errorData.error?.includes('future date') || errorData.provided_date?.includes('2025'))) {
-          
-          console.warn('Detected future date error. Retrying with hardcoded date...');
-          
-          // Use a hardcoded current date (May 31, 2024)
-          const fixedDate = '2024-05-31';
-          console.log(`Retrying with fixed date: ${fixedDate}`);
-          
-          const retryUrl = `${API_BASE}/attendance?rider_id=${riderData.id}&date=${fixedDate}`;
-          const retryResponse = await fetch(retryUrl, {
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch rider data");
+      
+      const riderResponse = await response.json();
+      if (Array.isArray(riderResponse) && riderResponse.length > 0) {
+        const fetchedRiderId = riderResponse[0].id;
+        const riderName = riderResponse[0].name || "Rider Name";
+
+        const assignmentResponse = await fetch(
+          `${API_BASE}/rider-assignments?rider_id=${fetchedRiderId}`,
+          {
             headers: {
               Authorization: `Bearer ${token}`,
-              'x-auth-token': token
+              "Content-Type": "application/json",
             },
-          });
-          
-          if (retryResponse.ok) {
-            console.log('Retry with fixed date succeeded!');
-            return await retryResponse.json();
-          } else {
-            console.error('Retry with fixed date also failed.');
           }
-        }
-        
-        throw new Error(errorMessage);
-      }
-      const records: AttendanceRecord[] = await response.json();
+        );
 
-      if (records.length > 0) {
-        const record = records[0];
-        setTodayRecord(record);
-        if (record.check_in_time && !record.check_out_time) {
-          setAttendanceState('punch-out');
-          setPunchInTime(new Date(record.check_in_time));
-          setWorkingTime(Math.floor((new Date().getTime() - new Date(record.check_in_time).getTime()) / 1000));
-        } else if (record.check_in_time && record.check_out_time) {
-          setAttendanceState('completed');
-          setPunchInTime(new Date(record.check_in_time));
-          setPunchOutTime(new Date(record.check_out_time));
-          setWorkingTime(Math.floor((new Date(record.check_out_time).getTime() - new Date(record.check_in_time).getTime()) / 1000));
-        } else {
-          setAttendanceState('punch-in');
+        if (!assignmentResponse.ok) throw new Error("Failed to fetch assignments");
+        
+        const assignments = await assignmentResponse.json();
+        let companyId = 0;
+        let storeId = 0;
+
+        if (Array.isArray(assignments) && assignments.length > 0) {
+          const activeAssignment = assignments.find((a: any) => a.status === "active") || assignments[0];
+          companyId = activeAssignment.company_id;
+          storeId = activeAssignment.store_id;
+        }
+
+        return {
+          id: fetchedRiderId,
+          name: riderName,
+          company_id: companyId,
+          store_id: storeId,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching rider data:", error);
+      showToastMessage("Failed to load rider data", "error");
+      return null;
+    }
+  };
+
+  // Modify fetchAllData to return data instead of setting state
+  const fetchAllData = async (riderId: number) => {
+    try {
+      const token = await authService.getAccessToken();
+      if (!token) {
+        showToastMessage("Authorization token is missing", "error");
+        return null;
+      }
+
+      const [attendanceResponse, assignmentsResponse] = await Promise.all([
+        fetch(`${API_BASE}/attendance?rider_id=${riderId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }),
+        fetch(`${API_BASE}/rider-assignments?rider_id=${riderId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+      ]);
+
+      if (!attendanceResponse.ok || !assignmentsResponse.ok) {
+        throw new Error("Failed to fetch data");
+      }
+
+      const [attendanceData, assignmentsData] = await Promise.all([
+        attendanceResponse.json(),
+        assignmentsResponse.json()
+      ]);
+
+      return { attendanceData, assignmentsData };
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      showToastMessage("Failed to load data", "error");
+      return null;
+    }
+  };
+
+  // New function to process and set all states at once
+  const processAndSetStates = (data: {
+    riderData: RiderData;
+    attendanceData: AttendanceRecord[];
+    assignmentsData: any[];
+  }) => {
+    if (!isMounted.current) return;
+
+    // Batch all state updates together
+    const updates = () => {
+      setRiderData(data.riderData);
+      setRiderAssignments(data.assignmentsData);
+      setAttendanceHistory(data.attendanceData);
+
+      const today = new Date().toISOString().slice(0, 10);
+      const todayRecord = data.attendanceData.find(
+        (record) => record.attendance_date === today && record.status === "present"
+      );
+
+      if (todayRecord) {
+        setTodayRecord(todayRecord);
+        
+        if (todayRecord.check_in_time && todayRecord.check_out_time) {
+          setIsDayCompleted(true);
+          setAttendanceState("completed");
+          // Add null checks for date strings
+          const checkInTime = todayRecord.check_in_time ? new Date(todayRecord.check_in_time) : null;
+          const checkOutTime = todayRecord.check_out_time ? new Date(todayRecord.check_out_time) : null;
+          
+          setPunchInTime(checkInTime);
+          setPunchOutTime(checkOutTime);
+          
+          if (checkInTime && checkOutTime) {
+            const workingSeconds = Math.floor(
+              (checkOutTime.getTime() - checkInTime.getTime()) / 1000
+            );
+            
+            setCompletedDayData({
+              punchIn: checkInTime.toLocaleTimeString(),
+              punchOut: checkOutTime.toLocaleTimeString(),
+              workingHours: formatDuration(workingSeconds)
+            });
+          }
+        } else if (todayRecord.check_in_time) {
+          setAttendanceState("punch-out");
+          const checkInTime = new Date(todayRecord.check_in_time);
+          setPunchInTime(checkInTime);
         }
       } else {
-        setTodayRecord(null);
-        setAttendanceState('punch-in');
-        setPunchInTime(null);
-        setPunchOutTime(null);
-        setWorkingTime(0);
+        setAttendanceState("punch-in");
+        setIsDayCompleted(false);
+        setCompletedDayData(null);
       }
-    } catch (error: any) {
-      console.error('Error fetching today attendance:', error);
-      showToastMessage(error.message || 'Could not load today\'s attendance.', 'error');
-      setTodayRecord(null);
-      setAttendanceState('punch-in');
-    } finally {
-      // setLoading(false);
-    }
+    };
+
+    // Use requestAnimationFrame to batch updates
+    requestAnimationFrame(updates);
   };
 
-  // Internal function for punch-in API call
+  // Modify the initial data loading useEffect
+  useEffect(() => {
+    let isInitialLoad = true;
+    const initializeData = async () => {
+      if (!isInitialLoad) return;
+      setIsRiderDataLoading(true);
+      try {
+        const riderData = await fetchRiderDataAndActiveAssignment();
+        if (riderData) {
+          const allData = await fetchAllData(riderData.id);
+          if (allData) {
+            const completeData = {
+              riderData,
+              ...allData
+            };
+            setInitialData(completeData);
+            processAndSetStates(completeData);
+            // Add a small delay before showing the content
+            setTimeout(() => {
+              setIsDataReady(true);
+              setIsRiderDataLoading(false);
+            }, 500);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing data:", error);
+        showToastMessage("Failed to load initial data", "error");
+        setIsRiderDataLoading(false);
+      } finally {
+        isInitialLoad = false;
+      }
+    };
+
+    initializeData();
+  }, [userData?.user?.id]);
+
+  // Modify executePunchIn to use the new data fetching approach
   const executePunchIn = async (location: LocationData, currentRiderData: PunchInData) => {
     const now = new Date();
-    const token = userData?.token;
+    console.log(currentRiderData, "currentRiderData-----------------------------------------");
 
+    if (!isWithinAllowedRadius(location)) {
+      showToastMessage(
+        `You are outside the allowed area. Please come within ${ALLOWED_LOCATION.radius}m of the office.`,
+        "error"
+      );
+      throw new Error("Location outside allowed area");
+    }
+
+    const token = await authService.getAccessToken();
     if (!token) {
-        showToastMessage('Authorization token is missing. Cannot punch in.', 'error');
-        throw new Error('Authorization token is missing for punch-in.');
+      showToastMessage("Authorization token is missing. Cannot punch in.", "error");
+      throw new Error("Authorization token is missing for punch-in.");
     }
 
     const payload = {
-        rider_id: currentRiderData.id,
-        company_id: currentRiderData.company_id,
-        store_id: currentRiderData.store_id,
-        attendance_date: getTodayDateForAPI(),
-        status: 'present' as 'present',
-        marked_by: userData?.user?.id || 0,
-        remarks: 'Punched In',
-        check_in_time: formatDateForAPI(now),
-        check_in_latitude: location.latitude,
-        check_in_longitude: location.longitude,
-        check_in_accuracy: location.accuracy
+      rider_id: currentRiderData.id,
+      company_id: currentRiderData.company_id,
+      store_id: currentRiderData.store_id,
+      attendance_date: getTodayDateForAPI(),
+      status: "present" as "present",
+      marked_by: userData?.user?.id || 0,
+      remarks: "Punched In",
+      check_in_time: formatDateForAPI(now),
+      check_in_latitude: location.latitude,
+      check_in_longitude: location.longitude,
+      check_in_accuracy: location.accuracy,
     };
 
-    console.log('Punch In Payload:', payload);
-    const response = await fetch(`${API_BASE}/attendance/punch-in`, {
-        method: 'POST',
+    try {
+      const result = await fetch(`${API_BASE}/attendance/punch-in`, {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
-    });
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Punch In failed with no error message from server.' }));
-        throw new Error(errorData.error || `Punch In failed (status: ${response.status})`);
+      if (!result.ok) {
+        throw new Error("Failed to punch in");
+      }
+
+      const data = await result.json();
+      
+      // Refresh data using the new approach
+      const allData = await fetchAllData(currentRiderData.id);
+      if (allData) {
+        const completeData = {
+          riderData: currentRiderData,
+          ...allData
+        };
+        setInitialData(completeData);
+        processAndSetStates(completeData);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Error in punch-in:", error);
+      throw error;
     }
-    const result: AttendanceRecord = await response.json();
-    return result;
   };
 
-  // Internal function for punch-out API call
+  // Modify executePunchOut to use the new data fetching approach
   const executePunchOut = async (location: LocationData) => {
     if (!riderData.id || riderData.id === 0 || !todayRecord) {
-        showToastMessage('Cannot punch out. No active punch-in record found or rider info missing.', 'error');
-        throw new Error('Punch out prerequisites not met.');
+      showToastMessage(
+        "Cannot punch out. No active punch-in record found or rider info missing.",
+        "error"
+      );
+      throw new Error("Punch out prerequisites not met.");
     }
-    const now = new Date();
-    const token = userData?.token;
 
+    if (!isWithinAllowedRadius(location)) {
+      showToastMessage(
+        `You are outside the allowed area. Please come within ${ALLOWED_LOCATION.radius}m of the office.`,
+        "error"
+      );
+      throw new Error("Location outside allowed area");
+    }
+
+    const now = new Date();
+    const token = await authService.getAccessToken();
     if (!token) {
-        showToastMessage('Authorization token is missing. Cannot punch out.', 'error');
-        throw new Error('Authorization token is missing for punch-out.');
+      showToastMessage(
+        "Authorization token is missing. Cannot punch out.",
+        "error"
+      );
+      throw new Error("Authorization token is missing for punch-out.");
     }
 
     const payload = {
-        rider_id: riderData.id,
-        attendance_date: todayRecord.attendance_date,
-        marked_by: userData?.user?.id || 0,
-        remarks: 'Punched Out',
-        check_out_time: formatDateForAPI(now),
-        check_out_latitude: location.latitude,
-        check_out_longitude: location.longitude,
-        check_out_accuracy: location.accuracy
+      rider_id: riderData.id,
+      attendance_date: todayRecord.attendance_date,
+      marked_by: userData?.user?.id || 0,
+      remarks: "Punched Out",
+      check_out_time: formatDateForAPI(now),
+      check_out_latitude: location.latitude,
+      check_out_longitude: location.longitude,
+      check_out_accuracy: location.accuracy,
     };
 
-    console.log('Punch Out Payload:', payload);
-    const response = await fetch(`${API_BASE}/attendance/punch-out`, {
-        method: 'POST', // Or 'PUT' if your API updates via PUT to /attendance/{id}
+    try {
+      const result = await fetch(`${API_BASE}/attendance/punch-out`, {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
-    });
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Punch Out failed with no error message from server.' }));
-        throw new Error(errorData.error || `Punch Out failed (status: ${response.status})`);
+      if (!result.ok) {
+        throw new Error("Failed to punch out");
+      }
+
+      const data = await result.json();
+      
+      // Refresh data using the new approach
+      const allData = await fetchAllData(riderData.id);
+      if (allData) {
+        const completeData = {
+          riderData,
+          ...allData
+        };
+        setInitialData(completeData);
+        processAndSetStates(completeData);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error("Error in punch-out:", error);
+      throw error;
     }
-    const result: AttendanceRecord = await response.json();
-    return result;
   };
 
   const handleStart = (clientX: number) => {
-    if (attendanceState === 'completed' || loading || (riderData.id === 0 && attendanceState === 'punch-in')) return;
+    if (
+      attendanceState === "completed" ||
+      loading ||
+      (riderData.id === 0 && attendanceState === "punch-in")
+    )
+      return;
     setIsDragging(true);
     startXRef.current = clientX - dragX;
   };
 
-  const handleMove = useCallback((clientX: number) => {
-    if (!isDragging || attendanceState === 'completed' || loading) return;
-    const newX = clientX - startXRef.current;
-    const clampedX = Math.max(0, Math.min(newX, maxDragDistance));
-    setDragX(clampedX);
-  }, [isDragging, loading, attendanceState, maxDragDistance]);
-
+  const handleMove = useCallback(
+    (clientX: number) => {
+      if (!isDragging || attendanceState === "completed" || loading) return;
+      const newX = clientX - startXRef.current;
+      const clampedX = Math.max(0, Math.min(newX, maxDragDistance));
+      setDragX(clampedX);
+    },
+    [isDragging, loading, attendanceState, maxDragDistance]
+  );
 
   const handleEnd = async () => {
-    if (!isDragging || attendanceState === 'completed' || loading) {
-        if (isDragging) setIsDragging(false); // Ensure dragging state is reset
-        return;
+    if (!isDragging || attendanceState === "completed" || loading) {
+      if (isDragging) setIsDragging(false);
+      return;
     }
     setIsDragging(false);
 
     if (dragX > maxDragDistance * 0.85) {
-        setDragX(maxDragDistance); // Complete swipe visually
+      setDragX(maxDragDistance);
+      setLoading(true);
+
+      try {
+        const location = await getCurrentLocation();
         
-        if (riderData.id === 0 && attendanceState === 'punch-in') {
-            showToastMessage('Rider data not fully loaded. Cannot punch in.', 'error');
-            setDragX(0);
-            return;
+        if (attendanceState === "punch-in") {
+          await executePunchIn(location, riderData);
+        } else if (attendanceState === "punch-out") {
+          await executePunchOut(location);
         }
         
-        // Check for valid company_id and store_id before proceeding with punch-in
-        if (attendanceState === 'punch-in' && (riderData.company_id === 0 || !riderData.company_id || riderData.store_id === 0 || !riderData.store_id)) {
-            console.log('Validation failed - Current rider data:', riderData);
-            showToastMessage('Company or Store assignment is missing or invalid. Cannot punch in.', 'error');
-            setDragX(0);
-            return;
-        }
-        
-        // Log the rider data for debugging
-        console.log('Proceeding with punch operation. Rider data:', riderData);
-
-        setLoading(true); // Main loading state for the entire operation
-        try {
-            const location = await getCurrentLocation();
-            const now = new Date();
-            
-            let currentCompanyId = riderData.company_id;
-            let currentStoreId = riderData.store_id;
-            let currentRiderName = riderData.name; // Keep existing name
-
-            if (attendanceState === 'punch-in') {
-                // Re-fetch active assignment to ensure latest company/store IDs
-                if (!riderData.id) {
-                    showToastMessage('Critical error: Rider ID missing before punch-in re-check.', 'error');
-                    throw new Error('Rider ID missing for re-check.');
-                }
-                const token = userData?.token;
-                console.log('DEBUG: Using token for API call:', token);
-                if (!token) {
-                    showToastMessage('Authorization token missing for assignment re-check.', 'error');
-                    throw new Error('Token missing for assignment re-check.');
-                }
-
-                try {
-                    console.log(`Re-fetching active assignment for rider ${riderData.id} before punch-in.`);
-                    const assignmentResponse = await axios.get(
-                        `${API_BASE}/rider-assignments?rider_id=${riderData.id}`,
-                        { headers: { Authorization: `Bearer ${token}` } }
-                    );
-                    const assignments = assignmentResponse.data;
-                    const activeAssignment = Array.isArray(assignments)
-                        ? assignments.filter((a: any) => a.status === 'active')
-                            .sort((a: any, b: any) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())[0]
-                        : null;
-
-                    if (activeAssignment && activeAssignment.company_id && activeAssignment.store_id) {
-                        currentCompanyId = activeAssignment.company_id;
-                        currentStoreId = activeAssignment.store_id;
-                        console.log('Successfully re-fetched active assignment for punch-in:', { currentCompanyId, currentStoreId });
-                    } else {
-                        console.warn('Re-fetch for punch-in: No active assignment with valid company/store ID found. Punch-in will likely fail if initial IDs were also 0.');
-                    }
-                } catch (err) {
-                    console.error('Error re-fetching active assignment during punch-in:', err);
-                    showToastMessage('Error confirming current assignment. Please check details or try again.', 'warning');
-                }
-
-                // Re-fetch the user's name from /users/:id
-                try {
-                    const userResponse = await axios.get(`${API_BASE}/users/${userData.user.id}`,
-                        { headers: { Authorization: `Bearer ${token}` } });
-                    if (userResponse.data && userResponse.data.name) {
-                        currentRiderName = userResponse.data.name;
-                    }
-                } catch (userError) {
-                    console.warn('Could not fetch user name from /users/:id', userError);
-                }
-
-                // Check again after re-fetch attempt
-                if (currentCompanyId === 0 || currentStoreId === 0) {
-                    showToastMessage('Company or Store assignment is missing or invalid. Cannot punch in.', 'error');
-                    throw new Error('Company or Store assignment missing/invalid after re-check.');
-                }
-
-                // Validate company_id and store_id before proceeding
-                if (!currentCompanyId || currentCompanyId === 0) {
-                    showToastMessage('Company assignment is missing or invalid. Cannot punch in.', 'error');
-                    throw new Error('Company ID is missing or invalid for punch-in');
-                }
-                
-                if (!currentStoreId || currentStoreId === 0) {
-                    showToastMessage('Store assignment is missing or invalid. Cannot punch in.', 'error');
-                    throw new Error('Store ID is missing or invalid for punch-in');
-                }
-                
-                const punchInDataForCall: PunchInData = {
-                    id: riderData.id,
-                    name: currentRiderName, // Use name from latest fetch
-                    company_id: currentCompanyId,
-                    store_id: currentStoreId
-                };
-                
-                console.log('Punch-in data validation passed:', punchInDataForCall);
-                const result = await executePunchIn(location, punchInDataForCall);
-                
-                setPunchInTime(now);
-                setAttendanceState('punch-out');
-                setWorkingTime(0);
-                showToastMessage('Punched in successfully!');
-                setTodayRecord(result);
-                // Update riderData state with the re-fetched IDs to ensure they persist globally
-                setRiderData(prev => ({ ...prev, company_id: currentCompanyId, store_id: currentStoreId }));
-
-            } else if (attendanceState === 'punch-out') {
-                const result = await executePunchOut(location);
-                setPunchOutTime(now);
-                setAttendanceState('completed');
-                if (workingTimerRef.current) clearInterval(workingTimerRef.current);
-                const totalSeconds = punchInTime ? Math.floor((now.getTime() - punchInTime.getTime()) / 1000) : 0;
-                setWorkingTime(totalSeconds);
-                showToastMessage(`Attendance completed! Total hours: ${formatDuration(totalSeconds)}`);
-                setTodayRecord(result);
-            }
-            setDragX(0); 
-        } catch (error: any) {
-            showToastMessage(error.message || 'Operation failed.', 'error');
-            setDragX(0); // Reset swipe on error
-        } finally {
-            setLoading(false); // Operation finished
-        }
+        setDragX(0);
+      } catch (error: any) {
+        console.error("Error during punch operation:", error);
+        showToastMessage(error.message || "Operation failed", "error");
+        setDragX(0);
+      } finally {
+        setLoading(false);
+      }
     } else {
-        setDragX(0); // Reset if not swiped far enough
+      setDragX(0);
     }
   };
 
-
-  const handleMouseDown = (e: React.MouseEvent) => { e.preventDefault(); handleStart(e.clientX); };
-  const handleTouchStart = (e: React.TouchEvent) => { handleStart(e.touches[0].clientX); };
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleStart(e.clientX);
+  };
+  const handleTouchStart = (e: React.TouchEvent) => {
+    handleStart(e.touches[0].clientX);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -708,50 +730,70 @@ const Attendance: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (attendanceState === 'punch-out' && punchInTime) {
+    if (attendanceState === "punch-out" && punchInTime) {
       if (workingTimerRef.current) clearInterval(workingTimerRef.current);
       workingTimerRef.current = setInterval(() => {
-        setWorkingTime(Math.floor((new Date().getTime() - punchInTime.getTime()) / 1000));
+        setWorkingTime(
+          Math.floor((new Date().getTime() - punchInTime.getTime()) / 1000)
+        );
       }, 1000);
     } else {
       if (workingTimerRef.current) {
         clearInterval(workingTimerRef.current);
         workingTimerRef.current = null;
       }
-      if (attendanceState === 'completed' && punchInTime && punchOutTime) {
-        setWorkingTime(Math.floor((punchOutTime.getTime() - punchInTime.getTime()) / 1000));
+      if (attendanceState === "completed" && punchInTime && punchOutTime) {
+        setWorkingTime(
+          Math.floor((punchOutTime.getTime() - punchInTime.getTime()) / 1000)
+        );
       }
     }
-    return () => { if (workingTimerRef.current) clearInterval(workingTimerRef.current); };
+    return () => {
+      if (workingTimerRef.current) clearInterval(workingTimerRef.current);
+    };
   }, [attendanceState, punchInTime, punchOutTime]);
-  
+
   // Effect for global mouse/touch move/end listeners during drag
   useEffect(() => {
     const handleMouseMoveGlobal = (e: MouseEvent) => handleMove(e.clientX);
     const handleMouseUpGlobal = () => handleEnd(); // handleEnd is async but listeners are sync
-    const handleTouchMoveGlobal = (e: TouchEvent) => { 
-        // if (e.cancelable) e.preventDefault(); // Passive false not supported by some browsers, check usage
-        handleMove(e.touches[0].clientX); 
+    const handleTouchMoveGlobal = (e: TouchEvent) => {
+      // if (e.cancelable) e.preventDefault(); // Passive false not supported by some browsers, check usage
+      handleMove(e.touches[0].clientX);
     };
     const handleTouchEndGlobal = () => handleEnd();
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMoveGlobal);
-      document.addEventListener('mouseup', handleMouseUpGlobal);
-      document.addEventListener('touchmove', handleTouchMoveGlobal /*, { passive: false } */); // Consider passive based on needs
-      document.addEventListener('touchend', handleTouchEndGlobal);
+      document.addEventListener("mousemove", handleMouseMoveGlobal);
+      document.addEventListener("mouseup", handleMouseUpGlobal);
+      document.addEventListener(
+        "touchmove",
+        handleTouchMoveGlobal /*, { passive: false } */
+      ); // Consider passive based on needs
+      document.addEventListener("touchend", handleTouchEndGlobal);
       return () => {
-        document.removeEventListener('mousemove', handleMouseMoveGlobal);
-        document.removeEventListener('mouseup', handleMouseUpGlobal);
-        document.removeEventListener('touchmove', handleTouchMoveGlobal);
-        document.removeEventListener('touchend', handleTouchEndGlobal);
+        document.removeEventListener("mousemove", handleMouseMoveGlobal);
+        document.removeEventListener("mouseup", handleMouseUpGlobal);
+        document.removeEventListener("touchmove", handleTouchMoveGlobal);
+        document.removeEventListener("touchend", handleTouchEndGlobal);
       };
     }
   }, [isDragging, handleMove, handleEnd]); // handleEnd and handleMove are now dependencies (handleMove is memoized)
 
   const progressPercentage = (dragX / maxDragDistance) * 100;
-  const formatTime = (date: Date) => date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  const formatDate = (date: Date) => date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("en-US", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -759,7 +801,7 @@ const Attendance: React.FC = () => {
   };
 
   const resetAttendance = () => {
-    setAttendanceState('punch-in');
+    setAttendanceState("punch-in");
     setPunchInTime(null);
     setPunchOutTime(null);
     setWorkingTime(0);
@@ -767,187 +809,470 @@ const Attendance: React.FC = () => {
     setTodayRecord(null); // Clears today's record
     if (workingTimerRef.current) clearInterval(workingTimerRef.current);
     // Re-fetch today's attendance status for the current rider
-    if (riderData.id && riderData.id !== 0) {
-        fetchTodayAttendance(); 
+    // if (riderData.id && riderData.id !== 0) {
+    //   fetchTodayAttendance();
+    // }
+  };
+
+  // Add this function to fetch attendance history
+  const fetchAttendanceHistory = async () => {
+    if (!riderData.id) return;
+    
+    try {
+      const token = await authService.getAccessToken();
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE}/attendance?rider_id=${riderData.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch attendance history");
+      
+      const data = await response.json();
+      setAttendanceHistory(data);
+    } catch (error) {
+      console.error("Error fetching attendance history:", error);
+      showToastMessage("Failed to load attendance history", "error");
     }
   };
 
+  // Add function to handle absent marking
+  const handleMarkAbsent = async () => {
+    if (!absentReason.trim()) {
+      showToastMessage("Please provide a reason for absence", "error");
+      return;
+    }
+
+    try {
+      const token = await authService.getAccessToken();
+      if (!token) {
+        showToastMessage("Authorization token is missing", "error");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/attendance/absent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          rider_id: riderData.id,
+          remarks: absentReason,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to mark absent");
+
+      showToastMessage("Marked as absent successfully", "success");
+      setShowAbsentModal(false);
+      setAbsentReason("");
+      await fetchAttendanceHistory();
+    } catch (error) {
+      console.error("Error marking absent:", error);
+      showToastMessage("Failed to mark as absent", "error");
+    }
+  };
+
+  // Add the Absent Modal component
+  const AbsentModal = () => (
+    <Dialog open={showAbsentModal} onClose={() => setShowAbsentModal(false)}>
+      <DialogTitle>Mark as Absent</DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          margin="dense"
+          label="Reason for Absence"
+          fullWidth
+          multiline
+          rows={4}
+          value={absentReason}
+          onChange={(e) => setAbsentReason(e.target.value)}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setShowAbsentModal(false)}>Cancel</Button>
+        <Button onClick={handleMarkAbsent} color="error">
+          Mark Absent
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  // Add back the utility functions
+  const getCurrentLocation = (): Promise<LocationData> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        showToastMessage("Geolocation is not supported by your browser.", "error");
+        reject(new Error("Geolocation not supported"));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          };
+
+          if (!isWithinAllowedRadius(location)) {
+            const distance = calculateDistance(
+              location.latitude,
+              location.longitude,
+              ALLOWED_LOCATION.latitude,
+              ALLOWED_LOCATION.longitude
+            );
+            
+            showToastMessage(
+              `You are ${Math.round(distance)}m away from the office. Please come within ${ALLOWED_LOCATION.radius}m.`,
+              "error"
+            );
+            reject(new Error("Location outside allowed area"));
+            return;
+          }
+
+          resolve(location);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          showToastMessage(
+            "Failed to get your location. Please enable location services.",
+            "error"
+          );
+          reject(error);
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 10000, 
+          maximumAge: 0
+        }
+      );
+    });
+  };
+
+  const formatDateForAPI = (date: Date): string => {
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      console.warn("Invalid date provided to formatDateForAPI, using current date instead");
+      date = new Date();
+    }
+    return date.toISOString();
+  };
+
+  const getTodayDateForAPI = (): string => {
+    const now = new Date();
+    return now.toISOString();
+  };
+
+  // Modify the loading check in the render
+  if (isRiderDataLoading) {
+    return <RiderLoader />;
+  }
+
+  // Add a fade transition for the main content
   return (
-    <Container 
-      maxWidth="sm" 
-      sx={{ 
-        py: { xs: 2, sm: 4 }, px: { xs: 1, sm: 2 }, minHeight: '100vh',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center'
-      }}
-    >
-      <Snackbar open={showToast} autoHideDuration={4000} onClose={() => setShowToast(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-        <Alert onClose={() => setShowToast(false)} severity={toastSeverity} sx={{ width: '100%' }}>
-          {toastMessage}
-        </Alert>
-      </Snackbar>
+    <Fade in={isDataReady} timeout={500}>
+      <Container
+        maxWidth="sm"
+        sx={{
+          py: { xs: 2, sm: 4 },
+          px: { xs: 1, sm: 2 },
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <Snackbar
+          open={showToast}
+          autoHideDuration={4000}
+          onClose={() => setShowToast(false)}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert
+            onClose={() => setShowToast(false)}
+            severity={toastSeverity}
+            sx={{ width: "100%" }}
+          >
+            {toastMessage}
+          </Alert>
+        </Snackbar>
 
-      {/* Debug Info */}
-      <Paper sx={{ p: 1, mb: 1, bgcolor: 'grey.100', fontSize: '0.7rem', overflow: 'auto', maxHeight: 100 }}>
-         <Typography variant="caption">Debug: RiderID: {riderData.id}, Name: {riderData.name}, CoID: {riderData.company_id}, StID: {riderData.store_id}, Load: {loading.toString()}</Typography>
-         {todayRecord && (<>
-           <Typography variant="caption" display="block">CheckIn: {todayRecord.check_in_time ? new Date(todayRecord.check_in_time).toLocaleString() : 'N/A'}</Typography>
-           <Typography variant="caption" display="block">CheckOut: {todayRecord.check_out_time ? new Date(todayRecord.check_out_time).toLocaleString() : 'N/A'}</Typography>
-         </>)}
-       </Paper>
+        <AbsentModal />
 
-      <Card elevation={0} sx={{ borderRadius: { xs: 2, sm: 3 }, mb: 2, bgcolor: '#f8f9fa', overflow: 'visible' }}>
-        <CardContent sx={{ p: { xs: 2, sm: 4 }, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-            {riderData.name || 'Loading Rider...'} - READY TO START
-          </Typography>
-          <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-            Today, {formatDate(currentTime)}
-          </Typography>
-          <Typography variant="h3" color="primary.main" fontWeight="bold" mb={3} sx={{ fontSize: { xs: '2rem', sm: '3rem' } }}>
-            {formatTime(currentTime)}
-          </Typography>
+        {/* Rider Name Card */}
+        <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
+          <CardContent sx={{ p: 2, textAlign: "center" }}>
+            <Typography variant="h6" color="text.primary">
+              {riderData.name || "Loading Rider..."}
+            </Typography>
+          </CardContent>
+        </Card>
 
-          {attendanceState === 'punch-out' && (
-            <Box mb={3}>
-              <Paper elevation={1} sx={{ p: { xs: 1.5, sm: 2 }, bgcolor: 'rgba(25, 118, 210, 0.1)', border: '1px solid rgba(25, 118, 210, 0.3)', borderRadius: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Working Time</Typography>
-                <Typography variant="h4" color="primary.main" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                  {formatDuration(workingTime)}
-                </Typography>
-              </Paper>
-            </Box>
-          )}
+        {/* Time Card */}
+        <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
+          <CardContent sx={{ p: 2, textAlign: "center" }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Today, {formatDate(currentTime)}
+            </Typography>
+            <Typography variant="h3" color="primary.main" fontWeight="bold">
+              {formatTime(currentTime)}
+            </Typography>
+          </CardContent>
+        </Card>
 
-          {attendanceState !== 'completed' && (
-            <Box mb={3}>
+        {/* Day Completed Card */}
+        {isDayCompleted && completedDayData && (
+          <Card elevation={0} sx={{ bgcolor: "#e8f5e9", borderRadius: 2 }}>
+            <CardContent sx={{ p: 2, textAlign: "center" }}>
+              <Typography variant="h6" color="success.main" gutterBottom>
+                Day Completed ✅
+              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-around", mt: 2 }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Punch In
+                  </Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {completedDayData.punchIn}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Punch Out
+                  </Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {completedDayData.punchOut}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Working Hours
+                  </Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {completedDayData.workingHours}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Punch In/Out Card - Only show if day is not completed */}
+        {!isDayCompleted && attendanceState !== "completed" && (
+          <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
+            <CardContent sx={{ p: 2 }}>
               <Paper
                 elevation={0}
                 sx={{
-                  position: 'relative', height: { xs: 56, sm: 64 },
-                  bgcolor: loading ? 'grey.500' : (attendanceState === 'punch-in' ? themeColor : '#f44336'),
-                  borderRadius: { xs: 6, sm: 8 }, overflow: 'hidden',
-                  cursor: loading || (riderData.id === 0 && attendanceState === 'punch-in') ? 'not-allowed' : 'pointer', userSelect: 'none',
-                  opacity: loading || (riderData.id === 0 && attendanceState === 'punch-in') ? 0.7 : 1
+                  position: "relative",
+                  height: { xs: 56, sm: 64 },
+                  bgcolor: loading
+                    ? "grey.500"
+                    : attendanceState === "punch-in"
+                    ? themeColor
+                    : "#f44336",
+                  borderRadius: { xs: 6, sm: 8 },
+                  overflow: "hidden",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  userSelect: "none",
+                  opacity: loading ? 0.7 : 1,
                 }}
               >
-                <Box sx={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${progressPercentage}%`, bgcolor: 'rgba(255, 255, 255, 0.2)', transition: isDragging ? 'none' : 'width 0.3s ease-out' }} />
-                <Box display="flex" alignItems="center" justifyContent="center" height="100%" position="relative" zIndex={1}>
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    height: "100%",
+                    width: `${progressPercentage}%`,
+                    bgcolor: "rgba(255, 255, 255, 0.2)",
+                    transition: isDragging ? "none" : "width 0.3s ease-out",
+                  }}
+                />
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  height="100%"
+                  position="relative"
+                  zIndex={1}
+                >
                   {loading ? (
-                    <CircularProgress size={24} sx={{ color: 'white' }} />
+                    <CircularProgress size={24} sx={{ color: "white" }} />
                   ) : (
-                    <Typography variant="body1" fontWeight="bold" sx={{ color: 'white', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      {riderData.id === 0 && attendanceState === 'punch-in' ? 'Loading Rider Data...' : `Swipe to ${attendanceState === 'punch-in' ? 'Punch In' : 'Punch Out'}`}
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      sx={{
+                        color: "white",
+                        fontSize: { xs: "0.875rem", sm: "1rem" },
+                      }}
+                    >
+                      {riderData.id === 0 && attendanceState === "punch-in"
+                        ? "Loading Rider Data..."
+                        : `Swipe to ${
+                            attendanceState === "punch-in"
+                              ? "Punch In"
+                              : "Punch Out"
+                          }`}
                     </Typography>
                   )}
                 </Box>
                 <Box
                   ref={buttonRef}
                   sx={{
-                    position: 'absolute', left: 4, top: 4,
-                    width: { xs: 48, sm: 56 }, height: { xs: 48, sm: 56 },
-                    bgcolor: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: loading || (riderData.id === 0 && attendanceState === 'punch-in') ? 'not-allowed' : (isDragging ? 'grabbing' : 'grab'),
-                    transform: `translateX(${dragX}px) ${isDragging ? 'scale(1.1)' : 'scale(1)'}`,
-                    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    zIndex: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    '&:hover': { transform: (loading || (riderData.id === 0 && attendanceState === 'punch-in')) ? `translateX(${dragX}px) scale(1)` : `translateX(${dragX}px) scale(1.05)` }
+                    position: "absolute",
+                    left: 4,
+                    top: 4,
+                    width: { xs: 48, sm: 56 },
+                    height: { xs: 48, sm: 56 },
+                    bgcolor: "white",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor:
+                      loading ||
+                      (riderData.id === 0 && attendanceState === "punch-in")
+                        ? "not-allowed"
+                        : isDragging
+                        ? "grabbing"
+                        : "grab",
+                    transform: `translateX(${dragX}px) ${
+                      isDragging ? "scale(1.1)" : "scale(1)"
+                    }`,
+                    transition: isDragging
+                      ? "none"
+                      : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    zIndex: 2,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                    "&:hover": {
+                      transform:
+                        loading ||
+                        (riderData.id === 0 && attendanceState === "punch-in")
+                          ? `translateX(${dragX}px) scale(1)`
+                          : `translateX(${dragX}px) scale(1.05)`,
+                    },
                   }}
                   onMouseDown={handleMouseDown}
                   onTouchStart={handleTouchStart}
                 >
-                  <ArrowForward sx={{ color: attendanceState === 'punch-in' ? themeColor : '#f44336', fontSize: { xs: 20, sm: 24 } }} />
+                  <ArrowForward
+                    sx={{
+                      color:
+                        attendanceState === "punch-in" ? themeColor : "#f44336",
+                      fontSize: { xs: 20, sm: 24 },
+                    }}
+                  />
                 </Box>
               </Paper>
-            </Box>
-          )}
 
-          {attendanceState === 'completed' && (
-            <Box>
-              <Chip icon={<CheckCircle />} label="Day Completed" color="success" size="large" sx={{ fontWeight: 'bold', mb: 2, fontSize: { xs: '0.875rem', sm: '1rem' } }} />
-              <br />
-              <Button variant="outlined" onClick={resetAttendance} sx={{ textTransform: 'none', borderRadius: 2, px: 3 }}>
-                Start New Day
-              </Button>
-              {punchInTime && punchOutTime && (
-                <Box mt={2}>
-                  <Paper elevation={1} sx={{ p: 2, bgcolor: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)', borderRadius: 2 }}>
-                    <Typography variant="body2" color="text.secondary">Total Working Time</Typography>
-                    <Typography variant="h5" color="success.main" fontWeight="bold">
-                      {formatDuration(workingTime)}
-                    </Typography>
-                  </Paper>
-                </Box>
+              {/* Mark Absent Button */}
+              {attendanceState === "punch-in" && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                  onClick={() => setShowAbsentModal(true)}
+                >
+                  Mark as Absent
+                </Button>
               )}
-            </Box>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          <Box display="flex" alignItems="center" justifyContent="center" mt={2}>
-            <LocationOn sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
-            <Typography variant="caption" color="text.secondary">
-              KS Executive Mens Hostel, KPHB Phase II {/* This should be dynamic or a placeholder */}
+        {/* Working Time Card - Only show if day is not completed */}
+        {!isDayCompleted && attendanceState === "punch-out" && (
+          <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
+            <CardContent sx={{ p: 2, textAlign: "center" }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Working Time
+              </Typography>
+              <Typography variant="h4" color="primary.main" fontWeight="bold">
+                {formatDuration(workingTime)}
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Attendance History Card */}
+        <Card elevation={0} sx={{ bgcolor: "#f8f9fa", borderRadius: 2 }}>
+          <CardContent sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Attendance History
             </Typography>
-          </Box>
-        </CardContent>
-      </Card>
 
-      {/* Rider Assignments Section */}
-      <Card sx={{ mt: 3, mb: 3, borderRadius: 2, overflow: 'hidden' }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Rider Assignments History
-          </Typography>
-          
-          {/* Separate loading for this table might be good, or rely on general loading state */}
-          {riderAssignments.length > 0 ? (
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ 
-                width: '100%', 
-                borderCollapse: 'collapse',
-                fontSize: isMobile ? '0.75rem' : '0.875rem'
-              }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f5f5f5' }}>
-                    <th style={{ padding: isMobile ? '8px 4px' : '10px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Company</th>
-                    <th style={{ padding: isMobile ? '8px 4px' : '10px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Store</th>
-                    <th style={{ padding: isMobile ? '8px 4px' : '10px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Rider ID (Co.)</th>
-                    <th style={{ padding: isMobile ? '8px 4px' : '10px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Start Date</th>
-                    <th style={{ padding: isMobile ? '8px 4px' : '10px 8px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {riderAssignments.map((assignment, idx) => (
-                    <tr key={assignment.id ?? `${assignment.company_id ?? 'c'}-${assignment.store_id ?? 's'}-${assignment.start_date ?? idx}-${idx}`}>
-                      <td style={{ padding: isMobile ? '8px 4px' : '10px 8px', borderBottom: '1px solid #ddd' }}>
-                        {assignment.company_name || `Company ${assignment.company_id}`}
-                      </td>
-                      <td style={{ padding: isMobile ? '8px 4px' : '10px 8px', borderBottom: '1px solid #ddd' }}>
-                        {assignment.store_name || `Store ${assignment.store_id}`}
-                      </td>
-                      <td style={{ padding: isMobile ? '8px 4px' : '10px 8px', borderBottom: '1px solid #ddd' }}>{assignment.company_rider_id}</td>
-                      <td style={{ padding: isMobile ? '8px 4px' : '10px 8px', borderBottom: '1px solid #ddd' }}>
-                        {new Date(assignment.start_date).toLocaleDateString()}
-                      </td>
-                      <td style={{ padding: isMobile ? '8px 4px' : '10px 8px', borderBottom: '1px solid #ddd' }}>
-                        <Chip 
-                          label={assignment.status} 
-                          size="small"
-                          color={assignment.status === 'active' ? 'success' : 'default'}
-                          sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}
-                        />
-                      </td>
+            {attendanceHistory.length > 0 ? (
+              <Box sx={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f5f5f5" }}>
+                      <th style={{ padding: "8px", textAlign: "left" }}>Date</th>
+                      <th style={{ padding: "8px", textAlign: "left" }}>Status</th>
+                      <th style={{ padding: "8px", textAlign: "left" }}>Punch In</th>
+                      <th style={{ padding: "8px", textAlign: "left" }}>Punch Out</th>
+                      <th style={{ padding: "8px", textAlign: "left" }}>Working Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', my: 3 }}>
-              {loading && riderData.id === 0 ? <CircularProgress size={20}/> : 'No assignments history found for this rider.'}
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
-    </Container>
+                  </thead>
+                  <tbody>
+                    {attendanceHistory.map((record) => (
+                      <tr key={record.id}>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                          {new Date(record.attendance_date).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                          <Chip
+                            label={record.status}
+                            size="small"
+                            color={record.status === "present" ? "success" : "error"}
+                          />
+                        </td>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                          {record.check_in_time
+                            ? new Date(record.check_in_time).toLocaleTimeString()
+                            : "-"}
+                        </td>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                          {record.check_out_time
+                            ? new Date(record.check_out_time).toLocaleTimeString()
+                            : "-"}
+                        </td>
+                        <td style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
+                          {record.check_in_time && record.check_out_time
+                            ? formatDuration(
+                                Math.floor(
+                                  (new Date(record.check_out_time).getTime() -
+                                    new Date(record.check_in_time).getTime()) /
+                                    1000
+                                )
+                              )
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Box>
+            ) : (
+              <Box sx={{ textAlign: "center", py: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No attendance records available
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Container>
+    </Fade>
   );
 };
 

@@ -1,8 +1,9 @@
 export interface CardData {
   title: string;
   value: string | number;
-  icon: string;
-  color: string;
+  subtitle?: string;
+  color?: string;
+  icon?: string;
 }
 
 export interface SliderImage {

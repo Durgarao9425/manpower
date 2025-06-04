@@ -1,9 +1,5 @@
 import React from "react";
-import {
-  Route,
-  Routes as RouterRoutes,
-  Navigate,
-} from "react-router-dom";
+import { Route, Routes as RouterRoutes, Navigate } from "react-router-dom";
 
 // Import the new ProtectedRoute component
 import ProtectedRoute from "../Components/Common/ProtectedRoute";
@@ -39,6 +35,7 @@ import InvoiceListPage from "../Components/Pages/Invoice/InvoiceListPage";
 import DataMappingView from "../Components/Pages/UploadOrderPage/uploadOrderViewPage";
 import DashboardNew from "../Components/Pages/Dashboard/dashboard";
 import PaymentManagement from "../Components/Pages/PaymentPage/mainPage";
+import RiderView from "../Components/Pages/RidersPage/riderView";
 
 // NotFound and Unauthorized Pages
 const NotFound = () => {
@@ -76,6 +73,8 @@ const AppRoutes = () => {
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<DashboardNew />} />
           <Route path="/riders" element={<RiderListingPage />} />
+          <Route path="/riders/view/:id" element={<RiderView />} />
+          <Route path="/riders/edit/:id" element={<RiderRegistrationForm />} />
           <Route path="/companies" element={<CompanyPage />} />
           <Route path="/them-settings" element={<ThemeSettings />} />
           <Route path="/stores" element={<StoreManagement />} />

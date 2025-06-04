@@ -48,6 +48,55 @@ interface RefreshResponse {
   expiresIn: number;
 }
 
+const TOKEN_KEY = 'auth_token';
+
+const authService = {
+  getAccessToken: async (): Promise<string | null> => {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      return token;
+    } catch (error) {
+      console.error('Error getting access token:', error);
+      return null;
+    }
+  },
+
+  setAccessToken: (token: string): void => {
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+    } catch (error) {
+      console.error('Error setting access token:', error);
+    }
+  },
+
+  removeAccessToken: (): void => {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch (error) {
+      console.error('Error removing access token:', error);
+    }
+  },
+
+  isAuthenticated: async (): Promise<boolean> => {
+    try {
+      const token = await authService.getAccessToken();
+      if (!token) return false;
+
+      // Verify token with backend
+      const response = await fetch('http://localhost:4003/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      return false;
+    }
+  }
+};
+
 // Class to manage authentication
 class AuthService {
   // Store token expiration time
@@ -296,14 +345,22 @@ class AuthService {
   }
 
   /**
+   * Set access token manually
+   */
+  setAccessToken(token: string): void {
+    this.cachedAccessToken = token;
+    localStorage.setItem('accessToken', token);
+  }
+
+  /**
    * Generate and log an admin token for testing purposes
    */
   
 }
 
 // Create and export singleton instance
-const authService = new AuthService();
-export default authService;
+const authServiceInstance = new AuthService();
+export default authServiceInstance;
 
 // Setup axios interceptors for automatic token handling
 api.interceptors.request.use(
@@ -317,7 +374,7 @@ api.interceptors.request.use(
     }
     
     // Add token to request headers
-    const token = await authService.getAccessToken();
+    const token = await authServiceInstance.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -343,7 +400,7 @@ api.interceptors.response.use(
       
       try {
         // Try to refresh the token
-        const token = await authService.refreshToken();
+        const token = await authServiceInstance.refreshToken();
         
         // Retry the original request with new token
         if (token) {
@@ -352,7 +409,7 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         // If refresh fails, redirect to login
-        authService.logout();
+        authServiceInstance.logout();
         window.location.href = '/login';
       }
     }

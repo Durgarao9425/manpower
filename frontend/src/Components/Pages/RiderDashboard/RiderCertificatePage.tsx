@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const Certificate: React.FC = () => {
+const Certificate: React.FC = () => {
     const [selectedMonth, setSelectedMonth] = useState('all');
     const [selectedYear, setSelectedYear] = useState('2024');
     const [selectedPerformance, setSelectedPerformance] = useState('all');
