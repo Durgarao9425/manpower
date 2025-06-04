@@ -22,6 +22,7 @@ import { CloudUpload, Visibility, VisibilityOff } from "@mui/icons-material";
 import type { SelectChangeEvent } from "@mui/material/Select";
 
 interface User {
+  id?: number;
   company_id?: number | string;
   username?: string;
   password?: string;
@@ -39,9 +40,11 @@ interface UserFormProps {
   onClose: () => void;
   onSave: (data: UserFormData) => void;
   user?: User;
+  isFullPage?: boolean;
 }
 
 interface UserFormData {
+  id?: number;
   company_id: number | string;
   username: string;
   password: string;
@@ -64,7 +67,13 @@ interface FormErrors {
   phone?: string;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
+const UserForm: React.FC<UserFormProps> = ({
+  open,
+  onClose,
+  onSave,
+  user,
+  isFullPage = false,
+}) => {
   const [formData, setFormData] = useState<UserFormData>({
     company_id: "",
     username: "",
@@ -80,7 +89,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isEditMode, setIsEditMode] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
+  const [submitStatus, setSubmitStatus] = useState({ type: "", message: "" });
   const [showPassword, setShowPassword] = useState(false);
 
   // Single unified handle change function
@@ -105,7 +114,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
     // Clear submit status
     if (submitStatus.message) {
-      setSubmitStatus({ type: '', message: '' });
+      setSubmitStatus({ type: "", message: "" });
     }
   };
 
@@ -136,45 +145,49 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
 
       const baseName = fullName
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') // Remove special characters and spaces
+        .replace(/[^a-z0-9]/g, "") // Remove special characters and spaces
         .substring(0, 8);
-      
+
       const timestamp = Date.now().toString().slice(-4);
-      const username = baseName ? `${baseName}_${timestamp}` : `user_${timestamp}`;
-      
+      const username = baseName
+        ? `${baseName}_${timestamp}`
+        : `user_${timestamp}`;
+
       return {
         ...prev,
-        username: username
+        username: username,
       };
     });
 
     // Clear username error if any
     if (errors.username) {
-      setErrors(prev => ({ ...prev, username: '' }));
+      setErrors((prev) => ({ ...prev, username: "" }));
     }
   };
 
   const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%';
-    let password = '';
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
+    let password = "";
     for (let i = 0; i < 10; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      password: password
+      password: password,
     }));
 
     // Clear password error if any
     if (errors.password) {
-      setErrors(prev => ({ ...prev, password: '' }));
+      setErrors((prev) => ({ ...prev, password: "" }));
     }
   };
 
   useEffect(() => {
     if (user) {
       setFormData({
+        id: user.id, // Preserve the ID for editing
         company_id: user.company_id ?? "",
         username: user.username ?? "",
         password: "", // Password is never prefilled for security reasons
@@ -204,7 +217,7 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
     }
     // Clear errors when user changes
     setErrors({});
-    setSubmitStatus({ type: '', message: '' });
+    setSubmitStatus({ type: "", message: "" });
   }, [user]);
 
   const validateField = (
@@ -290,237 +303,262 @@ const UserForm: React.FC<UserFormProps> = ({ open, onClose, onSave, user }) => {
     }
   };
 
+  // Prepare the form content that will be used in both versions
+  const formContent = (
+    <Box sx={{ mt: 1 }}>
+      <Grid container spacing={3}>
+        {/* Left Section: Avatar + Upload */}
+        <Grid item xs={12} md={4}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+              p: 2,
+              borderRadius: 2,
+              border: "1px solid #e0e0e0",
+              backgroundColor: "#fafafa",
+            }}
+          >
+            <Avatar
+              src={formData.profile_image}
+              sx={{ width: 100, height: 100, fontSize: 36 }}
+            >
+              {formData.full_name?.charAt(0) || "U"}
+            </Avatar>
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<CloudUpload />}
+              size="small"
+            >
+              Upload Image
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
+            </Button>
+          </Box>
+        </Grid>
+
+        {/* Right Section: Form */}
+        <Grid item xs={12} md={8}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Full Name"
+                name="full_name"
+                value={formData.full_name}
+                onChange={handleChange}
+                required
+                error={!!errors.full_name}
+                helperText={errors.full_name}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                error={!!errors.email}
+                helperText={errors.email}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required error={!!errors.user_type}>
+                <InputLabel>User Type</InputLabel>
+                <Select
+                  name="user_type"
+                  value={formData.user_type}
+                  onChange={handleSelectChange}
+                  label="User Type"
+                >
+                  <MenuItem value="admin">Admin</MenuItem>
+                  <MenuItem value="user">User</MenuItem>
+                  <MenuItem value="manager">Manager</MenuItem>
+                </Select>
+                {errors.user_type && (
+                  <FormHelperText>{errors.user_type}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+
+            {/* Username Generation Row */}
+            <Grid item xs={12}>
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+                <TextField
+                  fullWidth
+                  label="Username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  variant="outlined"
+                  error={!!errors.username}
+                  helperText={errors.username}
+                  placeholder="Enter username or generate from full name"
+                  sx={{ flex: 1 }}
+                />
+
+                <Button
+                  variant="contained"
+                  onClick={generateUsername}
+                  disabled={!formData.full_name.trim()}
+                  sx={{
+                    bgcolor: "#0891b2",
+                    "&:hover": { bgcolor: "#0e7490" },
+                    minWidth: 120,
+                    whiteSpace: "nowrap",
+                    mt: 0.5,
+                    height: 56,
+                  }}
+                >
+                  Generate
+                </Button>
+              </Box>
+            </Grid>
+
+            {/* Password Generation Row - Only show in create mode */}
+            {!isEditMode && (
+              <Grid item xs={12}>
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    label="Password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    variant="outlined"
+                    error={!!errors.password}
+                    helperText={errors.password}
+                    placeholder="Enter password or generate"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ flex: 1 }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={generatePassword}
+                    sx={{
+                      bgcolor: "#0891b2",
+                      "&:hover": { bgcolor: "#0e7490" },
+                      minWidth: 120,
+                      whiteSpace: "nowrap",
+                      mt: 0.5,
+                      height: 56,
+                    }}
+                  >
+                    Generate
+                  </Button>
+                </Box>
+              </Grid>
+            )}
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Company ID"
+                name="company_id"
+                type="number"
+                value={formData.company_id}
+                onChange={handleChange}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleSelectChange}
+                  label="Status"
+                >
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                  <MenuItem value="suspended">Suspended</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Address"
+                name="address"
+                multiline
+                rows={3}
+                value={formData.address}
+                onChange={handleChange}
+              />
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+
+  // Action buttons for both versions
+  const actionButtons = (
+    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3, gap: 2 }}>
+      <Button onClick={onClose} variant="outlined" color="secondary">
+        Cancel
+      </Button>
+      <Button onClick={handleSubmit} variant="contained" color="primary">
+        {isEditMode ? "Update" : "Create"}
+      </Button>
+    </Box>
+  );
+
+  // Render based on isFullPage prop
+  if (isFullPage) {
+    return (
+      <Box sx={{ p: 3, bgcolor: "white", borderRadius: 2, boxShadow: 1 }}>
+        {formContent}
+        {actionButtons}
+      </Box>
+    );
+  }
+
+  // Default Dialog version
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
         {isEditMode ? "Edit User" : "Add New User"}
       </DialogTitle>
-      <DialogContent>
-        <Box sx={{ mt: 1 }}>
-          <Grid container spacing={3}>
-            {/* Left Section: Avatar + Upload */}
-            <Grid item xs={12} md={4}>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  border: "1px solid #e0e0e0",
-                  backgroundColor: "#fafafa",
-                }}
-              >
-                <Avatar
-                  src={formData.profile_image}
-                  sx={{ width: 100, height: 100, fontSize: 36 }}
-                >
-                  {formData.full_name?.charAt(0) || "U"}
-                </Avatar>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                  size="small"
-                >
-                  Upload Image
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
-                </Button>
-              </Box>
-            </Grid>
-
-            {/* Right Section: Form */}
-            <Grid item xs={12} md={8}>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Full Name"
-                    name="full_name"
-                    value={formData.full_name}
-                    onChange={handleChange}
-                    required
-                    error={!!errors.full_name}
-                    helperText={errors.full_name}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    error={!!errors.email}
-                    helperText={errors.email}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth required error={!!errors.user_type}>
-                    <InputLabel>User Type</InputLabel>
-                    <Select
-                      name="user_type"
-                      value={formData.user_type}
-                      onChange={handleSelectChange}
-                      label="User Type"
-                    >
-                      <MenuItem value="admin">Admin</MenuItem>
-                      <MenuItem value="user">User</MenuItem>
-                      <MenuItem value="manager">Manager</MenuItem>
-                    </Select>
-                    {errors.user_type && (
-                      <FormHelperText>{errors.user_type}</FormHelperText>
-                    )}
-                  </FormControl>
-                </Grid>
-
-                {/* Username Generation Row */}
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <TextField
-                      fullWidth
-                      label="Username"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleChange}
-                      required
-                      variant="outlined"
-                      error={!!errors.username}
-                      helperText={errors.username}
-                      placeholder="Enter username or generate from full name"
-                      sx={{ flex: 1 }}
-                    />
-                    
-                    <Button
-                      variant="contained"
-                      onClick={generateUsername}
-                      disabled={!formData.full_name.trim()}
-                      sx={{
-                        bgcolor: '#0891b2',
-                        '&:hover': { bgcolor: '#0e7490' },
-                        minWidth: 120,
-                        whiteSpace: 'nowrap',
-                        mt: 0.5,
-                        height: 56
-                      }}
-                    >
-                      Generate
-                    </Button>
-                  </Box>
-                </Grid>
-
-                {/* Password Generation Row - Only show in create mode */}
-                {!isEditMode && (
-                  <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                      <TextField
-                        fullWidth
-                        label="Password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        variant="outlined"
-                        error={!!errors.password}
-                        helperText={errors.password}
-                        placeholder="Enter password or generate"
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                onClick={() => setShowPassword(!showPassword)}
-                                edge="end"
-                              >
-                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={{ flex: 1 }}
-                      />
-                      <Button
-                        variant="contained"
-                        onClick={generatePassword}
-                        sx={{
-                          bgcolor: '#0891b2',
-                          '&:hover': { bgcolor: '#0e7490' },
-                          minWidth: 120,
-                          whiteSpace: 'nowrap',
-                          mt: 0.5,
-                          height: 56
-                        }}
-                      >
-                        Generate
-                      </Button>
-                    </Box>
-                  </Grid>
-                )}
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Company ID"
-                    name="company_id"
-                    type="number"
-                    value={formData.company_id}
-                    onChange={handleChange}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleSelectChange}
-                      label="Status"
-                    >
-                      <MenuItem value="active">Active</MenuItem>
-                      <MenuItem value="inactive">Inactive</MenuItem>
-                      <MenuItem value="suspended">Suspended</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Address"
-                    name="address"
-                    multiline
-                    rows={3}
-                    value={formData.address}
-                    onChange={handleChange}
-                  />
-                </Grid>
-              </Grid>
-            </Grid>
-          </Grid>
-        </Box>
-      </DialogContent>
-
+      <DialogContent>{formContent}</DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose} variant="outlined" color="secondary">
           Cancel
