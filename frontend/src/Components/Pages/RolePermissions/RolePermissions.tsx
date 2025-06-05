@@ -55,7 +55,7 @@ import {
   TwoWheeler
 } from '@mui/icons-material';
 import axios from 'axios';
-import apiService from '../../../services/apiService';
+import apiService, { rolePermissionsAPI } from '../../../services/apiService';
 
 // Theme colors
 const themeColors = {
@@ -143,23 +143,44 @@ const RoleManagementPage = () => {
   const fetchAdminUsers = async () => {
     try {
       setLoading(true);
-      // const data = await apiService.get("/companies");
       const response = await apiService.get(`/users`);
       const adminUsers = response.filter((user: User) => user.user_type === 'admin');
       setAdminUsers(adminUsers);
 
       // Initialize permissions for each admin user
       const initialPermissions: { [userId: number]: UserPermissions } = {};
-      adminUsers.forEach((user: User) => {
-        initialPermissions[user.id] = {};
-        navigationModules.forEach(module => {
-          initialPermissions[user.id][module.id] = {
-            view: false,
-            edit: false,
-            delete: false
-          };
-        });
-      });
+      
+      // Fetch permissions for each admin user
+      for (const user of adminUsers) {
+        try {
+          const permissionsResponse = await rolePermissionsAPI.getUserPermissions(user.id);
+          if (permissionsResponse.success && permissionsResponse.permissions) {
+            initialPermissions[user.id] = permissionsResponse.permissions;
+          } else {
+            // If no permissions found, initialize with default values
+            initialPermissions[user.id] = {};
+            navigationModules.forEach(module => {
+              initialPermissions[user.id][module.id] = {
+                view: false,
+                edit: false,
+                delete: false
+              };
+            });
+          }
+        } catch (permError) {
+          console.error(`Error fetching permissions for user ${user.id}:`, permError);
+          // Initialize with default values on error
+          initialPermissions[user.id] = {};
+          navigationModules.forEach(module => {
+            initialPermissions[user.id][module.id] = {
+              view: false,
+              edit: false,
+              delete: false
+            };
+          });
+        }
+      }
+      
       setPermissions(initialPermissions);
     } catch (error) {
       console.error('Error fetching admin users:', error);
@@ -180,16 +201,31 @@ const RoleManagementPage = () => {
 
   // Handle permission change
   const handlePermissionChange = (userId: number, moduleId: string, permissionType: keyof Permission) => {
-    setPermissions(prev => ({
-      ...prev,
-      [userId]: {
-        ...prev[userId],
-        [moduleId]: {
-          ...prev[userId][moduleId],
-          [permissionType]: !prev[userId][moduleId][permissionType]
-        }
+    setPermissions(prev => {
+      // Ensure the user's permissions object exists
+      if (!prev[userId]) {
+        prev[userId] = {};
       }
-    }));
+      // Ensure the module's permissions object exists
+      if (!prev[userId][moduleId]) {
+        prev[userId][moduleId] = {
+          view: false,
+          edit: false,
+          delete: false
+        };
+      }
+      
+      return {
+        ...prev,
+        [userId]: {
+          ...prev[userId],
+          [moduleId]: {
+            ...prev[userId][moduleId],
+            [permissionType]: !prev[userId][moduleId][permissionType]
+          }
+        }
+      };
+    });
   };
 
   // Handle select all permissions for a user
@@ -198,13 +234,16 @@ const RoleManagementPage = () => {
     if (!currentUser) return;
 
     const allChecked = navigationModules.every(module =>
-      permissions[userId]?.[module.id]?.[permissionType]
+      permissions[userId]?.[module.id]?.[permissionType] ?? false
     );
 
     setPermissions(prev => {
       const newPermissions = { ...prev };
+      if (!newPermissions[userId]) {
+        newPermissions[userId] = {};
+      }
+      
       navigationModules.forEach(module => {
-        if (!newPermissions[userId]) newPermissions[userId] = {};
         if (!newPermissions[userId][module.id]) {
           newPermissions[userId][module.id] = { view: false, edit: false, delete: false };
         }
@@ -217,10 +256,26 @@ const RoleManagementPage = () => {
   // Save permissions
   const handleSavePermissions = async () => {
     try {
-      // Here you would typically send the permissions to your backend
-      // For now, we'll just show a success message
-      showSnackbar('Permissions saved successfully!');
+      if (!adminUsers[activeTab]) {
+        showSnackbar('No user selected', 'error');
+        return;
+      }
+      
+      const userId = adminUsers[activeTab].id;
+      const userPermissions = permissions[userId] || {};
+      console.log(userPermissions,"userPermissionsuserPermissions")
+      
+      // Send the permissions to the backend using the rolePermissionsAPI
+      const response = await rolePermissionsAPI.updateUserPermissions(userId, userPermissions);
+      console.log(response,"responseresponseresponse")
+      
+      if (response.success) {
+        showSnackbar('Permissions saved successfully!');
+      } else {
+        throw new Error(response.message || 'Failed to save permissions');
+      }
     } catch (error) {
+      console.error('Error saving permissions:', error);
       showSnackbar('Failed to save permissions', 'error');
     }
   };

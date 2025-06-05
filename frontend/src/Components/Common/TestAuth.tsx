@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Paper, CircularProgress } from '@mui/material';
 import { useAuth } from '../Pages/Dashboard/Login/authcontext';
 import authService from '../../services/authService';
-import { api } from '../../services/apiService';
+import apiService from '../../services/apiService';
 
 /**
  * Test component to verify authentication is working
@@ -18,7 +18,7 @@ const TestAuth: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/health');
+      const response = await apiService.get('/health');
       setTestResult(JSON.stringify(response.data, null, 2));
     } catch (err) {
       console.error('Health test error:', err);
@@ -57,7 +57,7 @@ const TestAuth: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/test');
+      const response = await apiService.get('/test');
       setTestResult(JSON.stringify(response.data, null, 2));
     } catch (err) {
       console.error('Protected test error:', err);

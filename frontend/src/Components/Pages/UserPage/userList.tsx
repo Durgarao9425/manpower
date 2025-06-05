@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import type { SelectChangeEvent } from "@mui/material/Select";
 import {
   Box,
   Container,
@@ -10,8 +11,8 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  ToggleButton,
-  ToggleButtonGroup,
+  Tabs,
+  Tab,
   Pagination,
   Tooltip,
   Snackbar,
@@ -22,7 +23,11 @@ import {
   Alert,
   IconButton,
 } from "@mui/material";
-import { ViewList, ViewModule, ArrowBack } from "@mui/icons-material";
+import {
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  Add as AddIcon,
+} from "@mui/icons-material";
 import ReusableTable from "./userTable";
 import ReusableCard from "./userCard";
 import UserForm from "./userform";
@@ -31,21 +36,59 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import apiService from "../../../services/apiService";
 
-// User type for TypeScript
+// Define a shared type for user_type
+type UserType = "admin" | "company" | "rider" | "store_manager";
+type UserStatus = "active" | "inactive" | "suspended";
+
 interface User {
   id?: number;
   company_id: number | null;
   username: string;
   password?: string;
   email: string;
-  user_type: "admin" | "company" | "rider" | "store_manager";
+  user_type: UserType;
   full_name: string;
   phone?: string;
   address?: string;
   profile_image?: string;
+  status: UserStatus;
   created_at?: string;
   updated_at?: string;
-  status: "active" | "inactive" | "suspended";
+  created_by?: number;
+}
+
+interface UserFormData {
+  id?: number;
+  company_id: number | null;
+  username: string;
+  password: string;
+  email: string;
+  user_type: UserType;
+  full_name: string;
+  phone: string;
+  address: string;
+  profile_image: string;
+  status: UserStatus;
+  created_by?: number;
+}
+
+interface UserTableProps {
+  columns: Array<{
+    field: string;
+    headerName: string;
+    type?: string;
+  }>;
+  data: User[];
+  loading: boolean;
+  actions: Array<{
+    icon: React.ReactElement;
+    color: string;
+    title: string;
+    onClick: (item: User) => void;
+  }>;
+  page: number;
+  rowsPerPage: number;
+  onPageChange: (newPage: number) => void;
 }
 
 const UserListing = () => {
@@ -53,8 +96,8 @@ const UserListing = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
   const [showForm, setShowForm] = useState(false);
-  const [showView, setShowView] = useState(false); // New state for view mode
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null); // Selected user for viewing
+  const [showView, setShowView] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(5);
@@ -65,13 +108,13 @@ const UserListing = () => {
     company_id: "",
   });
 
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
     "success"
   );
+
+  const [activeTab, setActiveTab] = useState('all');
 
   // API Base URL
   const API_BASE_URL = "http://localhost:4003/api";
@@ -85,18 +128,9 @@ const UserListing = () => {
     setSnackbarOpen(true);
   };
 
-  const handleDeleteClick = (user: User) => {
-    setUserToDelete(user);
-    setDeleteConfirmOpen(true);
-  };
-
   const handleEdit = (user: User) => {
     setCurrentUser(user);
     setShowForm(true);
-  };
-
-  const handleDelete = (user: User) => {
-    handleDeleteClick(user);
   };
 
   // New function to handle view
@@ -105,26 +139,6 @@ const UserListing = () => {
       setSelectedUserId(user.id);
       setShowView(true);
     }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (userToDelete && userToDelete.id) {
-      try {
-        await apiService.delete(`/users/${userToDelete.id}`);
-        setUsers(users.filter((user) => user.id !== userToDelete.id));
-        showSnackbar(`${userToDelete.full_name} deleted successfully`);
-      } catch (error) {
-        console.error("Error deleting user:", error);
-        showSnackbar("Failed to delete user", "error");
-      }
-    }
-    setDeleteConfirmOpen(false);
-    setUserToDelete(null);
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteConfirmOpen(false);
-    setUserToDelete(null);
   };
 
   const handleSnackbarClose = () => {
@@ -136,7 +150,13 @@ const UserListing = () => {
     try {
       setLoading(true);
       const response = await apiService.get("/users");
-      setUsers(response);
+      // Ensure type safety for the response data
+      const typedUsers = response.map((user: any) => ({
+        ...user,
+        user_type: user.user_type as UserType,
+        status: user.status as UserStatus
+      }));
+      setUsers(typedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       showSnackbar("Failed to fetch users", "error");
@@ -163,26 +183,20 @@ const UserListing = () => {
     setShowForm(true);
   };
 
-  const handleEditUser = (user: User) => {
-    setCurrentUser(user);
-    setShowForm(true);
-  };
-
   const handleBackToList = () => {
     setShowForm(false);
-    setShowView(false); // Reset view mode too
+    setShowView(false);
     setCurrentUser(null);
     setSelectedUserId(null);
   };
 
-  const handleSaveUser = async (userData: User) => {
+  const handleSaveUser = async (userData: UserFormData) => {
     try {
       if (currentUser?.id) {
         // Edit mode: update user
-        // Include the ID in the userData for the API call
         const updatedUserData = {
           ...userData,
-          id: currentUser.id, // Make sure the ID is included
+          id: currentUser.id,
         };
 
         const response = await apiService.put(
@@ -190,20 +204,32 @@ const UserListing = () => {
           updatedUserData
         );
 
-        // Make sure we're updating the users array with the complete user object including ID
-        const updatedUser = {
-          ...response,
-          id: currentUser.id, // Ensure ID is preserved in case it's not returned by the API
-        };
+        // Update the users array with the response data
+        setUsers(prevUsers => {
+          const updatedUsers = prevUsers.map(user => {
+            if (user.id === currentUser.id) {
+              // Ensure we keep all existing fields and merge with response
+              return {
+                ...user,
+                ...response,
+                id: currentUser.id, // Ensure ID is preserved
+                user_type: response.user_type as UserType, // Ensure type safety
+                status: response.status as UserStatus // Ensure type safety
+              };
+            }
+            return user;
+          });
+          return updatedUsers;
+        });
 
-        setUsers((prev) =>
-          prev.map((u) => (u.id === currentUser.id ? updatedUser : u))
-        );
+        // Refresh the data to ensure consistency
+        await fetchUsers();
         showSnackbar("User updated successfully");
       } else {
         // Create mode: add new user
         const response = await apiService.post("/users", userData);
         const createdUser = response;
+        
         // If user_type is rider or company, send a second request to create the minimal record
         if (userData.user_type === "rider") {
           await apiService.post("/riders", {
@@ -211,7 +237,7 @@ const UserListing = () => {
             user_id: createdUser.id,
             rider_code: userData.username,
             created_by: userData.created_by || 1,
-            status: userData.status || "Active",
+            status: userData.status || "active",
           });
         } else if (userData.user_type === "company") {
           await apiService.post("/companies", {
@@ -223,7 +249,13 @@ const UserListing = () => {
             created_by: userData.created_by || 1,
           });
         }
-        setUsers((prev) => [...prev, createdUser]);
+
+        // Add the new user to the end of the users array
+        setUsers(prevUsers => [...prevUsers, {
+          ...createdUser,
+          user_type: createdUser.user_type as UserType,
+          status: createdUser.status as UserStatus
+        }]);
         showSnackbar("User created successfully");
       }
       setShowForm(false);
@@ -249,6 +281,14 @@ const UserListing = () => {
       [name!]: value,
     }));
     setPage(1);
+  };
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
+    setActiveTab(newValue);
+    setFilters(prev => ({
+      ...prev,
+      status: newValue === 'all' ? '' : newValue
+    }));
   };
 
   const filteredUsers = users.filter((user) => {
@@ -283,6 +323,61 @@ const UserListing = () => {
     page * rowsPerPage
   );
 
+  const tabs = [
+    { 
+      label: 'All Users', 
+      value: 'all', 
+      count: users.length, 
+      color: 'default' 
+    },
+    { 
+      label: 'Active', 
+      value: 'active', 
+      count: users.filter(u => u.status === 'active').length, 
+      color: 'success' 
+    },
+    { 
+      label: 'Inactive', 
+      value: 'inactive', 
+      count: users.filter(u => u.status === 'inactive').length, 
+      color: 'warning' 
+    },
+    { 
+      label: 'Suspended', 
+      value: 'suspended', 
+      count: users.filter(u => u.status === 'suspended').length, 
+      color: 'error' 
+    }
+  ];
+
+  const columns = [
+    { field: 'full_name', headerName: 'FULL NAME' },
+    { field: 'username', headerName: 'USERNAME' },
+    { field: 'email', headerName: 'EMAIL' },
+    { field: 'user_type', headerName: 'USER TYPE' },
+    { field: 'phone', headerName: 'PHONE' },
+    { field: 'status', headerName: 'STATUS', type: 'status' }
+  ];
+
+  const actions = [
+    {
+      icon: <VisibilityIcon fontSize="small" />,
+      color: 'primary',
+      title: 'View Details',
+      onClick: (item: User) => handleView(item)
+    },
+    {
+      icon: <EditIcon fontSize="small" />,
+      color: 'secondary',
+      title: 'Edit',
+      onClick: (item: User) => handleEdit(item)
+    }
+  ];
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
   // Show user view as full page
   if (showView && selectedUserId) {
     return (
@@ -304,14 +399,18 @@ const UserListing = () => {
                 "&:hover": { bgcolor: "primary.dark" },
               }}
             >
-              <ArrowBack />
+              <CloseIcon />
             </IconButton>
             <Typography variant="h4" component="h1" fontWeight={600}>
               User Details
             </Typography>
           </Box>
 
-          <UserView selectedUserId={selectedUserId} />
+          <UserView 
+            userId={selectedUserId} 
+            onClose={handleBackToList}
+            onEdit={handleEdit}
+          />
         </Box>
       </Container>
     );
@@ -338,7 +437,7 @@ const UserListing = () => {
                 "&:hover": { bgcolor: "primary.dark" },
               }}
             >
-              <ArrowBack />
+              <CloseIcon />
             </IconButton>
             <Typography variant="h4" component="h1" fontWeight={600}>
               {currentUser ? "Edit User" : "Add New User"}
@@ -349,7 +448,7 @@ const UserListing = () => {
             open={true}
             onClose={handleBackToList}
             onSave={handleSaveUser}
-            user={currentUser}
+            user={currentUser || undefined}
             isFullPage={true}
           />
         </Box>
@@ -358,332 +457,127 @@ const UserListing = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: "white", minHeight: "100vh", width: "78vw" }}>
-      <Container
-        maxWidth="xl"
-        sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          User Management
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleAddUser}
+        >
+          Add New User
+        </Button>
+      </Box>
+
+      <Box sx={{ mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {tab.label}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      bgcolor: `${tab.color}.light`,
+                      color: `${tab.color}.main`,
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                    }}
+                  >
+                    {tab.count}
+                  </Typography>
+                </Box>
+              }
+              value={tab.value}
+            />
+          ))}
+        </Tabs>
+      </Box>
+
+      <Box sx={{ mb: 3 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Search Users"
+              variant="outlined"
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth>
+              <InputLabel>User Type</InputLabel>
+              <Select
+                value={filters.user_type}
+                label="User Type"
+                onChange={(e) => handleFilterChange({ target: { name: 'user_type', value: e.target.value } } as any)}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="company">Company</MenuItem>
+                <MenuItem value="rider">Rider</MenuItem>
+                <MenuItem value="store_manager">Store Manager</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Box>
+
+      <ReusableTable
+        columns={columns}
+        data={paginatedUsers}
+        loading={loading}
+        actions={actions}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        onPageChange={handlePageChange}
+        totalCount={filteredUsers.length}
+      />
+
+      {showForm && (
+        <UserForm
+          open={showForm}
+          onClose={handleBackToList}
+          onSave={handleSaveUser}
+          user={currentUser || undefined}
+          isFullPage={true}
+        />
+      )}
+
+      {showView && selectedUserId && (
+        <UserView
+          userId={selectedUserId}
+          onClose={handleBackToList}
+          onEdit={handleEdit}
+        />
+      )}
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
       >
-        <Box sx={{ my: 4 }}>
-          {/* Top Header */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 2,
-              mb: 3,
-            }}
-          >
-            <Typography variant="h4" component="h1" fontWeight={600}>
-              User Management
-            </Typography>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 2,
-                mt: 2,
-              }}
-            >
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleAddUser}
-                size="small"
-                sx={{
-                  px: 2.5,
-                  py: 1,
-                  fontWeight: 500,
-                  textTransform: "none",
-                  borderRadius: 2,
-                  transition: "all 0.3s ease",
-                  boxShadow: 2,
-                  ":hover": {
-                    backgroundColor: "#1976d2", // deeper blue on hover
-                    boxShadow: 4,
-                    transform: "scale(1.03)",
-                  },
-                }}
-              >
-                Add New User
-              </Button>
-
-              <ToggleButtonGroup
-                value={viewMode}
-                exclusive
-                onChange={handleViewModeChange}
-                aria-label="view mode"
-                size="small"
-                sx={{
-                  backgroundColor: "#fff",
-                  borderRadius: 2,
-                  boxShadow: 1,
-                  overflow: "hidden",
-                }}
-              >
-                <Tooltip title="List View" arrow>
-                  <ToggleButton
-                    value="list"
-                    aria-label="list view"
-                    sx={{
-                      px: 2,
-                      py: 1,
-                      transition: "all 0.2s",
-                      ":hover": { bgcolor: "#e3f2fd" },
-                    }}
-                  >
-                    <ViewList fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-                <Tooltip title="Card View" arrow>
-                  <ToggleButton
-                    value="card"
-                    aria-label="card view"
-                    sx={{
-                      px: 2,
-                      py: 1,
-                      transition: "all 0.2s",
-                      ":hover": { bgcolor: "#e3f2fd" },
-                    }}
-                  >
-                    <ViewModule fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </Box>
-          </Box>
-
-          {/* Filters */}
-          <Box
-            sx={{
-              mb: 2,
-              p: 2,
-              bgcolor: "#f9f9fb", // Light gray background
-              borderRadius: 2,
-              boxShadow: 2,
-              border: "1px solid #e0e0e0",
-            }}
-          >
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={6} md={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="🔍 Search Users"
-                  variant="outlined"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  placeholder="Username, email, or name"
-                  sx={{
-                    backgroundColor: "#fff",
-                    borderRadius: 1,
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  sx={{ backgroundColor: "#fff", borderRadius: 1 }}
-                >
-                  <InputLabel>User Type</InputLabel>
-                  <Select
-                    name="user_type"
-                    value={filters.user_type}
-                    onChange={handleFilterChange}
-                    label="User Type"
-                  >
-                    <MenuItem value="">All Types</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
-                    <MenuItem value="company">Company</MenuItem>
-                    <MenuItem value="rider">Rider</MenuItem>
-                    <MenuItem value="store_manager">Store Manager</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl
-                  fullWidth
-                  size="small"
-                  sx={{ backgroundColor: "#fff", borderRadius: 1 }}
-                >
-                  <InputLabel>Status</InputLabel>
-                  <Select
-                    name="status"
-                    value={filters.status}
-                    onChange={handleFilterChange}
-                    label="Status"
-                  >
-                    <MenuItem value="">All Statuses</MenuItem>
-                    <MenuItem value="active">Active</MenuItem>
-                    <MenuItem value="inactive">Inactive</MenuItem>
-                    <MenuItem value="suspended">Suspended</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  fullWidth
-                  size="small"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setFilters({ user_type: "", status: "", company_id: "" });
-                    setPage(1);
-                  }}
-                  sx={{
-                    height: "40px",
-                    borderRadius: 1,
-                    textTransform: "none",
-                    fontWeight: 500,
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
-
-          {/* Content Area */}
-          {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-              <Typography variant="h6">Loading users...</Typography>
-            </Box>
-          ) : (
-            <>
-              {viewMode === "list" ? (
-                <ReusableTable
-                  data={paginatedUsers}
-                  onEdit={handleEditUser}
-                  onDelete={handleDeleteClick}
-                  onView={handleView}
-                  columns={[
-                    { field: "id", headerName: "ID", width: 40 },
-                    {
-                      field: "username",
-                      headerName: "Username",
-                      width: 130,
-                      clickable: true,
-                    },
-                    { field: "email", headerName: "Email", width: 200 },
-                    { field: "full_name", headerName: "Full Name", width: 180 },
-                    { field: "user_type", headerName: "User Type", width: 100 },
-                    { field: "status", headerName: "Status", width: 80 },
-                  ]}
-                />
-              ) : (
-                <ReusableCard
-                  data={paginatedUsers}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onView={handleView}
-                  labels={{
-                    email: "Email Address",
-                    company_id: "Company ID",
-                    user_type: "User Role",
-                    status: "Account Status",
-                  }}
-                />
-              )}
-
-              {/* Delete Confirmation */}
-              <Dialog
-                open={deleteConfirmOpen}
-                onClose={handleDeleteCancel}
-                maxWidth="sm"
-                fullWidth
-              >
-                <DialogTitle
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  Confirm Deletion
-                  <IconButton onClick={handleDeleteCancel} size="small">
-                    <CloseIcon />
-                  </IconButton>
-                </DialogTitle>
-                <DialogContent>
-                  <Box
-                    sx={{
-                      p: 3,
-                      mt: 1,
-                      mb: 2,
-                      border: "1px solid #e0e0e0",
-                      borderRadius: 2,
-                      backgroundColor: "#f9f9f9",
-                      minHeight: "100px",
-                    }}
-                  >
-                    <Typography variant="body1">
-                      Are you sure you want to delete{" "}
-                      <strong>{userToDelete?.full_name || "-"}</strong>?
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1 }}
-                    >
-                      This action cannot be undone.
-                    </Typography>
-                  </Box>
-                </DialogContent>
-                <DialogActions sx={{ p: 3 }}>
-                  <Button onClick={handleDeleteCancel} variant="outlined">
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleDeleteConfirm}
-                    color="error"
-                    variant="contained"
-                    startIcon={<DeleteIcon />}
-                  >
-                    Delete User
-                  </Button>
-                </DialogActions>
-              </Dialog>
-
-              {/* Snackbar */}
-              <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={4000}
-                onClose={handleSnackbarClose}
-                anchorOrigin={{ vertical: "top", horizontal: "right" }}
-              >
-                <Alert
-                  onClose={handleSnackbarClose}
-                  severity={snackbarSeverity}
-                  variant="filled"
-                >
-                  {snackbarMessage}
-                </Alert>
-              </Snackbar>
-
-              {/* Pagination */}
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 4 }}>
-                <Pagination
-                  count={count}
-                  page={page}
-                  onChange={(_, value) => setPage(value)}
-                  color="primary"
-                  size="large"
-                />
-              </Box>
-            </>
-          )}
-        </Box>
-      </Container>
-    </Box>
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 };
 

@@ -51,96 +51,99 @@ import {
   Attachment as AttachmentIcon,
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
+import axios from 'axios';
 
-// API Service simulation
+// Types
+interface Field {
+  name: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+}
+
+interface TableConfig {
+  name: string;
+  endpoint: string;
+  fields: Field[];
+}
+
+interface TableConfigs {
+  [key: string]: TableConfig;
+}
+
+interface PreviewData {
+  columns: string[];
+  data: any[][];
+  warnings: { column: number; message: string }[];
+  totalRows: number;
+}
+
+interface ImportRecord {
+  id: number;
+  table: string;
+  filename: string;
+  status: string;
+  records: number;
+  errors: number;
+  date: string;
+}
+
+interface ParsedCSV {
+  headers: string[];
+  data: string[][];
+}
+
+// API Service
 const apiService = {
-  get: async (endpoint) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock API responses
-    switch (endpoint) {
-      case "/users":
-        return [
-          {
-            id: 1,
-            company_id: 101,
-            username: "john_doe",
-            email: "john@example.com",
-            user_type: "admin",
-            full_name: "John Doe",
-            phone: "1234567890",
-            address: "123 Main St",
-            profile_image: "profile1.jpg",
-            status: "active"
-          },
-          {
-            id: 2,
-            company_id: 102,
-            username: "jane_smith",
-            email: "jane@example.com",
-            user_type: "company",
-            full_name: "Jane Smith",
-            phone: "0987654321",
-            address: "456 Oak Ave",
-            profile_image: "profile2.jpg",
-            status: "active"
-          }
-        ];
-      case "/riders":
-        return [
-          {
-            id: 1,
-            rider_id: "R001",
-            user_id: 1,
-            rider_code: "RC001",
-            id_proof: "ID123456",
-            emergency_contact: "9876543210",
-            date_of_birth: "1990-01-15",
-            blood_group: "O+",
-            joining_date: "2024-01-01",
-            bank_name: "ABC Bank",
-            account_number: "1234567890",
-            ifsc_code: "ABC0001234",
-            account_holder_name: "John Rider",
-            upi_id: "john@upi",
-            performance_tier: "high",
-            status: "Active",
-            vehicle_type: "2_wheeler",
-            vehicle_number: "KA01AB1234"
-          }
-        ];
-      case "/companies":
-        return [
-          {
-            id: 1,
-            name: "Tech Corp",
-            email: "info@techcorp.com",
-            phone: "1234567890",
-            address: "Tech Street 123",
-            status: "active"
-          }
-        ];
-      default:
-        return [];
+  get: async (endpoint: string) => {
+    try {
+      const token = localStorage.getItem('accessToken'); // Get token from localStorage
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.get(`/api${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        // Handle unauthorized access
+        throw new Error('Session expired. Please login again.');
+      }
+      throw error;
     }
   },
-  post: async (endpoint, data) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock successful response
-    return {
-      success: true,
-      message: "Data imported successfully",
-      imported_records: data.length || 0,
-      errors: Math.floor(Math.random() * 3) // Random errors for demo
-    };
+  post: async (endpoint: string, data: any) => {
+    try {
+      const token = localStorage.getItem('accessToken'); // Get token from localStorage
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.post(`/api${endpoint}`, data, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        // Handle unauthorized access
+        throw new Error('Session expired. Please login again.');
+      }
+      throw error;
+    }
   }
 };
 
 // Table configurations
-const TABLE_CONFIGS = {
+const TABLE_CONFIGS: TableConfigs = {
   users: {
     name: "Users",
     endpoint: "/users",
@@ -283,26 +286,27 @@ const GUIDANCE_DATA = {
 };
 
 const DataImportSystem = () => {
-  const [selectedTable, setSelectedTable] = useState("");
+  const [selectedTable, setSelectedTable] = useState<string>("");
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [viewDataModalOpen, setViewDataModalOpen] = useState(false);
-  const [selectedFields, setSelectedFields] = useState([]);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [exportType, setExportType] = useState("blank_template");
   const [fileType, setFileType] = useState("csv");
-  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [guidanceDrawerOpen, setGuidanceDrawerOpen] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
-  const [tableData, setTableData] = useState([]);
-  const [importRecords, setImportRecords] = useState([]);
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [tableData, setTableData] = useState<any[]>([]);
+  const [importRecords, setImportRecords] = useState<ImportRecord[]>([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
-    severity: "info",
+    severity: "info" as "info" | "success" | "warning" | "error",
   });
   const [activeTab, setActiveTab] = useState("import");
+  const [fieldSelectionOpen, setFieldSelectionOpen] = useState(false);
 
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load table data when table is selected
   useEffect(() => {
@@ -317,24 +321,34 @@ const DataImportSystem = () => {
     }
   }, [selectedTable]);
 
-  const loadTableData = async (table) => {
+  // Add error handling for unauthorized access
+  const handleApiError = (error: any) => {
+    if (error.message === 'Session expired. Please login again.') {
+      // Redirect to login page or show login modal
+      window.location.href = '/login'; // Adjust the login path as needed
+    } else {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || error.message || 'An error occurred',
+        severity: 'error'
+      });
+    }
+  };
+
+  const loadTableData = async (table: string) => {
     try {
       setLoading(true);
       const config = TABLE_CONFIGS[table];
       const data = await apiService.get(config.endpoint);
       setTableData(data);
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: "Failed to load table data",
-        severity: "error",
-      });
+    } catch (error: any) {
+      handleApiError(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTableSelect = (event) => {
+  const handleTableSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedTable(event.target.value);
     setAttachedFiles([]);
     setPreviewData(null);
@@ -365,7 +379,7 @@ const DataImportSystem = () => {
     setExportModalOpen(true);
   };
 
-  const handleFieldSelection = (fieldName) => {
+  const handleFieldSelection = (fieldName: string) => {
     setSelectedFields((prev) => {
       if (prev.includes(fieldName)) {
         const field = TABLE_CONFIGS[selectedTable].fields.find(
@@ -412,7 +426,7 @@ const DataImportSystem = () => {
       selectedFields.includes(field.name)
     );
 
-    let data = [];
+    let data: string[][] = [];
 
     if (exportType === "blank_template") {
       data = [fields.map((field) => field.label)];
@@ -420,7 +434,7 @@ const DataImportSystem = () => {
       data = [
         fields.map((field) => field.label),
         ...Array(5)
-          .fill()
+          .fill(null)
           .map((_, index) =>
             fields.map((field) => {
               switch (field.type) {
@@ -431,7 +445,7 @@ const DataImportSystem = () => {
                     ? `user${index + 1}`
                     : `Sample ${field.label} ${index + 1}`;
                 case "number":
-                  return index + 1;
+                  return String(index + 1);
                 case "date":
                   return "2024-01-01";
                 case "select":
@@ -447,7 +461,7 @@ const DataImportSystem = () => {
       data = [
         fields.map((field) => field.label),
         ...tableData.map(record =>
-          fields.map(field => record[field.name] || "")
+          fields.map(field => String(record[field.name] || ""))
         )
       ];
     }
@@ -455,7 +469,7 @@ const DataImportSystem = () => {
     return data;
   };
 
-  const downloadCSV = (data, filename) => {
+  const downloadCSV = (data: string[][], filename: string) => {
     const csvContent = data.map((row) => 
       row.map(cell => 
         typeof cell === 'string' && cell.includes(',') 
@@ -500,9 +514,9 @@ const DataImportSystem = () => {
     }, 1000);
   };
 
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const csvFiles = files.filter((file) =>
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const csvFiles = files.filter((file: File) =>
       file.name.toLowerCase().endsWith(".csv")
     );
 
@@ -521,25 +535,30 @@ const DataImportSystem = () => {
     }
   };
 
-  const removeFile = (index) => {
+  const removeFile = (index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
     setPreviewData(null);
   };
 
-  const parseCSVFile = (file) => {
+  const parseCSVFile = (file: File): Promise<ParsedCSV> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        const lines = text.split('\n').filter(line => line.trim());
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        const text = e.target?.result;
+        if (!text || typeof text !== 'string') {
+          reject(new Error('Failed to read file'));
+          return;
+        }
+
+        const lines = text.split('\n').filter((line: string) => line.trim());
         if (lines.length === 0) {
           reject(new Error('Empty file'));
           return;
         }
         
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-        const data = lines.slice(1).map(line => {
-          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        const headers = lines[0].split(',').map((h: string) => h.trim().replace(/"/g, ''));
+        const data = lines.slice(1).map((line: string) => {
+          const values = line.split(',').map((v: string) => v.trim().replace(/"/g, ''));
           return values;
         });
         
@@ -559,11 +578,11 @@ const DataImportSystem = () => {
       const file = attachedFiles[0];
       const { headers, data } = await parseCSVFile(file);
       
-      const warnings = [];
+      const warnings: { column: number; message: string }[] = [];
       const tableFields = TABLE_CONFIGS[selectedTable].fields;
       
       // Validate headers against table structure
-      headers.forEach((header, index) => {
+      headers.forEach((header: string, index: number) => {
         const field = tableFields.find(f => 
           f.label.toLowerCase() === header.toLowerCase() ||
           f.name.toLowerCase() === header.toLowerCase()
@@ -589,7 +608,7 @@ const DataImportSystem = () => {
         message: `File preview generated. Found ${data.length} rows.`,
         severity: "success",
       });
-    } catch (error) {
+    } catch (error: any) {
       setSnackbar({
         open: true,
         message: "Failed to parse CSV file: " + error.message,
@@ -601,48 +620,83 @@ const DataImportSystem = () => {
   };
 
   const handleStartImport = async () => {
-    if (!previewData) return;
+    if (!previewData || !attachedFiles[0]) return;
     
     setLoading(true);
 
     try {
-      // Convert preview data to import format
-      const importData = previewData.data.map(row => {
-        const record = {};
-        previewData.columns.forEach((col, index) => {
-          const field = TABLE_CONFIGS[selectedTable].fields.find(f => 
-            f.label.toLowerCase() === col.toLowerCase() ||
-            f.name.toLowerCase() === col.toLowerCase()
-          );
-          if (field) {
-            record[field.name] = row[index];
-          }
-        });
-        return record;
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', attachedFiles[0]);
+
+      console.log('Sending import request:', {
+        table: selectedTable,
+        file: attachedFiles[0].name,
+        size: attachedFiles[0].size,
+        type: attachedFiles[0].type
       });
 
       // Post data to API
-      const config = TABLE_CONFIGS[selectedTable];
-      const result = await apiService.post(config.endpoint, importData);
+      const response = await axios.post(`/api/bulk-import/${selectedTable}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      console.log('Import response:', response.data);
+
+      const result = response.data;
 
       // Add to import records
-      const newRecord = {
+      const newRecord: ImportRecord = {
         id: Date.now(),
         table: selectedTable,
         filename: attachedFiles[0].name,
         status: result.success ? "completed" : "failed",
-        records: result.imported_records,
+        records: result.results?.total || 0,
         date: new Date().toISOString().split('T')[0],
-        errors: result.errors || 0,
+        errors: result.results?.failed || 0,
       };
 
       setImportRecords(prev => [newRecord, ...prev]);
 
+      // Show success/error message
       setSnackbar({
         open: true,
         message: result.message || "Import completed successfully",
         severity: result.success ? "success" : "error",
       });
+
+      // If there are errors, show them in a detailed message
+      if (result.results?.errors?.length > 0) {
+        const errorDetails = result.results.errors.map((err: any) => 
+          `Row ${err.row}: ${err.errors.join(', ')}`
+        ).join('\n');
+
+        setSnackbar({
+          open: true,
+          message: (
+            <Box>
+              <Typography variant="body1" gutterBottom>
+                {result.message}
+              </Typography>
+              <Typography variant="body2" component="pre" sx={{ 
+                whiteSpace: 'pre-wrap', 
+                maxHeight: '200px', 
+                overflow: 'auto',
+                mt: 1,
+                p: 1,
+                bgcolor: 'rgba(0, 0, 0, 0.04)',
+                borderRadius: 1
+              }}>
+                {errorDetails}
+              </Typography>
+            </Box>
+          ),
+          severity: "warning",
+        });
+      }
 
       // Reset form
       setAttachedFiles([]);
@@ -651,11 +705,18 @@ const DataImportSystem = () => {
       // Reload table data
       await loadTableData(selectedTable);
       
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Import error:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
       setSnackbar({
         open: true,
-        message: "Import failed: " + error.message,
-        severity: "error",
+        message: error.response?.data?.message || error.message || 'Failed to import file',
+        severity: 'error'
       });
     } finally {
       setLoading(false);
@@ -680,6 +741,101 @@ const DataImportSystem = () => {
         size="small"
       />
     );
+  };
+
+  const handleDownloadAll = async () => {
+    if (!selectedTable) {
+      setSnackbar({
+        open: true,
+        message: "Please select a table first",
+        severity: "warning",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const config = TABLE_CONFIGS[selectedTable];
+      const data = await apiService.get(config.endpoint);
+      
+      // Convert data to CSV format
+      const headers = config.fields.map(field => field.label);
+      const csvData = [
+        headers,
+        ...data.map(record => 
+          config.fields.map(field => record[field.name] || '')
+        )
+      ];
+      
+      downloadCSV(csvData, `${selectedTable}_all_data_${new Date().getTime()}.csv`);
+      
+      setSnackbar({
+        open: true,
+        message: "Data downloaded successfully",
+        severity: "success",
+      });
+    } catch (error: any) {
+      handleApiError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    if (!selectedTable) {
+      setSnackbar({
+        open: true,
+        message: "Please select a table first",
+        severity: "warning",
+      });
+      return;
+    }
+    setFieldSelectionOpen(true);
+  };
+
+  const handleFieldSelectionDownload = () => {
+    if (selectedFields.length === 0) {
+      setSnackbar({
+        open: true,
+        message: "Please select at least one field",
+        severity: "warning",
+      });
+      return;
+    }
+
+    const fields = TABLE_CONFIGS[selectedTable].fields.filter(field => 
+      selectedFields.includes(field.name)
+    );
+
+    const data = [
+      fields.map(field => field.label),
+      ...Array(5).fill(null).map((_, index) =>
+        fields.map(field => {
+          switch (field.type) {
+            case "email":
+              return `example${index + 1}@domain.com`;
+            case "text":
+              return `Sample ${field.label} ${index + 1}`;
+            case "number":
+              return String(index + 1);
+            case "date":
+              return "2024-01-01";
+            case "select":
+              return field.options ? field.options[0] : "Option1";
+            default:
+              return `Sample Data ${index + 1}`;
+          }
+        })
+      )
+    ];
+
+    downloadCSV(data, `${selectedTable}_template_${new Date().getTime()}.csv`);
+    setFieldSelectionOpen(false);
+    setSnackbar({
+      open: true,
+      message: "Template downloaded successfully",
+      severity: "success",
+    });
   };
 
   return (
@@ -766,10 +922,11 @@ const DataImportSystem = () => {
                 >
                   View Data
                 </Button>
+               
                 <Button
                   variant="outlined"
                   startIcon={<DownloadIcon />}
-                  onClick={handleExportModalOpen}
+                  onClick={handleDownloadTemplate}
                   disabled={!selectedTable}
                   size="small"
                 >
@@ -1095,13 +1252,19 @@ const DataImportSystem = () => {
       {/* View Data Modal */}
       <Dialog open={viewDataModalOpen} onClose={() => setViewDataModalOpen(false)} maxWidth="lg" fullWidth>
         <DialogTitle>
-          View Data - {selectedTable && TABLE_CONFIGS[selectedTable].name}
-          <IconButton
-            onClick={() => setViewDataModalOpen(false)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">
+              View Data - {selectedTable && TABLE_CONFIGS[selectedTable].name}
+            </Typography>
+            <Box>
+              <IconButton
+                onClick={() => setViewDataModalOpen(false)}
+                sx={{ ml: 1 }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </Box>
         </DialogTitle>
         <DialogContent>
           {loading ? (
@@ -1145,47 +1308,192 @@ const DataImportSystem = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Guidance Drawer */}
-      <Drawer
-        anchor="right"
-        open={guidanceDrawerOpen}
-        onClose={() => setGuidanceDrawerOpen(false)}
-        sx={{ '& .MuiDrawer-paper': { width: 400, p: 2 } }}
+      {/* Field Selection Dialog */}
+      <Dialog 
+        open={fieldSelectionOpen} 
+        onClose={() => {
+          setFieldSelectionOpen(false);
+          // Reset to mandatory fields when closing
+          const mandatoryFields = TABLE_CONFIGS[selectedTable].fields
+            .filter(field => field.required)
+            .map(field => field.name);
+          setSelectedFields(mandatoryFields);
+        }} 
+        maxWidth="md" 
+        fullWidth
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Data Format Guidelines</Typography>
-          <IconButton onClick={() => setGuidanceDrawerOpen(false)}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        
-        {selectedTable && GUIDANCE_DATA[selectedTable] && (
-          <List>
-            {GUIDANCE_DATA[selectedTable].map((item, index) => (
-              <ListItem key={index} sx={{ flexDirection: 'column', alignItems: 'flex-start', mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                  {item.field}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {item.note}
-                </Typography>
-                <Box>
-                  {item.formats.map((format, formatIndex) => (
-                    <Chip
-                      key={formatIndex}
-                      label={format}
-                      size="small"
-                      variant="outlined"
-                      sx={{ mr: 1, mb: 1 }}
-                    />
-                  ))}
-                </Box>
-              </ListItem>
-            ))}
-          </List>
-        )}
-      </Drawer>
+        <DialogTitle>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6">Select Fields to Export</Typography>
+            <IconButton onClick={() => {
+              setFieldSelectionOpen(false);
+              // Reset to mandatory fields when closing
+              const mandatoryFields = TABLE_CONFIGS[selectedTable].fields
+                .filter(field => field.required)
+                .map(field => field.name);
+              setSelectedFields(mandatoryFields);
+            }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Button size="small" onClick={handleSelectAll} sx={{ mr: 1 }}>
+              Select All Fields
+            </Button>
+            <Button size="small" onClick={handleUnselectAll} sx={{ mr: 1 }}>
+              Clear Selection
+            </Button>
+            <Button size="small" onClick={handleSelectMandatory}>
+              Select Required Fields
+            </Button>
+          </Box>
+
+          <Grid container spacing={2}>
+            {selectedTable &&
+              TABLE_CONFIGS[selectedTable].fields.map((field) => (
+                <Grid item xs={12} sm={6} md={4} key={field.name}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedFields.includes(field.name)}
+                        onChange={() => handleFieldSelection(field.name)}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="body2">
+                          {field.label}
+                          {field.required && (
+                            <Chip
+                              label="Required"
+                              size="small"
+                              color="error"
+                              sx={{ ml: 1, height: 16 }}
+                            />
+                          )}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </Grid>
+              ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setFieldSelectionOpen(false);
+            // Reset to mandatory fields when closing
+            const mandatoryFields = TABLE_CONFIGS[selectedTable].fields
+              .filter(field => field.required)
+              .map(field => field.name);
+            setSelectedFields(mandatoryFields);
+          }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              if (selectedFields.length === 0) {
+                setSnackbar({
+                  open: true,
+                  message: "Please select at least one field",
+                  severity: "warning"
+                });
+                return;
+              }
+              
+              // Generate template with sample data
+              const fields = TABLE_CONFIGS[selectedTable].fields.filter(field => 
+                selectedFields.includes(field.name)
+              );
+              
+              const data = [
+                fields.map(field => field.label),
+                ...Array(5).fill(null).map((_, index) =>
+                  fields.map(field => {
+                    switch (field.type) {
+                      case "email":
+                        return `example${index + 1}@domain.com`;
+                      case "text":
+                        return `Sample ${field.label} ${index + 1}`;
+                      case "number":
+                        return String(index + 1);
+                      case "date":
+                        return "2024-01-01";
+                      case "select":
+                        return field.options ? field.options[0] : "Option1";
+                      default:
+                        return `Sample Data ${index + 1}`;
+                    }
+                  })
+                )
+              ];
+              
+              downloadCSV(data, `${selectedTable}_template_${new Date().getTime()}.csv`);
+              setSnackbar({
+                open: true,
+                message: "Template downloaded successfully",
+                severity: "success"
+              });
+              setFieldSelectionOpen(false);
+              // Reset to mandatory fields after download
+              const mandatoryFields = TABLE_CONFIGS[selectedTable].fields
+                .filter(field => field.required)
+                .map(field => field.name);
+              setSelectedFields(mandatoryFields);
+            }}
+            variant="outlined"
+            disabled={selectedFields.length === 0}
+            startIcon={<DownloadIcon />}
+          >
+            Download Template
+          </Button>
+          <Button 
+            onClick={() => {
+              if (selectedFields.length === 0) {
+                setSnackbar({
+                  open: true,
+                  message: "Please select at least one field",
+                  severity: "warning"
+                });
+                return;
+              }
+              
+              // Generate CSV with selected fields data
+              const fields = TABLE_CONFIGS[selectedTable].fields.filter(field => 
+                selectedFields.includes(field.name)
+              );
+              
+              const headers = fields.map(field => field.label);
+              const csvData = [
+                headers,
+                ...tableData.map(record => 
+                  fields.map(field => record[field.name] || '')
+                )
+              ];
+              
+              downloadCSV(csvData, `${selectedTable}_data_${new Date().getTime()}.csv`);
+              setSnackbar({
+                open: true,
+                message: "Data exported successfully",
+                severity: "success"
+              });
+              setFieldSelectionOpen(false);
+              // Reset to mandatory fields after download
+              const mandatoryFields = TABLE_CONFIGS[selectedTable].fields
+                .filter(field => field.required)
+                .map(field => field.name);
+              setSelectedFields(mandatoryFields);
+            }}
+            variant="contained"
+            disabled={selectedFields.length === 0}
+            startIcon={<DownloadIcon />}
+          >
+            Export Selected Data
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar for notifications */}
       <Snackbar

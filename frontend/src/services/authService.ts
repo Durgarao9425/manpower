@@ -25,6 +25,7 @@ interface User {
   full_name: string;
   company_id?: number;
   profile_image?: string;
+  is_super_admin?: boolean;
   [key: string]: any; // Allow additional properties
 }
 
@@ -285,10 +286,14 @@ class AuthService {
     // Store user data
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', user.user_type);
+    localStorage.setItem('userType', user.user_type);
+    localStorage.setItem('userRole', user.user_type); // Keep for backward compatibility
     localStorage.setItem('userId', user.id.toString());
     localStorage.setItem('userName', user.full_name);
     localStorage.setItem('userEmail', user.email);
+    
+    // Store super admin status
+    localStorage.setItem('isSuperAdmin', user.is_super_admin ? 'true' : 'false');
     
     // Calculate token expiration time
     const expirationTime = Date.now() + expiresIn * 1000;
@@ -310,9 +315,11 @@ class AuthService {
     localStorage.removeItem('user');
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('userType');
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('isSuperAdmin');
     
     // Clear refresh timer
     if (this.refreshTimer) {

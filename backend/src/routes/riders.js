@@ -81,12 +81,63 @@ router.post('/', async (req, res) => {
   const {
     rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number
   } = req.body;
-  const sql = `INSERT INTO riders (rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  
+  let connection;
   try {
-    const [result] = await db.query(sql, [rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number]);
+    // Get a connection from the pool
+    connection = await db.getConnection();
+    
+    // Start a transaction
+    await connection.beginTransaction();
+    
+    // If created_by is provided, verify it exists in suppliers table
+    if (created_by) {
+      const [supplier] = await connection.query(
+        'SELECT id FROM suppliers WHERE id = ?',
+        [created_by]
+      );
+
+      if (!supplier || supplier.length === 0) {
+        await connection.rollback();
+        return res.status(400).json({
+          error: 'Invalid supplier ID',
+          message: 'The specified supplier does not exist'
+        });
+      }
+    }
+    
+    const sql = `INSERT INTO riders (rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, blood_group, joining_date, bank_name, account_number, ifsc_code, account_holder_name, upi_id, id_card_path, performance_tier, last_certificate_date, created_by, id_card_number, id_card_issue_date, id_card_expiry_date, documents, status, vehicle_type, vehicle_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    
+    // Use null for created_by if it's empty
+    const createdByValue = created_by || null;
+    
+    const [result] = await connection.query(sql, [
+      rider_id, user_id, rider_code, id_proof, emergency_contact, date_of_birth, 
+      blood_group, joining_date, bank_name, account_number, ifsc_code, 
+      account_holder_name, upi_id, id_card_path, performance_tier, 
+      last_certificate_date, createdByValue, id_card_number, id_card_issue_date, 
+      id_card_expiry_date, documents, status, vehicle_type, vehicle_number
+    ]);
+    
+    // Commit the transaction
+    await connection.commit();
+    
     res.json({ id: result.insertId, ...req.body });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // Rollback in case of error
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error('Error creating rider:', err);
+    res.status(500).json({ 
+      error: 'Failed to create rider',
+      message: err.message 
+    });
+  } finally {
+    // Release the connection back to the pool
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
@@ -195,12 +246,32 @@ router.put('/:id', async (req, res) => {
     rider_documents
   } = req.body;
 
+  let connection;
   try {
+    // Get a connection from the pool
+    connection = await db.getConnection();
+    
     // Start a transaction
-    await db.beginTransaction();
+    await connection.beginTransaction();
+
+    // If created_by is provided, verify it exists in suppliers table
+    if (created_by) {
+      const [supplier] = await connection.query(
+        'SELECT id FROM suppliers WHERE id = ?',
+        [created_by]
+      );
+
+      if (!supplier || supplier.length === 0) {
+        await connection.rollback();
+        return res.status(400).json({
+          error: 'Invalid supplier ID',
+          message: 'The specified supplier does not exist'
+        });
+      }
+    }
 
     // Update rider data
-    const [result] = await db.query(
+    const [result] = await connection.query(
       `UPDATE riders SET 
         rider_id=?, user_id=?, rider_code=?, id_proof=?, emergency_contact=?,
         date_of_birth=?, blood_group=?, joining_date=?, bank_name=?,
@@ -215,25 +286,25 @@ router.put('/:id', async (req, res) => {
         date_of_birth, blood_group, joining_date, bank_name,
         account_number, ifsc_code, account_holder_name, upi_id,
         id_card_path, performance_tier, last_certificate_date,
-        created_by, id_card_number, id_card_issue_date,
+        created_by || null, id_card_number, id_card_issue_date,
         id_card_expiry_date, documents, status, vehicle_type,
         vehicle_number, id
       ]
     );
 
     if (result.affectedRows === 0) {
-      await db.rollback();
+      await connection.rollback();
       return res.status(404).json({ error: 'Rider not found' });
     }
 
     // Update rider documents if provided
     if (rider_documents && Array.isArray(rider_documents)) {
       // First delete existing documents
-      await db.query('DELETE FROM rider_documents WHERE rider_id = ?', [id]);
+      await connection.query('DELETE FROM rider_documents WHERE rider_id = ?', [id]);
 
       // Then insert new documents
       for (const doc of rider_documents) {
-        await db.query(
+        await connection.query(
           `INSERT INTO rider_documents 
             (rider_id, document_type, document_number, document_file,
              expiry_date, verification_status, remarks, verified_by,
@@ -249,13 +320,23 @@ router.put('/:id', async (req, res) => {
     }
 
     // Commit the transaction
-    await db.commit();
+    await connection.commit();
     res.json({ success: true });
   } catch (err) {
     // Rollback in case of error
-    await db.rollback();
+    if (connection) {
+      await connection.rollback();
+    }
     console.error('Error updating rider:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ 
+      error: 'Failed to update rider',
+      message: err.message 
+    });
+  } finally {
+    // Release the connection back to the pool
+    if (connection) {
+      connection.release();
+    }
   }
 });
 

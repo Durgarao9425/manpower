@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { StatsCard } from "./DateFilter";
-import { fetchSliderImages } from "../../../services/apiService";
+import { fetchSliderImages } from "../../../services/apiService.ts";
 
 interface SliderImage {
     id: number;

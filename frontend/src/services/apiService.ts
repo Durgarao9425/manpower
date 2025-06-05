@@ -50,24 +50,76 @@ api.interceptors.response.use(
       
       try {
         const refreshToken = localStorage.getItem("refreshToken");
-        const response = await axios.post(`${API_URL}/login/refresh`, { refreshToken });
+        if (!refreshToken) {
+          // No refresh token available, redirect to login
+          localStorage.removeItem("accessToken");
+          window.location.href = "/login";
+          return Promise.reject(error);
+        }
 
+        const response = await axios.post(`${API_URL}/login/refresh`, { refreshToken });
         const newToken = response.data.accessToken;
+        
+        if (!newToken) {
+          throw new Error('No new token received');
+        }
+
         localStorage.setItem("accessToken", newToken);
 
+        // Update the original request's authorization header
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
 
+        // Retry the original request
         return api(originalRequest);
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        // Clear tokens and redirect to login
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         window.location.href = "/login";
+        return Promise.reject(refreshError);
       }
     }
     
-    return Promise.reject(error);
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network Error: Unable to connect to the server. Please check if the server is running.');
+      return Promise.reject({
+        message: 'Unable to connect to the server. Please check if the server is running.',
+        originalError: error
+      });
+    }
+
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        url: error.config?.url
+      });
+      return Promise.reject({
+        message: error.response?.data?.message || 'An error occurred while processing your request.',
+        status: error.response?.status,
+        data: error.response?.data
+      });
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received:', error.request);
+      return Promise.reject({
+        message: 'No response received from the server. Please try again.',
+        originalError: error
+      });
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Request setup error:', error.message);
+      return Promise.reject({
+        message: 'An error occurred while setting up the request.',
+        originalError: error
+      });
+    }
   }
 );
 
@@ -233,7 +285,7 @@ export const fetchCompanies = async (): Promise<Company[]> => {
 };
 
 // Define Slider type
-interface Slider {
+export interface Slider {
   id: number;
   title: string;
   description: string;
@@ -250,4 +302,56 @@ interface Slider {
 interface Company {
   id: number;
   company_name: string;
+}
+
+// Role Permissions API
+export const rolePermissionsAPI = {
+  getUserPermissions: async (userId: number) => {
+    try {
+      const response = await api.get(`/role-permissions/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user permissions:', error);
+      throw error;
+    }
+  },
+  updateUserPermissions: async (userId: number, permissions: {
+    [moduleId: string]: {
+      view: boolean;
+      edit: boolean;
+      delete: boolean;
+    }
+  }) => {
+    try {
+      const response = await api.put(`/role-permissions/${userId}`, { permissions });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating user permissions:', error);
+      throw error;
+    }
+  },
+  getModules: async () => {
+    try {
+      const response = await api.get('/role-permissions/modules');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching permission modules:', error);
+      throw error;
+    }
+  },
+  checkPermission: async (userId: number, moduleId: string) => {
+    try {
+      const response = await api.get(`/role-permissions/check/${userId}/${moduleId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking user permission:', error);
+      throw error;
+    }
+  }
+};
+
+interface ErrorResponse {
+  message: string;
+  status: number;
+  data: any;
 }

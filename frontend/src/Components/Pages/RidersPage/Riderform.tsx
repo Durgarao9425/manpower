@@ -36,6 +36,7 @@ import {
   Warning,
   Assignment,
   Upload,
+  Business,
 } from "@mui/icons-material";
 import apiService from "../../../services/apiService";
 import { useNavigate, useParams } from "react-router-dom";
@@ -128,6 +129,15 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
 
+  // Add suppliers state
+  interface Supplier {
+    id: number;
+    company_name: string;
+  }
+  
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     rider_id: '',
     user_id: '',
@@ -182,7 +192,37 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
     if (isEditMode && id) {
       fetchRiderData(id);
     }
+    
+    // Fetch suppliers for the created_by dropdown
+    fetchSuppliers();
   }, [id, isEditMode]);
+  
+  // Function to fetch suppliers
+  const fetchSuppliers = async () => {
+    try {
+      setLoadingSuppliers(true);
+      const response = await apiService.get('/suppliers');
+      console.log('Suppliers data:', response);
+      
+      if (Array.isArray(response)) {
+        setSuppliers(response);
+      } else if (response && typeof response === 'object') {
+        // Handle case where API might return { data: [...] }
+        setSuppliers(Array.isArray(response.data) ? response.data : []);
+      } else {
+        setSuppliers([]);
+        throw new Error('Invalid suppliers data format');
+      }
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+      setSubmitStatus({
+        type: 'warning',
+        message: 'Could not load suppliers. The created_by field may not work correctly.'
+      });
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  };
 
   const fetchRiderData = async (riderId: string) => {
     try {
@@ -191,9 +231,15 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
       console.log('Fetching rider data for ID:', riderId);
       
       const response = await apiService.get(`/riders/${riderId}`);
-      console.log('Rider data received:', response.data);
+      console.log('Rider data received:', response);
       
-      const riderData = response.data;
+      // Check if response exists
+      if (!response) {
+        throw new Error('No response received from the server');
+      }
+
+      // The response is the rider data directly
+      const riderData = response;
       
       // Helper function to format date
       const formatDate = (dateValue: any): string => {
@@ -208,7 +254,7 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
         }
       };
 
-      // Create the new form data object
+      // Create the new form data object with default values
       const newFormData = {
         rider_id: riderData.rider_id || '',
         user_id: riderData.user_id || '',
@@ -226,7 +272,7 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
         id_card_path: riderData.id_card_path || '',
         performance_tier: riderData.performance_tier || 'low',
         last_certificate_date: formatDate(riderData.last_certificate_date),
-        created_by: riderData.created_by || '',
+        created_by: riderData.created_by ? riderData.created_by.toString() : '',
         id_card_number: riderData.id_card_number || '',
         id_card_issue_date: formatDate(riderData.id_card_issue_date),
         id_card_expiry_date: formatDate(riderData.id_card_expiry_date),
@@ -271,17 +317,14 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
 
       console.log('Setting new form data:', newFormData);
       setFormData(newFormData);
-      console.log('Form data after setting:', formData);
 
     } catch (error: any) {
       console.error('Error fetching rider data:', error);
-      setError(
-        error.response?.data?.message || 
-        'Failed to load rider data. Please try again.'
-      );
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to load rider data. Please try again.';
+      setError(errorMessage);
       setSubmitStatus({
         type: 'error',
-        message: 'Failed to load rider data. Please check the rider ID and try again.'
+        message: errorMessage
       });
     } finally {
       setLoading(false);
@@ -434,52 +477,65 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
     setError(null);
 
     try {
-      const submitData = new FormData();
+      // Convert created_by to a number if it's not empty
+      const createdBy = formData.created_by ? parseInt(formData.created_by, 10) : null;
       
-      // Append all form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'rider_documents' && value !== null && value !== undefined) {
-          if (key === 'password' && isEditMode && !value) {
-            // Skip empty password in edit mode
-            return;
-          }
-          submitData.append(key, value.toString());
-        }
-      });
+      // Create a plain object for the data
+      const submitData = {
+        rider_id: formData.rider_id,
+        user_id: formData.user_id,
+        rider_code: formData.rider_code,
+        id_proof: formData.id_proof,
+        emergency_contact: formData.emergency_contact,
+        date_of_birth: formData.date_of_birth,
+        blood_group: formData.blood_group,
+        joining_date: formData.joining_date,
+        bank_name: formData.bank_name,
+        account_number: formData.account_number,
+        ifsc_code: formData.ifsc_code,
+        account_holder_name: formData.account_holder_name,
+        upi_id: formData.upi_id,
+        id_card_path: formData.id_card_path,
+        performance_tier: formData.performance_tier,
+        last_certificate_date: formData.last_certificate_date,
+        created_by: createdBy, // Use the converted value
+        id_card_number: formData.id_card_number,
+        id_card_issue_date: formData.id_card_issue_date,
+        id_card_expiry_date: formData.id_card_expiry_date,
+        status: formData.status,
+        vehicle_type: formData.vehicle_type,
+        vehicle_number: formData.vehicle_number,
+        // User fields
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+        email: formData.email,
+        username: formData.username,
+        address: formData.address
+      };
 
-      // Append document files if they exist
-      Object.entries(formData.rider_documents).forEach(([key, value]) => {
-        if (value.file) {
-          submitData.append(`document_${key}`, value.file);
-        }
-      });
+      // Only include password if it's not empty and we're in create mode
+      if (!isEditMode && formData.password) {
+        (submitData as any).password = formData.password;
+      }
 
       let response;
       if (isEditMode) {
         // Update existing rider
-        response = await apiService.put(`/riders/${id}`, submitData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        response = await apiService.put(`/riders/${id}`, submitData);
         setSubmitStatus({
           type: 'success',
           message: 'Rider updated successfully!'
         });
       } else {
         // Create new rider
-        response = await apiService.post('/riders', submitData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        response = await apiService.post('/riders', submitData);
         setSubmitStatus({
           type: 'success',
           message: 'Rider registered successfully!'
         });
       }
 
-      console.log('Submit response:', response.data);
+      console.log('Submit response:', response);
 
       // Navigate after successful submission
       setTimeout(() => {
@@ -492,10 +548,30 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
 
     } catch (error: any) {
       console.error('Error submitting form:', error);
+      
+      // Handle different types of errors
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.originalError?.message) {
+        errorMessage = error.originalError.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
       setSubmitStatus({
         type: 'error',
-        message: error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} rider data. Please try again.`
+        message: errorMessage
       });
+
+      // If it's a network error, show a more specific message
+      if (error.code === 'ERR_NETWORK' || error.originalError?.code === 'ERR_NETWORK') {
+        setSubmitStatus({
+          type: 'error',
+          message: 'Unable to connect to the server. Please check if the server is running and try again.'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -1013,15 +1089,37 @@ const RiderRegistrationForm: React.FC<RiderRegistrationFormProps> = ({
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="Created By"
-                    name="created_by"
-                    value={formData.created_by}
-                    onChange={handleInputChange}
-                    variant="outlined"
-                    placeholder="Enter creator name"
-                  />
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="created-by-label">Created By (Supplier)</InputLabel>
+                    <Select
+                      labelId="created-by-label"
+                      id="created-by"
+                      name="created_by"
+                      value={formData.created_by}
+                      onChange={handleSelectChange}
+                      label="Created By (Supplier)"
+                      startAdornment={
+                        <InputAdornment position="start">
+                          <Business />
+                        </InputAdornment>
+                      }
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {suppliers.map((supplier) => (
+                        <MenuItem key={supplier.id} value={supplier.id.toString()}>
+                          {supplier.company_name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {loadingSuppliers && <CircularProgress size={24} sx={{ ml: 1 }} />}
+                    {errors.created_by && (
+                      <Typography color="error" variant="caption">
+                        {errors.created_by}
+                      </Typography>
+                    )}
+                  </FormControl>
                 </Grid>
               </Grid>
 

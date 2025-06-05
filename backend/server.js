@@ -148,6 +148,9 @@ const customFieldsRoutes = require('./src/routes/customFields');
 const companyPaymentsRouter = require('./src/routes/company_payments');
 const sliderImagesRoutes = require('./src/routes/sliderImages');
 const fieldMappingsRouter = require('./src/routes/field_mappings');
+const bulkImportRouter = require('./src/routes/bulkImport');
+const suppliersRouter = require('./src/routes/suppliers');
+const rolePermissionsRouter = require('./src/routes/rolePermissions');
 
 // Public routes
 app.use('/api/login', loginRoute);
@@ -157,15 +160,18 @@ app.use('/api/users', auth, usersRouter);
 app.use('/api/companies', auth, adminOnly, companiesRouter);
 app.use('/api/riders', auth, ridersRouter);
 app.use('/api/stores', auth, storesRouter);
+app.use('/api/suppliers', auth, suppliersRouter);
 app.use('/api/rider-documents', auth, riderDocumentsRouter);
 app.use('/api/rider-assignments', auth, riderAssignmentsRouter);
 app.use('/api/attendance', auth, attendanceRouter);
 app.use('/api/orders', auth, ordersRoutes);
-app.use('/api/custom-fields', customFieldsRoutes);
+app.use('/api/custom-fields', auth, customFieldsRoutes);
+app.use('/api/field-mappings', auth, fieldMappingsRouter);
+app.use('/api/bulk-import', auth, bulkImportRouter);
 app.use('/api', companyPaymentsRouter);
 app.use('/api/company_payments', companyPaymentsRouter);
 app.use('/api/slider-images', sliderImagesRoutes);
-app.use('/api/field_mappings', fieldMappingsRouter);
+app.use('/api/role-permissions', rolePermissionsRouter);
 
 // Image proxy endpoint to help with CORS issues
 app.get('/api/image-proxy', (req, res) => {

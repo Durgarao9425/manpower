@@ -21,18 +21,25 @@ import {
 import { CloudUpload, Visibility, VisibilityOff } from "@mui/icons-material";
 import type { SelectChangeEvent } from "@mui/material/Select";
 
+// Define shared types
+type UserType = "admin" | "company" | "rider" | "store_manager";
+type UserStatus = "active" | "inactive" | "suspended";
+
 interface User {
   id?: number;
-  company_id?: number | string;
-  username?: string;
+  company_id: number | null;
+  username: string;
   password?: string;
-  email?: string;
-  user_type?: string;
-  full_name?: string;
+  email: string;
+  user_type: UserType;
+  full_name: string;
   phone?: string;
   address?: string;
   profile_image?: string;
-  status?: "active" | "inactive" | "suspended";
+  status: UserStatus;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: number;
 }
 
 interface UserFormProps {
@@ -45,19 +52,21 @@ interface UserFormProps {
 
 interface UserFormData {
   id?: number;
-  company_id: number | string;
+  company_id: number | null;
   username: string;
   password: string;
   email: string;
-  user_type: string;
+  user_type: UserType;
   full_name: string;
   phone: string;
   address: string;
   profile_image: string;
-  status: "active" | "inactive" | "suspended";
+  status: UserStatus;
+  created_by?: number;
 }
 
 interface FormErrors {
+  id?: string;
   company_id?: string;
   username?: string;
   password?: string;
@@ -65,6 +74,10 @@ interface FormErrors {
   user_type?: string;
   full_name?: string;
   phone?: string;
+  address?: string;
+  profile_image?: string;
+  status?: string;
+  created_by?: string;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -75,7 +88,7 @@ const UserForm: React.FC<UserFormProps> = ({
   isFullPage = false,
 }) => {
   const [formData, setFormData] = useState<UserFormData>({
-    company_id: "",
+    company_id: null,
     username: "",
     password: "",
     email: "",
@@ -188,21 +201,21 @@ const UserForm: React.FC<UserFormProps> = ({
     if (user) {
       setFormData({
         id: user.id, // Preserve the ID for editing
-        company_id: user.company_id ?? "",
-        username: user.username ?? "",
+        company_id: user.company_id,
+        username: user.username,
         password: "", // Password is never prefilled for security reasons
-        email: user.email ?? "",
-        user_type: user.user_type ?? "admin",
-        full_name: user.full_name ?? "",
+        email: user.email,
+        user_type: user.user_type,
+        full_name: user.full_name,
         phone: user.phone ?? "",
         address: user.address ?? "",
         profile_image: user.profile_image ?? "",
-        status: user.status ?? "active",
+        status: user.status,
       });
       setIsEditMode(true);
     } else {
       setFormData({
-        company_id: "",
+        company_id: null,
         username: "",
         password: "",
         email: "",
@@ -222,32 +235,42 @@ const UserForm: React.FC<UserFormProps> = ({
 
   const validateField = (
     name: keyof UserFormData,
-    value: string | number
+    value: string | number | null | undefined
   ): string => {
+    if (value === null || value === undefined) {
+      return `${name} is required`;
+    }
+
     switch (name) {
-      case "username":
-        return !value || String(value).trim() === ""
-          ? "Username is required"
-          : "";
-      case "password":
-        return !isEditMode && (!value || String(value).trim() === "")
-          ? "Password is required"
-          : "";
       case "email":
-        if (!value || String(value).trim() === "") {
-          return "Email is required";
-        }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return !emailRegex.test(String(value))
+        return !emailRegex.test(value.toString())
           ? "Please enter a valid email address"
           : "";
-      case "user_type":
-        return !value || String(value).trim() === ""
-          ? "User Type is required"
+      case "phone":
+        const phoneRegex = /^\+?[\d\s-]{10,}$/;
+        return !phoneRegex.test(value.toString())
+          ? "Please enter a valid phone number"
+          : "";
+      case "password":
+        return value.toString().length < 6
+          ? "Password must be at least 6 characters long"
+          : "";
+      case "username":
+        return value.toString().length < 3
+          ? "Username must be at least 3 characters long"
           : "";
       case "full_name":
-        return !value || String(value).trim() === ""
-          ? "Full Name is required"
+        return value.toString().length < 2
+          ? "Full name must be at least 2 characters long"
+          : "";
+      case "user_type":
+        return !value.toString()
+          ? "Please select a user type"
+          : "";
+      case "status":
+        return !value.toString()
+          ? "Please select a status"
           : "";
       default:
         return "";
@@ -394,8 +417,9 @@ const UserForm: React.FC<UserFormProps> = ({
                   label="User Type"
                 >
                   <MenuItem value="admin">Admin</MenuItem>
-                  <MenuItem value="user">User</MenuItem>
-                  <MenuItem value="manager">Manager</MenuItem>
+                  <MenuItem value="company">Company</MenuItem>
+                  <MenuItem value="rider">Rider</MenuItem>
+                  <MenuItem value="store_manager">Store Manager</MenuItem>
                 </Select>
                 {errors.user_type && (
                   <FormHelperText>{errors.user_type}</FormHelperText>

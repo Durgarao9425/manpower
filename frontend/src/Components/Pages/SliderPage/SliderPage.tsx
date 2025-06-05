@@ -41,7 +41,7 @@ import {
   Add as AddIcon,
   CloudUpload as CloudUploadIcon
 } from '@mui/icons-material';
-import { fetchSliderImages, addSliderImage, updateSliderImage, deleteSliderImage, fetchCompanies } from '../../../services/apiService';
+import { fetchSliderImages, addSliderImage, updateSliderImage, deleteSliderImage, fetchCompanies } from '../../../services/apiService.ts';
 
 // Define Slider type
 interface Slider {

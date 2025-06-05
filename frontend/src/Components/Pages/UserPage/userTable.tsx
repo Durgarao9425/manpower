@@ -11,6 +11,8 @@ import {
   Typography,
   Box,
   Link,
+  Checkbox,
+  TablePagination,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -24,19 +26,33 @@ interface UserTableProps {
     headerName: string;
     width?: number;
     minWidth?: number;
-    clickable?: boolean; // Add clickable property
+    clickable?: boolean;
+    type?: string;
   }[];
-  onEdit: (row: any) => void;
-  onDelete: (row: any) => void;
-  onView?: (row: any) => void; // Add optional onView prop
+  actions: Array<{
+    icon: React.ReactElement;
+    color: string;
+    title: string;
+    onClick: (item: any) => void;
+  }>;
+  loading: boolean;
+  page: number;
+  rowsPerPage: number;
+  onPageChange: (newPage: number) => void;
+  onRowsPerPageChange?: (rowsPerPage: number) => void;
+  totalCount: number;
 }
 
 const ReusableTable: React.FC<UserTableProps> = ({
   data,
   columns,
-  onEdit,
-  onDelete,
-  onView,
+  actions,
+  loading,
+  page,
+  rowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
+  totalCount,
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -47,8 +63,18 @@ const ReusableTable: React.FC<UserTableProps> = ({
   }
 
   const handleCellClick = (row: any, column: any) => {
-    if (column.clickable && onView) {
-      onView(row);
+    if (column.clickable && actions.length > 0) {
+      actions[0].onClick(row);
+    }
+  };
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    onPageChange(newPage + 1); // Convert to 1-based index
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (onRowsPerPageChange) {
+      onRowsPerPageChange(parseInt(event.target.value, 10));
     }
   };
 
@@ -76,14 +102,26 @@ const ReusableTable: React.FC<UserTableProps> = ({
         <Table
           sx={{
             width: "100%",
-            tableLayout: "fixed", // tighter layout
+            tableLayout: "fixed",
             borderCollapse: "collapse",
           }}
-          size="small" // makes table more compact
+          size="small"
           aria-label="user table"
         >
           <TableHead>
             <TableRow sx={{ backgroundColor: "#f9f9f9" }}>
+              <TableCell
+                sx={{
+                  width: "60px",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  padding: "6px 12px",
+                  borderBottom: "1px solid #e0e0e0",
+                  borderRight: "1px solid #e0e0e0",
+                }}
+              >
+                S.No
+              </TableCell>
               {columns.map((column) => (
                 <TableCell
                   key={column.field}
@@ -104,7 +142,7 @@ const ReusableTable: React.FC<UserTableProps> = ({
               ))}
               <TableCell
                 sx={{
-                  width: onView ? "120px" : "100px",
+                  width: actions.length > 0 ? "120px" : "100px",
                   fontWeight: 600,
                   fontSize: "0.85rem",
                   padding: "6px 12px",
@@ -116,13 +154,23 @@ const ReusableTable: React.FC<UserTableProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row) => (
+            {data.map((row, index) => (
               <TableRow
                 key={row.id}
                 sx={{
                   "&:hover": { backgroundColor: "#fefefe" },
                 }}
               >
+                <TableCell
+                  sx={{
+                    padding: "6px 12px",
+                    fontSize: "0.82rem",
+                    borderBottom: "1px solid #e0e0e0",
+                    borderRight: "1px solid #e0e0e0",
+                  }}
+                >
+                  {(page - 1) * rowsPerPage + index + 1}
+                </TableCell>
                 {columns.map((column) => (
                   <TableCell
                     key={`${row.id}-${column.field}`}
@@ -167,53 +215,43 @@ const ReusableTable: React.FC<UserTableProps> = ({
                   }}
                 >
                   <Box sx={{ display: "flex", gap: 0.5 }}>
-                    {onView && (
+                    {actions.map((action) => (
                       <IconButton
-                        onClick={() => onView(row)}
+                        key={action.title}
+                        onClick={() => action.onClick(row)}
                         size="small"
                         sx={{
-                          color: "info.main",
+                          color: action.color,
                           "&:hover": {
                             backgroundColor: "rgba(2, 136, 209, 0.08)",
                           },
                         }}
-                        title="View"
+                        title={action.title}
                       >
-                        <VisibilityIcon fontSize="small" />
+                        {action.icon}
                       </IconButton>
-                    )}
-                    <IconButton
-                      onClick={() => onEdit(row)}
-                      size="small"
-                      sx={{
-                        color: "primary.main",
-                        "&:hover": {
-                          backgroundColor: "rgba(25, 118, 210, 0.08)",
-                        },
-                      }}
-                      title="Edit"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => onDelete(row)}
-                      size="small"
-                      sx={{
-                        color: "error.main",
-                        "&:hover": {
-                          backgroundColor: "rgba(211, 47, 47, 0.08)",
-                        },
-                      }}
-                      title="Delete"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    ))}
                   </Box>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={totalCount}
+          page={page - 1} // Convert to 0-based index for MUI TablePagination
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          sx={{
+            borderTop: "1px solid #e0e0e0",
+            ".MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows": {
+              margin: 0,
+            },
+          }}
+        />
       </TableContainer>
     </Box>
   );

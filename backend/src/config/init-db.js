@@ -5,13 +5,13 @@ async function initializeDatabase() {
     console.log('Checking database tables...');
     
     // Check if field_mappings table exists
-    const [tables] = await db.query(`
+    const [fieldMappingsTables] = await db.query(`
       SELECT TABLE_NAME 
       FROM information_schema.TABLES 
       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'field_mappings'
     `, [process.env.DB_NAME]);
     
-    if (tables.length === 0) {
+    if (fieldMappingsTables.length === 0) {
       console.log('Creating field_mappings table...');
       
       await db.query(`
@@ -39,6 +39,38 @@ async function initializeDatabase() {
       console.log('field_mappings table created successfully');
     } else {
       console.log('field_mappings table already exists');
+    }
+    
+    // Check if admin_permissions table exists
+    const [adminPermissionsTables] = await db.query(`
+      SELECT TABLE_NAME 
+      FROM information_schema.TABLES 
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'admin_permissions'
+    `, [process.env.DB_NAME]);
+    
+    if (adminPermissionsTables.length === 0) {
+      console.log('Creating admin_permissions table...');
+      
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS admin_permissions (
+          id int(11) NOT NULL AUTO_INCREMENT,
+          user_id int(11) NOT NULL,
+          page varchar(255) NOT NULL,
+          can_view tinyint(1) NOT NULL DEFAULT 0,
+          can_edit tinyint(1) NOT NULL DEFAULT 0,
+          can_delete tinyint(1) NOT NULL DEFAULT 0,
+          created_at timestamp NOT NULL DEFAULT current_timestamp(),
+          updated_at timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+          PRIMARY KEY (id),
+          UNIQUE KEY user_id_page (user_id, page),
+          KEY user_id (user_id),
+          KEY page (page)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      `);
+      
+      console.log('admin_permissions table created successfully');
+    } else {
+      console.log('admin_permissions table already exists');
     }
     
     console.log('Database initialization completed');

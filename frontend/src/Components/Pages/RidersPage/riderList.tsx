@@ -29,7 +29,6 @@ import {
   HealthAndSafety as InsuranceIcon,
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
-import { api } from "../../../services/apiService";
 import { useNavigate } from "react-router-dom";
 import type { CardData } from "../RiderDashboard/types";
 import {
