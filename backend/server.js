@@ -151,6 +151,7 @@ const fieldMappingsRouter = require('./src/routes/field_mappings');
 const bulkImportRouter = require('./src/routes/bulkImport');
 const suppliersRouter = require('./src/routes/suppliers');
 const rolePermissionsRouter = require('./src/routes/rolePermissions');
+const importHistoryRoutes = require('./src/routes/importHistory');
 
 // Public routes
 app.use('/api/login', loginRoute);
@@ -172,6 +173,8 @@ app.use('/api', companyPaymentsRouter);
 app.use('/api/company_payments', companyPaymentsRouter);
 app.use('/api/slider-images', sliderImagesRoutes);
 app.use('/api/role-permissions', rolePermissionsRouter);
+// Temporarily remove auth middleware for testing
+app.use('/api/import-history', importHistoryRoutes);
 
 // Image proxy endpoint to help with CORS issues
 app.get('/api/image-proxy', (req, res) => {

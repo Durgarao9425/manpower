@@ -23,6 +23,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TablePagination,
   TextField,
   Typography,
   Chip,
@@ -52,6 +53,8 @@ import {
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import axios from 'axios';
+import * as XLSX from 'xlsx';
+import apiService from "../../../services/apiService";
 
 // Types
 interface Field {
@@ -87,6 +90,16 @@ interface ImportRecord {
   records: number;
   errors: number;
   date: string;
+  details: {
+    success: number;
+    failed: number;
+    skipped: number;
+    errors: Array<{
+      row: number;
+      message: string;
+      data: any;
+    }>;
+  };
 }
 
 interface ParsedCSV {
@@ -94,53 +107,19 @@ interface ParsedCSV {
   data: string[][];
 }
 
-// API Service
-const apiService = {
-  get: async (endpoint: string) => {
-    try {
-      const token = localStorage.getItem('accessToken'); // Get token from localStorage
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await axios.get(`/api${endpoint}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        // Handle unauthorized access
-        throw new Error('Session expired. Please login again.');
-      }
-      throw error;
-    }
-  },
-  post: async (endpoint: string, data: any) => {
-    try {
-      const token = localStorage.getItem('accessToken'); // Get token from localStorage
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await axios.post(`/api${endpoint}`, data, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        // Handle unauthorized access
-        throw new Error('Session expired. Please login again.');
-      }
-      throw error;
-    }
-  }
-};
+// Add new interface for import history
+interface ImportHistoryRecord {
+  id: number;
+  table_name: string;
+  filename: string;
+  status: 'completed' | 'completed_with_errors' | 'failed';
+  total_records: number;
+  success_count: number;
+  failed_count: number;
+  skipped_count: number;
+  error_details: any;
+  created_at: string;
+}
 
 // Table configurations
 const TABLE_CONFIGS: TableConfigs = {
@@ -219,71 +198,17 @@ const TABLE_CONFIGS: TableConfigs = {
     name: "Companies",
     endpoint: "/companies",
     fields: [
-      { name: "id", label: "ID", type: "number", required: true },
-      { name: "name", label: "Company Name", type: "text", required: true },
-      { name: "email", label: "Email", type: "email", required: true },
-      { name: "phone", label: "Phone", type: "tel", required: false },
-      { name: "address", label: "Address", type: "textarea", required: false },
-      {
-        name: "status",
-        label: "Status",
-        type: "select",
-        required: false,
-        options: ["active", "inactive"],
-      },
+      { name: "company_name", label: "Company Name", type: "text", required: true },
+      { name: "company_email", label: "Email", type: "email", required: true },
+      { name: "company_phone", label: "Phone", type: "tel", required: false },
+      { name: "company_gst", label: "GST", type: "text", required: false },
+      { name: "company_address", label: "Address", type: "textarea", required: false },
+      { name: "industry", label: "Industry", type: "text", required: false },
+      { name: "payment_terms", label: "Payment Terms", type: "text", required: false },
     ],
   },
 };
 
-// Guidance data
-const GUIDANCE_DATA = {
-  users: [
-    {
-      field: "Email",
-      formats: ["example@domain.com"],
-      note: "Must be a valid email format",
-    },
-    {
-      field: "User Type",
-      formats: ["admin", "company", "rider", "store_manager"],
-      note: "Select from available options",
-    },
-    {
-      field: "Phone",
-      formats: ["+1234567890", "1234567890"],
-      note: "Include country code if international",
-    },
-  ],
-  riders: [
-    {
-      field: "Date of Birth",
-      formats: ["YYYY-MM-DD", "DD-MM-YYYY"],
-      note: "Use standard date formats",
-    },
-    {
-      field: "Joining Date",
-      formats: ["YYYY-MM-DD", "DD-MM-YYYY"],
-      note: "Employee joining date",
-    },
-    {
-      field: "Vehicle Type",
-      formats: ["2_wheeler", "3_wheeler", "4_wheeler"],
-      note: "Select appropriate vehicle type",
-    },
-  ],
-  companies: [
-    {
-      field: "Email",
-      formats: ["company@domain.com"],
-      note: "Company official email address",
-    },
-    {
-      field: "Status",
-      formats: ["active", "inactive"],
-      note: "Company operational status",
-    },
-  ],
-};
 
 const DataImportSystem = () => {
   const [selectedTable, setSelectedTable] = useState<string>("");
@@ -291,13 +216,13 @@ const DataImportSystem = () => {
   const [viewDataModalOpen, setViewDataModalOpen] = useState(false);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [exportType, setExportType] = useState("blank_template");
-  const [fileType, setFileType] = useState("csv");
+  const [fileType, setFileType] = useState<'csv' | 'excel'>('csv');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [guidanceDrawerOpen, setGuidanceDrawerOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [tableData, setTableData] = useState<any[]>([]);
-  const [importRecords, setImportRecords] = useState<ImportRecord[]>([]);
+  const [importRecords, setImportRecords] = useState<ImportHistoryRecord[]>([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -305,6 +230,27 @@ const DataImportSystem = () => {
   });
   const [activeTab, setActiveTab] = useState("import");
   const [fieldSelectionOpen, setFieldSelectionOpen] = useState(false);
+  const [parsedRecords, setParsedRecords] = useState<any[]>([]);
+  const [currentRecordIndex, setCurrentRecordIndex] = useState<number>(0);
+  // Add pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // Add state for error details dialog
+  const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
+  const [selectedErrorDetails, setSelectedErrorDetails] = useState<any>(null);
+  const [importProgress, setImportProgress] = useState<{
+    total: number;
+    processed: number;
+    success: number;
+    failed: number;
+    skipped: number;
+  }>({
+    total: 0,
+    processed: 0,
+    success: 0,
+    failed: 0,
+    skipped: 0
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -320,6 +266,49 @@ const DataImportSystem = () => {
       loadTableData(selectedTable);
     }
   }, [selectedTable]);
+
+  // Load import history from API on component mount
+  useEffect(() => {
+    loadImportHistory();
+  }, []);
+  
+  // Reset pagination when switching to the listings tab
+  useEffect(() => {
+    if (activeTab === "listings") {
+      setPage(0);
+    }
+  }, [activeTab]);
+
+  const loadImportHistory = async () => {
+    try {
+      console.log('Loading import history...');
+      const response = await apiService.get('/import-history');
+      console.log('Import history response:', response);
+      
+      if (response && response.success) {
+        // Initialize with empty array if data is null or undefined
+        const historyData = response.data || [];
+        console.log('Setting import records:', historyData);
+        setImportRecords(historyData);
+        // Reset to first page when new data is loaded
+        setPage(0);
+      } else {
+        console.warn('Unexpected response format:', response);
+        // Initialize with empty array if response is invalid
+        setImportRecords([]);
+        throw new Error(response?.error || 'Failed to load import history');
+      }
+    } catch (error: any) {
+      console.error('Error loading import history:', error);
+      // Initialize with empty array on error
+      setImportRecords([]);
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to load import history',
+        severity: 'error'
+      });
+    }
+  };
 
   // Add error handling for unauthorized access
   const handleApiError = (error: any) => {
@@ -516,20 +505,21 @@ const DataImportSystem = () => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    const csvFiles = files.filter((file: File) =>
-      file.name.toLowerCase().endsWith(".csv")
-    );
+    const validFiles = files.filter((file: File) => {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      return extension === 'csv' || extension === 'xlsx' || extension === 'xls';
+    });
 
-    if (csvFiles.length !== files.length) {
+    if (validFiles.length !== files.length) {
       setSnackbar({
         open: true,
-        message: "Only CSV files are allowed",
+        message: "Only CSV and Excel files are allowed",
         severity: "error",
       });
       return;
     }
 
-    setAttachedFiles((prev) => [...prev, ...csvFiles]);
+    setAttachedFiles((prev) => [...prev, ...validFiles]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -569,33 +559,485 @@ const DataImportSystem = () => {
     });
   };
 
+  const parseExcelFile = (file: File): Promise<ParsedCSV> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          if (jsonData.length === 0) {
+            reject(new Error('Empty file'));
+            return;
+          }
+
+          const headers = jsonData[0] as string[];
+          const rows = jsonData.slice(1) as string[][];
+
+          resolve({ headers, data: rows });
+        } catch (error) {
+          reject(new Error('Failed to parse Excel file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsBinaryString(file);
+    });
+  };
+
+  // Update handleStartImport to handle the new API response format
+  const handleStartImport = async () => {
+    console.log('=== STARTING IMPORT PROCESS ===');
+    console.log('previewData:', previewData);
+    console.log('attachedFiles:', attachedFiles);
+    console.log('parsedRecords length:', parsedRecords?.length);
+    console.log('selectedTable:', selectedTable);
+    
+    if (!previewData || !attachedFiles[0]) {
+      console.error('Missing required data for import');
+      setSnackbar({
+        open: true,
+        message: 'Missing preview data or file for import',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
+    // Safety timeout to ensure loading state is reset even if there's an unexpected error
+    const safetyTimeout = setTimeout(() => {
+      console.log('Safety timeout triggered - resetting loading state');
+      setLoading(false);
+    }, 30000); // 30 seconds timeout
+    
+    try {
+      console.log('Initializing progress...');
+      // Initialize progress
+      setImportProgress({
+        total: parsedRecords.length,
+        processed: 0,
+        success: 0,
+        failed: 0,
+        skipped: 0
+      });
+
+      console.log('Starting processRecords...');
+      const results = await processRecords(parsedRecords, previewData.columns);
+      console.log('processRecords completed:', results);
+      
+      // Save import record to backend
+      const importRecord = {
+        table_name: selectedTable,
+        filename: attachedFiles[0].name,
+        status: results.failed === 0 ? "completed" : "completed_with_errors",
+        total_records: parsedRecords.length,
+        success_count: results.success,
+        failed_count: results.failed,
+        skipped_count: results.skipped,
+        error_details: results.errors
+      };
+
+      try {
+        console.log('Saving import history record:', importRecord);
+        const response = await apiService.post('/import-history', importRecord);
+        console.log('Import history save response:', response);
+        
+        if (!response || (!response.success && !response.id)) {
+          console.warn('Import history save warning:', response);
+          // Continue execution even if saving history fails
+        }
+      } catch (historyError) {
+        console.error('Failed to save import history:', historyError);
+        // Continue execution even if saving history fails
+      }
+
+      // Reload import history
+      await loadImportHistory();
+
+      // Show summary message
+      setSnackbar({
+        open: true,
+        message: `Import completed. Success: ${results.success}, Failed: ${results.failed}, Skipped: ${results.skipped}`,
+        severity: results.failed === 0 ? "success" : "warning",
+      });
+
+      // Reset state
+      console.log('Resetting state...');
+      setParsedRecords([]);
+      setPreviewData(null);
+      setAttachedFiles([]);
+      
+    } catch (error: any) {
+      console.error('Import failed with error:', error);
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to import records',
+        severity: 'error'
+      });
+    } finally {
+      console.log('Import process finished, setting loading to false');
+      // Clear the safety timeout
+      clearTimeout(safetyTimeout);
+      setLoading(false);
+    }
+  };
+
+  // Fixed processRecords function with better error handling and logging
+  const processRecords = async (records, headers) => {
+    console.log('=== PROCESSING RECORDS ===');
+    console.log('Total records to process:', records.length);
+    console.log('Headers:', headers);
+    console.log('Selected table:', selectedTable);
+    
+    // Safety check - if no records, return early
+    if (!records || records.length === 0) {
+      console.warn('No records to process');
+      return {
+        success: 0,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      };
+    }
+    
+    const results = {
+      success: 0,
+      failed: 0,
+      skipped: 0,
+      errors: []
+    };
+
+    // Process records one by one to ensure reliable API calls
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      console.log(`Processing record ${i + 1}/${records.length}:`, record);
+      
+      try {
+        // Normalize record keys to lowercase
+        const normalizedRecord = Object.keys(record).reduce((acc, key) => {
+          acc[key.toLowerCase()] = record[key];
+          return acc;
+        }, {});
+
+        const validationErrors = validateRecord(normalizedRecord, headers);
+        console.log(`Validation errors for record ${i + 1}:`, validationErrors);
+
+        if (validationErrors.length > 0) {
+          console.log(`Skipping record ${i + 1} due to validation errors`);
+          results.skipped++;
+          results.errors.push({
+            row: i + 1,
+            message: validationErrors.join(', '),
+            data: normalizedRecord,
+            reason: 'Validation failed'
+          });
+          
+          // Update progress after each record
+          setImportProgress(prev => ({
+            ...prev,
+            processed: i + 1,
+            success: results.success,
+            failed: results.failed,
+            skipped: results.skipped
+          }));
+          continue;
+        }
+
+        // Convert record to match backend format
+        const formattedRecord = headers.reduce((acc, header) => {
+          const field = TABLE_CONFIGS[selectedTable].fields.find(f => 
+            f.label.toLowerCase() === header.toLowerCase() ||
+            f.name.toLowerCase() === header.toLowerCase()
+          );
+          if (field) {
+            // Use the normalized record with lowercase keys
+            const headerLower = header.toLowerCase();
+            if (normalizedRecord[headerLower] !== undefined && normalizedRecord[headerLower] !== '') {
+              // Convert numeric values if the field type is number
+              if (field.type === 'number' && !isNaN(Number(normalizedRecord[headerLower]))) {
+                acc[field.name] = Number(normalizedRecord[headerLower]);
+              } else {
+                acc[field.name] = normalizedRecord[headerLower];
+              }
+              console.log(`Mapped ${headerLower} -> ${field.name}: ${normalizedRecord[headerLower]}`);
+            }
+          }
+          return acc;
+        }, {});
+
+        console.log(`Formatted record ${i + 1}:`, formattedRecord);
+
+        // Send record to backend
+        const endpoint = TABLE_CONFIGS[selectedTable].endpoint;
+        console.log(`Sending POST request to: ${endpoint}`);
+        console.log('Request payload:', formattedRecord);
+        
+        try {
+          // Check if we have the minimum required fields for this table
+          const requiredFields = TABLE_CONFIGS[selectedTable].fields
+            .filter(f => f.required)
+            .map(f => f.name);
+            
+          const missingRequiredFields = requiredFields.filter(field => 
+            formattedRecord[field] === undefined || formattedRecord[field] === null || formattedRecord[field] === ''
+          );
+          
+          if (missingRequiredFields.length > 0) {
+            console.error(`Missing required fields for record ${i + 1}:`, missingRequiredFields);
+            results.failed++;
+            results.errors.push({
+              row: i + 1,
+              message: `Missing required fields: ${missingRequiredFields.join(', ')}`,
+              data: normalizedRecord,
+              reason: 'Missing required fields'
+            });
+          } else {
+            // Send to backend only if all required fields are present
+            const response = await apiService.post(endpoint, formattedRecord);
+            console.log(`Response for record ${i + 1}:`, response);
+            
+            if (response && (response.success || response.id)) {
+              results.success++;
+              console.log(`Record ${i + 1} saved successfully`);
+            } else {
+              console.error(`Error response for record ${i + 1}:`, response);
+              results.failed++;
+              results.errors.push({
+                row: i + 1,
+                message: response?.error || 'Unknown error',
+                data: normalizedRecord,
+                reason: 'API error'
+              });
+            }
+          }
+        } catch (apiError) {
+          console.error(`API error for record ${i + 1}:`, apiError);
+          results.failed++;
+          results.errors.push({
+            row: i + 1,
+            message: apiError.message || 'API request failed',
+            data: normalizedRecord,
+            reason: 'API error'
+          });
+        }
+        
+      } catch (error: any) {
+        console.error(`Error processing record ${i + 1}:`, error);
+        results.failed++;
+        
+        // Get detailed error message from response
+        let errorMessage = 'Failed to save record';
+        let errorReason = 'Unknown error';
+        
+        if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+          errorReason = 'Server error';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+          errorReason = 'Server error';
+        } else if (error.message) {
+          errorMessage = error.message;
+          errorReason = 'Client error';
+        }
+        
+        console.log(`Error message for record ${i + 1}:`, errorMessage);
+        
+        // Don't show error toast for each failed record - we'll show a summary at the end
+        // Just log the error for debugging
+        console.log(`Error in row ${i + 1}: ${errorMessage}`);
+        
+        results.errors.push({
+          row: i + 1,
+          message: errorMessage,
+          data: record,
+          reason: errorReason
+        });
+      }
+
+      // Update progress after each record
+      setImportProgress(prev => ({
+        ...prev,
+        processed: i + 1,
+        success: results.success,
+        failed: results.failed,
+        skipped: results.skipped
+      }));
+      
+      console.log(`Progress after record ${i + 1}:`, {
+        processed: i + 1,
+        success: results.success,
+        failed: results.failed,
+        skipped: results.skipped
+      });
+    }
+
+    console.log('=== PROCESSING COMPLETE ===');
+    console.log('Final results:', results);
+    return results;
+  };
+
+  // Fixed validateRecord function with better logging
+  const validateRecord = (record, headers) => {
+    console.log('Validating record:', record);
+    console.log('Available headers:', headers);
+    
+    const tableFields = TABLE_CONFIGS[selectedTable].fields;
+    const errors = [];
+
+    // Map headers to field names
+    const headerToField = headers.reduce((acc, header, index) => {
+      const field = tableFields.find(f => 
+        f.label.toLowerCase() === header.toLowerCase() ||
+        f.name.toLowerCase() === header.toLowerCase()
+      );
+      if (field) {
+        // Store with lowercase header for consistent lookup
+        acc[header.toLowerCase()] = field;
+        console.log(`Mapped header "${header}" to field:`, field);
+      } else {
+        console.log(`No field found for header "${header}"`);
+      }
+      return acc;
+    }, {});
+
+    console.log('Header to field mapping:', headerToField);
+
+    // Check for required fields that are missing
+    tableFields.forEach(field => {
+      if (field.required) {
+        // Check if any header maps to this required field
+        const headerExists = Object.values(headerToField).some(f => f.name === field.name);
+        if (!headerExists) {
+          const error = `${field.label} column is missing`;
+          errors.push(error);
+          console.log(`Validation error: ${error}`);
+        }
+      }
+    });
+
+    // Validate each field
+    Object.entries(headerToField).forEach(([headerLower, field]) => {
+      // Use lowercase header for lookup
+      const value = record[headerLower];
+      console.log(`Validating field ${field.name} (${headerLower}):`, value);
+      
+      // Check required fields
+      if (field.required && (value === undefined || value === null || (typeof value === 'string' && value.trim() === ''))) {
+        const error = `${field.label} is required`;
+        errors.push(error);
+        console.log(`Validation error: ${error}`);
+      }
+
+      // Skip validation if value is empty and not required
+      if (!value && !field.required) {
+        console.log(`Field ${field.name} is empty but not required, skipping validation`);
+        return;
+      }
+
+      // Validate email format
+      if (field.type === 'email' && value) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(String(value))) {
+          const error = `${field.label} must be a valid email address`;
+          errors.push(error);
+          console.log(`Validation error: ${error}`);
+        }
+      }
+
+      // Validate select options
+      if (field.type === 'select' && field.options && value) {
+        if (!field.options.includes(String(value))) {
+          const error = `${field.label} must be one of: ${field.options.join(', ')}`;
+          errors.push(error);
+          console.log(`Validation error: ${error}`);
+        }
+      }
+
+      // Validate date format
+      if (field.type === 'date' && value) {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(String(value))) {
+          const error = `${field.label} must be in YYYY-MM-DD format`;
+          errors.push(error);
+          console.log(`Validation error: ${error}`);
+        }
+      }
+    });
+
+    console.log('Validation completed. Errors found:', errors);
+    return errors;
+  };
+
+  // Also make sure your handlePreview function correctly sets parsedRecords
   const handlePreview = async () => {
-    if (attachedFiles.length === 0) return;
+    console.log('=== STARTING PREVIEW ===');
+    console.log('Attached files:', attachedFiles);
+    
+    if (attachedFiles.length === 0) {
+      console.log('No files attached');
+      return;
+    }
 
     setLoading(true);
+    
+    // Safety timeout to ensure loading state is reset even if there's an unexpected error
+    const safetyTimeout = setTimeout(() => {
+      console.log('Preview safety timeout triggered - resetting loading state');
+      setLoading(false);
+    }, 15000); // 15 seconds timeout
 
     try {
       const file = attachedFiles[0];
-      const { headers, data } = await parseCSVFile(file);
+      console.log('Processing file:', file.name, 'Size:', file.size);
       
-      const warnings: { column: number; message: string }[] = [];
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      console.log('File extension:', fileExtension);
+      
+      const { headers, data } = fileExtension === 'csv' 
+        ? await parseCSVFile(file)
+        : await parseExcelFile(file);
+      
+      console.log('Parsed headers:', headers);
+      console.log('Parsed data length:', data.length);
+      console.log('First few data rows:', data.slice(0, 3));
+      
+      const warnings = [];
       const tableFields = TABLE_CONFIGS[selectedTable].fields;
       
       // Validate headers against table structure
-      headers.forEach((header: string, index: number) => {
+      headers.forEach((header, index) => {
         const field = tableFields.find(f => 
           f.label.toLowerCase() === header.toLowerCase() ||
           f.name.toLowerCase() === header.toLowerCase()
         );
         
         if (!field) {
-          warnings.push({
+          const warning = {
             column: index + 1,
             message: `Column "${header}" not found in table structure`
-          });
+          };
+          warnings.push(warning);
+          console.log('Header validation warning:', warning);
         }
       });
 
+      // Convert data to objects with header keys
+      const records = data.map((row, rowIndex) => {
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = row[index];
+        });
+        console.log(`Record ${rowIndex + 1}:`, record);
+        return record;
+      });
+
+      console.log('Total records created:', records.length);
+      setParsedRecords(records);
+      
       setPreviewData({
         columns: headers,
         data: data.slice(0, 10), // Show first 10 rows
@@ -603,123 +1045,32 @@ const DataImportSystem = () => {
         totalRows: data.length
       });
 
+      setImportProgress({
+        total: data.length,
+        processed: 0,
+        success: 0,
+        failed: 0,
+        skipped: 0
+      });
+
+      console.log('Preview data set successfully');
       setSnackbar({
         open: true,
         message: `File preview generated. Found ${data.length} rows.`,
         severity: "success",
       });
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Preview failed:', error);
       setSnackbar({
         open: true,
-        message: "Failed to parse CSV file: " + error.message,
+        message: "Failed to parse file: " + error.message,
         severity: "error",
       });
     } finally {
+      // Clear the safety timeout
+      clearTimeout(safetyTimeout);
       setLoading(false);
-    }
-  };
-
-  const handleStartImport = async () => {
-    if (!previewData || !attachedFiles[0]) return;
-    
-    setLoading(true);
-
-    try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('file', attachedFiles[0]);
-
-      console.log('Sending import request:', {
-        table: selectedTable,
-        file: attachedFiles[0].name,
-        size: attachedFiles[0].size,
-        type: attachedFiles[0].type
-      });
-
-      // Post data to API
-      const response = await axios.post(`/api/bulk-import/${selectedTable}`, formData, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      console.log('Import response:', response.data);
-
-      const result = response.data;
-
-      // Add to import records
-      const newRecord: ImportRecord = {
-        id: Date.now(),
-        table: selectedTable,
-        filename: attachedFiles[0].name,
-        status: result.success ? "completed" : "failed",
-        records: result.results?.total || 0,
-        date: new Date().toISOString().split('T')[0],
-        errors: result.results?.failed || 0,
-      };
-
-      setImportRecords(prev => [newRecord, ...prev]);
-
-      // Show success/error message
-      setSnackbar({
-        open: true,
-        message: result.message || "Import completed successfully",
-        severity: result.success ? "success" : "error",
-      });
-
-      // If there are errors, show them in a detailed message
-      if (result.results?.errors?.length > 0) {
-        const errorDetails = result.results.errors.map((err: any) => 
-          `Row ${err.row}: ${err.errors.join(', ')}`
-        ).join('\n');
-
-        setSnackbar({
-          open: true,
-          message: (
-            <Box>
-              <Typography variant="body1" gutterBottom>
-                {result.message}
-              </Typography>
-              <Typography variant="body2" component="pre" sx={{ 
-                whiteSpace: 'pre-wrap', 
-                maxHeight: '200px', 
-                overflow: 'auto',
-                mt: 1,
-                p: 1,
-                bgcolor: 'rgba(0, 0, 0, 0.04)',
-                borderRadius: 1
-              }}>
-                {errorDetails}
-              </Typography>
-            </Box>
-          ),
-          severity: "warning",
-        });
-      }
-
-      // Reset form
-      setAttachedFiles([]);
-      setPreviewData(null);
-      
-      // Reload table data
-      await loadTableData(selectedTable);
-      
-    } catch (error: any) {
-      console.error('Import error:', error);
-      console.error('Error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers
-      });
-      setSnackbar({
-        open: true,
-        message: error.response?.data?.message || error.message || 'Failed to import file',
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
+      console.log('=== PREVIEW COMPLETED ===');
     }
   };
 
@@ -963,7 +1314,7 @@ const DataImportSystem = () => {
                         display="block"
                         color="text.secondary"
                       >
-                        File Type Allowed: CSV
+                        File Types Allowed: CSV, Excel (.xlsx, .xls)
                       </Typography>
                     </Box>
                   ) : (
@@ -1004,7 +1355,7 @@ const DataImportSystem = () => {
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".csv"
+                    accept=".csv,.xlsx,.xls"
                     style={{ display: "none" }}
                     onChange={handleFileUpload}
                   />
@@ -1114,34 +1465,89 @@ const DataImportSystem = () => {
                     <TableCell>Table</TableCell>
                     <TableCell>Filename</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Records</TableCell>
-                    <TableCell>Errors</TableCell>
+                    <TableCell>Total Records</TableCell>
+                    <TableCell>Success</TableCell>
+                    <TableCell>Failed</TableCell>
+                    <TableCell>Skipped</TableCell>
                     <TableCell>Date</TableCell>
+                    <TableCell>Details</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {importRecords.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        No import records found
+                      <TableCell colSpan={10} align="center">
+                        <Box sx={{ py: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <Typography variant="h6" color="text.secondary" gutterBottom>
+                            No import records found
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Import data using the "Import Data" tab to see records here.
+                          </Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    importRecords.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>{record.id}</TableCell>
-                        <TableCell>{record.table}</TableCell>
-                        <TableCell>{record.filename}</TableCell>
-                        <TableCell>{getStatusChip(record.status)}</TableCell>
-                        <TableCell>{record.records}</TableCell>
-                        <TableCell>{record.errors}</TableCell>
-                        <TableCell>{record.date}</TableCell>
-                      </TableRow>
-                    ))
+                    // Apply pagination to the records
+                    // Sort by ID in descending order (newest first) and then paginate
+                    [...importRecords]
+                      .sort((a, b) => b.id - a.id)
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((record: ImportHistoryRecord) => (
+                        <TableRow key={record.id}>
+                          <TableCell>{record.id}</TableCell>
+                          <TableCell>{record.table_name}</TableCell>
+                          <TableCell>{record.filename}</TableCell>
+                          <TableCell>{getStatusChip(record.status)}</TableCell>
+                          <TableCell>{record.total_records}</TableCell>
+                          <TableCell>{record.success_count}</TableCell>
+                          <TableCell>{record.failed_count}</TableCell>
+                          <TableCell>{record.skipped_count}</TableCell>
+                          <TableCell>{new Date(record.created_at).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="primary"
+                              startIcon={<VisibilityIcon />}
+                              onClick={() => {
+                                // Show detailed error dialog
+                                setSelectedErrorDetails(record.error_details);
+                                setErrorDetailsOpen(true);
+                              }}
+                              disabled={!record.error_details || record.error_details.length === 0}
+                            >
+                              View Errors
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
+            
+            {/* Add TablePagination component */}
+            {importRecords.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Showing {Math.min(rowsPerPage, importRecords.length)} of {importRecords.length} records
+                </Typography>
+                <TablePagination
+                  rowsPerPageOptions={[5, 10, 25, 50]}
+                  component="div"
+                  count={importRecords.length}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={(event, newPage) => setPage(newPage)}
+                  onRowsPerPageChange={(event) => {
+                    setRowsPerPage(parseInt(event.target.value, 10));
+                    setPage(0);
+                  }}
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} of ${count}`}
+                />
+              </Box>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1170,9 +1576,10 @@ const DataImportSystem = () => {
                 <FormLabel sx={{ mb: 1 }}>File Type</FormLabel>
                 <Select
                   value={fileType}
-                  onChange={(e) => setFileType(e.target.value)}
+                  onChange={(e) => setFileType(e.target.value as 'csv' | 'excel')}
                 >
                   <MenuItem value="csv">CSV</MenuItem>
+                  <MenuItem value="excel">Excel (.xlsx, .xls)</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1338,6 +1745,17 @@ const DataImportSystem = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <FormLabel>Template Type</FormLabel>
+            <Select
+              value={exportType}
+              onChange={(e) => setExportType(e.target.value as 'blank_template' | '5_records')}
+            >
+              <MenuItem value="blank_template">Blank Template (Headers Only)</MenuItem>
+              <MenuItem value="5_records">Template with Sample Data (5 Records)</MenuItem>
+            </Select>
+          </FormControl>
+
           <Box sx={{ mb: 2 }}>
             <Button size="small" onClick={handleSelectAll} sx={{ mr: 1 }}>
               Select All Fields
@@ -1410,7 +1828,7 @@ const DataImportSystem = () => {
               
               const data = [
                 fields.map(field => field.label),
-                ...Array(5).fill(null).map((_, index) =>
+                ...(exportType === "5_records" ? Array(5).fill(null).map((_, index) =>
                   fields.map(field => {
                     switch (field.type) {
                       case "email":
@@ -1427,13 +1845,13 @@ const DataImportSystem = () => {
                         return `Sample Data ${index + 1}`;
                     }
                   })
-                )
+                ) : [])
               ];
               
-              downloadCSV(data, `${selectedTable}_template_${new Date().getTime()}.csv`);
+              downloadCSV(data, `${selectedTable}_${exportType}_${new Date().getTime()}.csv`);
               setSnackbar({
                 open: true,
-                message: "Template downloaded successfully",
+                message: `${exportType === "blank_template" ? "Blank" : "Sample data"} template downloaded successfully`,
                 severity: "success"
               });
               setFieldSelectionOpen(false);
@@ -1495,6 +1913,33 @@ const DataImportSystem = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Import Progress */}
+      {loading && importProgress.total > 0 && (
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Import Progress
+          </Typography>
+          <LinearProgress 
+            variant="determinate" 
+            value={(importProgress.processed / importProgress.total) * 100} 
+          />
+          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2">
+              Processed: {importProgress.processed} / {importProgress.total}
+            </Typography>
+            <Typography variant="body2" color="success.main">
+              Success: {importProgress.success}
+            </Typography>
+            <Typography variant="body2" color="error.main">
+              Failed: {importProgress.failed}
+            </Typography>
+            <Typography variant="body2" color="warning.main">
+              Skipped: {importProgress.skipped}
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
@@ -1509,6 +1954,70 @@ const DataImportSystem = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Error Details Dialog */}
+      <Dialog 
+        open={errorDetailsOpen} 
+        onClose={() => setErrorDetailsOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Error Details</Typography>
+            <IconButton onClick={() => setErrorDetailsOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedErrorDetails && selectedErrorDetails.length > 0 ? (
+            <>
+              <Typography variant="subtitle1" gutterBottom>
+                The following errors occurred during import:
+              </Typography>
+              <TableContainer component={Paper} sx={{ mt: 2 }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Row</TableCell>
+                      <TableCell>Error Message</TableCell>
+                      <TableCell>Reason</TableCell>
+                      <TableCell>Data</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedErrorDetails.map((error, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{error.row}</TableCell>
+                        <TableCell>{error.message}</TableCell>
+                        <TableCell>{error.reason}</TableCell>
+                        <TableCell>
+                          <Accordion>
+                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                              <Typography>View Data</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                {JSON.stringify(error.data, null, 2)}
+                              </pre>
+                            </AccordionDetails>
+                          </Accordion>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          ) : (
+            <Typography>No error details available.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setErrorDetailsOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
