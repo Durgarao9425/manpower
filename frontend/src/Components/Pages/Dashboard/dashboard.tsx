@@ -51,7 +51,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 // Import actual components
 import RiderListingPage from "../RidersPage/riderList";
 import CompanyPage from "../Company/companyPage";
@@ -59,7 +59,6 @@ import UserListing from "../UserPage/userList";
 
 const DashboardNew = () => {
   const [selectedView, setSelectedView] = useState("Overview");
-
   // Sample data for charts
   const weeklyData = [
     { name: 'Mon', deliveries: 45, earnings: 2500 },
@@ -70,7 +69,6 @@ const DashboardNew = () => {
     { name: 'Sat', deliveries: 67, earnings: 3500 },
     { name: 'Sun', deliveries: 43, earnings: 2300 },
   ];
-
   const monthlyRevenue = [
     { month: 'Jan', revenue: 45000 },
     { month: 'Feb', revenue: 52000 },
@@ -79,26 +77,23 @@ const DashboardNew = () => {
     { month: 'May', revenue: 55000 },
     { month: 'Jun', revenue: 67000 },
   ];
-
   const deliveryStatus = [
     { name: 'Completed', value: 156, color: '#4caf50' },
     { name: 'In Progress', value: 23, color: '#ff9800' },
     { name: 'Cancelled', value: 8, color: '#f44336' },
     { name: 'Pending', value: 12, color: '#2196f3' },
   ];
-
   const recentOrders = [
     { id: '#001', customer: 'John Doe', rider: 'Alex Smith', status: 'Delivered', amount: '₹450', time: '10:30 AM' },
     { id: '#002', customer: 'Jane Smith', rider: 'Mike Johnson', status: 'In Transit', amount: '₹320', time: '11:15 AM' },
     { id: '#003', customer: 'Bob Wilson', rider: 'Sarah Davis', status: 'Picked Up', amount: '₹280', time: '11:45 AM' },
     { id: '#004', customer: 'Alice Brown', rider: 'Tom Wilson', status: 'Pending', amount: '₹520', time: '12:00 PM' },
   ];
-
   const topRiders = [
-    { name: 'Alex Smith', deliveries: 45, rating: 4.8, earnings: '₹12,500' },
-    { name: 'Mike Johnson', deliveries: 38, rating: 4.7, earnings: '₹10,200' },
-    { name: 'Sarah Davis', deliveries: 32, rating: 4.9, earnings: '₹8,900' },
-    { name: 'Tom Wilson', deliveries: 28, rating: 4.6, earnings: '₹7,800' },
+    { name: 'Alex Smith', deliveries: 45, rating: 4.8, earnings: '₹12,500', lat: 17.4065, lng: 78.3750 },
+    { name: 'Mike Johnson', deliveries: 38, rating: 4.7, earnings: '₹10,200', lat: 17.4125, lng: 78.3670 },
+    { name: 'Sarah Davis', deliveries: 32, rating: 4.9, earnings: '₹8,900', lat: 17.4010, lng: 78.3820 },
+    { name: 'Tom Wilson', deliveries: 28, rating: 4.6, earnings: '₹7,800', lat: 17.4160, lng: 78.3730 },
   ];
 
   const viewsData = {
@@ -223,6 +218,16 @@ const DashboardNew = () => {
     }
   };
 
+  const mapContainerStyle = {
+    width: '100%',
+    height: '400px',
+  };
+
+  const defaultCenter = {
+    lat: 17.4065,
+    lng: 78.3750,
+  };
+
   return (
     <Container
       maxWidth="xl"
@@ -253,7 +258,6 @@ const DashboardNew = () => {
               : `${selectedView} Management`}
           </Typography>
         </Box>
-
         <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
           <FormControl sx={{ minWidth: 200 }}>
             <Select
@@ -272,7 +276,6 @@ const DashboardNew = () => {
               <MenuItem value="Users">Users</MenuItem>
             </Select>
           </FormControl>
-
           <Button
             variant="contained"
             sx={{
@@ -294,7 +297,6 @@ const DashboardNew = () => {
           </Button>
         </Box>
       </Paper>
-
       {/* Dashboard Cards - Show only if not in component view */}
       {selectedView === "Overview" || currentView.cards ? (
         <Grid container spacing={3}>
@@ -349,7 +351,6 @@ const DashboardNew = () => {
                         </Typography>
                       </Box>
                     </Box>
-
                     <Box
                       sx={{
                         height: 4,
@@ -375,7 +376,6 @@ const DashboardNew = () => {
           )}
         </Grid>
       ) : null}
-
       {/* Additional Dashboard Content - Only show in Overview */}
       {selectedView === "Overview" && (
         <>
@@ -466,7 +466,6 @@ const DashboardNew = () => {
               </Card>
             </Grid>
           </Grid>
-
           {/* Charts Section */}
           <Grid container spacing={3} sx={{ mt: 2 }}>
             {/* Weekly Performance Chart */}
@@ -501,7 +500,6 @@ const DashboardNew = () => {
                 </CardContent>
               </Card>
             </Grid>
-
             {/* Delivery Status Chart */}
             <Grid item xs={12} lg={4}>
               <Card sx={{ borderRadius: 3, backgroundColor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
@@ -549,7 +547,6 @@ const DashboardNew = () => {
                 </CardContent>
               </Card>
             </Grid>
-
             {/* Monthly Revenue Chart */}
             <Grid item xs={12} lg={6}>
               <Card sx={{ borderRadius: 3, backgroundColor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
@@ -580,7 +577,6 @@ const DashboardNew = () => {
                 </CardContent>
               </Card>
             </Grid>
-
             {/* Top Riders */}
             <Grid item xs={12} lg={6}>
               <Card sx={{ borderRadius: 3, backgroundColor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
@@ -622,7 +618,6 @@ const DashboardNew = () => {
                 </CardContent>
               </Card>
             </Grid>
-
             {/* Recent Orders */}
             <Grid item xs={12}>
               <Card sx={{ borderRadius: 3, backgroundColor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
@@ -672,15 +667,39 @@ const DashboardNew = () => {
               </Card>
             </Grid>
           </Grid>
+          {/* Map Section */}
+          <Grid container spacing={3} sx={{ mt: 2 }}>
+            <Grid item xs={12}>
+              <Card sx={{ borderRadius: 3, backgroundColor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: "#333" }}>
+                    Rider Locations in Hyderabad
+                  </Typography>
+                  <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
+                    <GoogleMap
+                      mapContainerStyle={mapContainerStyle}
+                      center={defaultCenter}
+                      zoom={12}
+                    >
+                      {topRiders.map((rider, index) => (
+                        <Marker
+                          key={index}
+                          position={{ lat: rider.lat, lng: rider.lng }}
+                          title={rider.name}
+                        />
+                      ))}
+                    </GoogleMap>
+                  </LoadScript>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
         </>
       )}
-
       {/* Render either the component or additional content */}
       {currentView.component ? (
         <Box sx={{ mt: 4 }}>{currentView.component}</Box>
-      ) : (
-        currentView.content
-      )}
+      ) : null}
     </Container>
   );
 };
